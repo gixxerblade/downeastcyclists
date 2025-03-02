@@ -5,14 +5,14 @@ import { Entry } from 'contentful';
 
 type LeaderEntry = Entry<TypeLeadersSkeleton, undefined, string>;
 
-type Link = {} | null | undefined;
+type Link = { url: string } | null | undefined;
 
 export interface Leader {
-  image: ContentImage | null,
-  link: Link,
-  name: string | undefined,
-  order: number | undefined,
-  position: string | undefined,
+  image: ContentImage | null;
+  link: Link;
+  name: string | undefined;
+  order: number | undefined;
+  position: string | undefined;
 }
 
 const parseContentfulLeaders = (leader: LeaderEntry): Leader => ({
@@ -21,14 +21,15 @@ const parseContentfulLeaders = (leader: LeaderEntry): Leader => ({
   name: leader.fields.name,
   order: leader.fields.order,
   position: leader.fields.position,
-}) 
+});
 
 export const fetchLeaders = async (): Promise<Leader[]> => {
   const leaders = await client.getEntries<TypeLeadersSkeleton>({
     content_type: 'leaders',
+    order: ['fields.order'], // Sort by order field
   });
   if (!!leaders.items.length) {
     return leaders.items.map(parseContentfulLeaders);
   }
   return [];
-}
+};

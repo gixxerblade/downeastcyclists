@@ -6,12 +6,16 @@ import Skeleton from './skeleton';
 import { Suspense } from 'react';
 import DecLogo from '../../assets/images/hungry_toad-48.webp'
 
+// Set a reasonable revalidation time (e.g., 1 hour)
+export const revalidate = 3600;
+
 export default async function Blog ({ searchParams }: { searchParams: { page: string } }) {
   const page =
     typeof searchParams.page === 'string' ? Number(searchParams.page) : 1
+  
   const { data: posts, lastPage } = await fetchBlogPosts(page);
   return (
-    <section className='py-24 px-24'>
+    <section className='py-24 px-4 md:px-24'>
       <div className="container">
         <div className="mb-12 flex items-center justify-between gap-x-16">
           <h1 className='text-3xl'>News</h1>
@@ -54,19 +58,38 @@ export default async function Blog ({ searchParams }: { searchParams: { page: st
         >
           {posts.map((post) => (
             <li key={post.title} className='relative'>
-              <div className='group block aspect-square w-full overflow-hidden rounded-lg bg-gray-100'>
-                <Image
-                  src={post.image?.src || DecLogo}
-                  alt=''
-                  className='object-cover group-hover:opacity-75'
-                  width={300}
-                  height={300}
-                />
-              </div>
-              <p className='mt-2 block truncate font-medium'>{post.title}</p>
-              <p className='block text-sm font-medium text-gray-500'>
-                {post.body?.slice(0, 30)}...
-              </p>
+              <Link href={`/blog/${post.slug}`} className="block">
+                <div className='group block aspect-square w-full overflow-hidden rounded-lg bg-gray-100 relative'>
+                  <Image
+                    src={post.image?.src || DecLogo}
+                    alt=''
+                    className='object-cover group-hover:opacity-75'
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  />
+                </div>
+                <p className='mt-2 block truncate font-medium'>{post.title}</p>
+                <div className='flex items-center text-xs text-gray-500 mt-1 mb-2'>
+                  {post.publishDate && (
+                    <time dateTime={post.publishDate}>
+                      {new Date(post.publishDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </time>
+                  )}
+                  {post.author && post.publishDate && (
+                    <span className="mx-1">•</span>
+                  )}
+                  {post.author && (
+                    <span>By {post.author}</span>
+                  )}
+                </div>
+                <p className='block text-sm font-medium text-gray-500'>
+                  {post.body?.slice(0, 30)}...
+                </p>
+              </Link>
             </li>
           ))}
         </ul>

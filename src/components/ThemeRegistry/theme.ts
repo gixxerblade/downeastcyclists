@@ -25,7 +25,17 @@ const theme = createTheme({
         }),
       },
     },
-    
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          [createTheme().breakpoints.down('sm')]: {
+            maxWidth: '100% !important',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+          },
+        },
+      },
+    },
   },
 });
 

@@ -19,6 +19,8 @@ export interface BlogPost {
   slug: string,
   body: string | null,
   image: ContentImage | null,
+  publishDate: string | null,
+  author: string | null,
 }
 
 export const parseContentfulBlogPost = (blogPostEntry?: BlogPostEntry): BlogPost => {
@@ -27,6 +29,8 @@ export const parseContentfulBlogPost = (blogPostEntry?: BlogPostEntry): BlogPost
     slug: blogPostEntry?.fields.slug || '',
     body: blogPostEntry?.fields.content || '',
     image: parseContentfulContentImage(blogPostEntry?.fields.featuredImage),
+    publishDate: blogPostEntry?.fields.publishDate || null,
+    author: blogPostEntry?.fields.author || null,
   }
 }
 
@@ -34,7 +38,7 @@ export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<Bl
   const blogPostsResult = await client.getEntries<TypeBlogPostSkeleton>({
     content_type: 'blogPost',
     limit: Config.LIMIT,
-    order: ['sys.createdAt'],
+    order: ['-fields.publishDate'], // Sort by publishDate in descending order (newest first)
     skip: (page - 1) * Config.LIMIT,
   })
   if (!!blogPostsResult.items.length) {
@@ -50,4 +54,18 @@ export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<Bl
     data: [],
     page: 0,
   };
+}
+
+export const fetchBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
+  const blogPostResult = await client.getEntries<TypeBlogPostSkeleton>({
+    content_type: 'blogPost',
+    'fields.slug': slug,
+    limit: 1,
+  });
+
+  if (blogPostResult.items.length > 0) {
+    return parseContentfulBlogPost(blogPostResult.items[0]);
+  }
+  
+  return null;
 }

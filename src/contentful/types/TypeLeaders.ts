@@ -5,7 +5,7 @@ export interface TypeLeadersFields {
     name?: EntryFieldTypes.Symbol;
     image?: EntryFieldTypes.AssetLink;
     position?: EntryFieldTypes.Symbol;
-    link?: EntryFieldTypes.Object;
+    link?: EntryFieldTypes.Object<{url: string}>;
 }
 
 export type TypeLeadersSkeleton = EntrySkeletonType<TypeLeadersFields, "leaders">;
