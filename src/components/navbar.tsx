@@ -27,6 +27,8 @@ const pages: Page[] = [
 export default function Navbar () {
   const [open, setOpen] = useState(false);
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
+  const [anchorElDropdown, setAnchorElDropdown] = useState<null | HTMLElement>(null);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = usePathname();
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -37,7 +39,20 @@ export default function Navbar () {
     setAnchorElNav(null);
   };
 
+  const handleOpenDropdown = (event: React.MouseEvent<HTMLElement>, pageHref: string) => {
+    setAnchorElDropdown(event.currentTarget);
+    setActiveDropdown(pageHref);
+  };
+
+  const handleCloseDropdown = () => {
+    setAnchorElDropdown(null);
+    setActiveDropdown(null);
+  };
+
   const isHomepage = location === '/';
+  
+  // Check if current location is a child of the About section
+  const isAboutSection = about.some(page => location === page.href);
 
   const logoColors: DecSvgOptions = isHomepage ? {} : {
     cyclists: '#000',
@@ -95,38 +110,63 @@ export default function Navbar () {
             {pages.map((page) => (
               <Fragment key={page.href}>
                 <Button
-                  onClick={page.children?.length ? handleOpenNavMenu : handleCloseNavMenu}
-                  // onFocus={(e) => page.pages?.length && handleOpenNavMenu(e)}
-                  // onMouseLeave={() => page.pages?.length && handleCloseNavMenu()}
-                  sx={{ my: 2, color: isHomepage ? 'white' : '#F20E02', display: 'block' }}
+                  onClick={(e) => page.children?.length
+                    ? handleOpenDropdown(e, page.href)
+                    : undefined}
+                  sx={{ 
+                    my: 2, 
+                    color: isHomepage ? 'white' : '#F20E02', 
+                    display: 'block',
+                    fontWeight: location === page.href || (page.children && isAboutSection) ? 'bold' : 'normal',
+                    borderBottom: location === page.href || (page.children && isAboutSection) ? '2px solid #F20E02' : 'none',
+                  }}
                 >
-                  <Link href={page.href}>
-                    {page.link}
-                  </Link>
+                  {page.children?.length
+                    ? page.link
+                    : <Link href={page.href}>{page.link}</Link>
+                  }
                 </Button>
-                <Menu
-                  anchorEl={anchorElNav}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'left',
-                  }}
-                  open={Boolean(anchorElNav)}
-                  onClose={handleCloseNavMenu}
-                >
-                  {page.children?.map((childPage) => (
-                    <MenuItem key={childPage.href} onClick={handleCloseNavMenu}>
-                      <Typography textAlign="center">
-                        <Link href={childPage.href}>
-                          {childPage.link}
-                        </Link>
-                      </Typography>
-                    </MenuItem>
-                  ))}
-                </Menu>
+                {page.children && page.children.length > 0 && (
+                  <Menu
+                    anchorEl={anchorElDropdown}
+                    open={Boolean(anchorElDropdown) && activeDropdown === page.href}
+                    onClose={handleCloseDropdown}
+                    MenuListProps={{
+                      'aria-labelledby': 'dropdown-button',
+                      dense: true,
+                    }}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'left',
+                    }}
+                  >
+                    {page.children.map((childPage) => (
+                      <MenuItem 
+                        key={childPage.href} 
+                        onClick={handleCloseDropdown}
+                      >
+                        <Typography textAlign="center">
+                          <Link 
+                            href={childPage.href} 
+                            style={{ 
+                              textDecoration: 'none', 
+                              color: location === childPage.href ? '#F20E02' : 'inherit', 
+                              display: 'block', 
+                              width: '100%',
+                              fontWeight: location === childPage.href ? 'bold' : 'normal',
+                            }}
+                          >
+                            {childPage.link}
+                          </Link>
+                        </Typography>
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                )}
               </Fragment>
             ))}
           </Box>
