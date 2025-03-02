@@ -1,0 +1,34 @@
+import { TypeLeadersFields, TypeLeadersSkeleton } from '@/src/contentful/types';
+import { client } from './contentfulClient';
+import { ContentImage, parseContentfulContentImage } from './contentImage';
+import { Entry } from 'contentful';
+
+type LeaderEntry = Entry<TypeLeadersSkeleton, undefined, string>;
+
+type Link = {} | null | undefined;
+
+export interface Leader {
+  image: ContentImage | null,
+  link: Link,
+  name: string | undefined,
+  order: number | undefined,
+  position: string | undefined,
+}
+
+const parseContentfulLeaders = (leader: LeaderEntry): Leader => ({
+  image: parseContentfulContentImage(leader.fields.image),
+  link: leader.fields.link,
+  name: leader.fields.name,
+  order: leader.fields.order,
+  position: leader.fields.position,
+}) 
+
+export const fetchLeaders = async (): Promise<Leader[]> => {
+  const leaders = await client.getEntries<TypeLeadersSkeleton>({
+    content_type: 'leaders',
+  });
+  if (!!leaders.items.length) {
+    return leaders.items.map(parseContentfulLeaders);
+  }
+  return [];
+}
