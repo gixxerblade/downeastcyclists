@@ -11,7 +11,7 @@ export default function Thanks() {
         </Typography>
         
         <Typography variant="body1" paragraph>
-          Your message has been received. We'll get back to you as soon as possible.
+          Your message has been received. We&apos;ll get back to you as soon as possible.
         </Typography>
         
         <div className="mt-8">

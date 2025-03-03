@@ -5,21 +5,21 @@ import Link from 'next/link';
 // Force static generation since membership info rarely changes
 export const dynamic = 'force-static';
 
-export default function Membership() {
+export default function Membership () {
   return (
     <Container maxWidth="md" sx={{ paddingTop: 8, paddingBottom: 8 }}>
       <Typography variant="h3" component="h1" gutterBottom align="center">
         Membership
       </Typography>
-      
+
       <div className="mt-8">
         <Typography variant="h4" component="h3" gutterBottom>
           Discounts
         </Typography>
         <Typography variant="body1" paragraph>
           10 percent discount at{' '}
-          <Link 
-            href="https://www.thebicycle.com/" 
+          <Link
+            href="https://www.thebicycle.com/"
             target="_blank"
             rel="noreferrer noopener"
             className="text-blue-600 hover:underline"
@@ -27,8 +27,8 @@ export default function Membership() {
             The Bicycle Shop
           </Link>
           {' '}and{' '}
-          <Link 
-            href="https://www.bicycle-gallery.com/" 
+          <Link
+            href="https://www.bicycle-gallery.com/"
             target="_blank"
             rel="noreferrer noopener"
             className="text-blue-600 hover:underline"
@@ -40,7 +40,7 @@ export default function Membership() {
           social gatherings, and Ad Hoc Holiday parties.
         </Typography>
       </div>
-      
+
       <div className="mt-8">
         <Typography variant="h4" component="h3" gutterBottom>
           Club Events
@@ -62,19 +62,19 @@ export default function Membership() {
           <li>Trail cleanup days at Big Branch</li>
           <li>Take a Kid Moutain Biking</li>
           <li>Annual community New Year's Day Ride</li>
-          <li>USO NC Coastal Team's Outdoor Adventures Program</li>
+          <li>USO NC Coastal Team&apos;s Outdoor Adventures Program</li>
         </ul>
         <Typography variant="body1">...and more</Typography>
       </div>
-      
+
       <div className="mt-8">
         <Typography variant="h4" component="h3" gutterBottom>
           Initial Dues / Membership Renewal
         </Typography>
         <Typography variant="body1" paragraph className="flex items-center">
           <span className="mr-2">👉👉👉</span>
-          <Link 
-            href="https://www.bikereg.com/down-east-cyclists-membership0" 
+          <Link
+            href="https://www.bikereg.com/down-east-cyclists-membership0"
             target="_blank"
             rel="noreferrer noopener"
             className="font-bold underline text-blue-600 hover:text-blue-800"
@@ -87,7 +87,7 @@ export default function Membership() {
           Cost is $30 dollars per individual or $50 a year per family!
         </Typography>
         <Typography variant="body1" paragraph>
-          Don't forget to provide your information and sign your online
+          Don&apos;t forget to provide your information and sign your online
           release. Additionally, forms are available at The Bicycle Shop, Bicycle Gallery, or
           club meetings.
         </Typography>

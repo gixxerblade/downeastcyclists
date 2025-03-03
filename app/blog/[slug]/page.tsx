@@ -84,7 +84,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4" {...props} />,
               img: ({ node, src, alt, ...props }) => (
                 <div className="my-6 relative">
-                  <img src={src} alt={alt} className="rounded-lg max-w-full" {...props} />
+                  {src && (
+                    <Image 
+                      src={src} 
+                      alt={alt || ''} 
+                      width={800}
+                      height={450}
+                      className="rounded-lg max-w-full"
+                    />
+                  )}
                 </div>
               ),
             }}
