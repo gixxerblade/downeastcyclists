@@ -25,3 +25,13 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+.content-wrapper {
+  padding-top: 0;
+}
+
+@media (max-width: 600px) {
+  .content-wrapper {
+    padding-top: 30px;
+  }
+}

@@ -23,7 +23,9 @@ export default function RootLayout ({
       <body>
         <ThemeRegistry>
           <Navbar />
-          {children}
+          <div className="content-wrapper">
+            {children}
+          </div>
         </ThemeRegistry>
       </body>
     </html>

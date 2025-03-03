@@ -19,20 +19,25 @@ const about: Page[] = [
   { href: '/about/privacy', link: 'Privacy Policy' },
 ] satisfies Page[];
 
+const trails: Page[] = [
+  { href: '/trails/b3', link: 'Big Branch Bike Park' }
+] satisfies Page[]
+
 const pages: Page[] = [
   { href: '/', link: 'Home' },
   { href: 'https://www.meetup.com/down-east-cyclists/events/calendar/', link: 'Events', isExternal: true },
   { href: '', link: 'About', children: about },
   { href: '/blog', link: 'Blog' },
+  { href: '/trails', link: 'Trails', children: trails },
+  { href: '/contact', link: 'Contact' }
 ] satisfies Page[];
 
 export default function Navbar () {
-  const [open, setOpen] = useState(false);
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElDropdown, setAnchorElDropdown] = useState<null | HTMLElement>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = usePathname();
-  
+
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -76,7 +81,7 @@ export default function Navbar () {
     };
 
     document.addEventListener('mousemove', handleGlobalMouseMove);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
     };
@@ -84,8 +89,9 @@ export default function Navbar () {
 
   const isHomepage = location === '/';
 
-  // Check if current location is a child of the About section
-  const isAboutSection = about.some(page => location === page.href);
+  // Check if current location is a child of a specific section
+  const isAboutSection = about.some((page) => location === page.href);
+  const isTrailsSection = trails.some((page) => location === page.href);
 
   const logoColors: DecSvgOptions = isHomepage ? {} : {
     cyclists: '#000',
@@ -178,7 +184,7 @@ export default function Navbar () {
           </Box>
 
           {/* Menu */}
-          <Box 
+          <Box
             ref={containerRef}
             sx={{ display: { xs: 'none', md: 'flex' } }}
           >
@@ -192,8 +198,14 @@ export default function Navbar () {
                     my: 2,
                     color: isHomepage ? 'white' : '#F20E02',
                     display: 'block',
-                    fontWeight: location === page.href || (page.children && isAboutSection) ? 'bold' : 'normal',
-                    borderBottom: location === page.href || (page.children && isAboutSection) ? '2px solid #F20E02' : 'none',
+                    fontWeight: location === page.href || 
+                      (page.link === 'About' && isAboutSection) || 
+                      (page.link === 'Trails' && isTrailsSection) 
+                      ? 'bold' : 'normal',
+                    borderBottom: location === page.href || 
+                      (page.link === 'About' && isAboutSection) || 
+                      (page.link === 'Trails' && isTrailsSection) 
+                      ? '2px solid #F20E02' : 'none',
                   }}
                 >
                   {page.children?.length
