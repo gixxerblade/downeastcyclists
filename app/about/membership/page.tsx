@@ -58,10 +58,10 @@ export default function Membership () {
           <li>Wounded Warrior Battalion weekly rides</li>
           <li>Various charity events</li>
           <li>Croatan Buck Fifty aid station</li>
-          <li>Hope for the Warriors Cyclist Support</li>
+          <li>Hope for the Warriors&apos; Cyclist Support</li>
           <li>Trail cleanup days at Big Branch</li>
           <li>Take a Kid Moutain Biking</li>
-          <li>Annual community New Year's Day Ride</li>
+          <li>Annual community New Year&apos;s Day Ride</li>
           <li>USO NC Coastal Team&apos;s Outdoor Adventures Program</li>
         </ul>
         <Typography variant="body1">...and more</Typography>
