@@ -2,6 +2,7 @@ import { getB3Assets } from '@/src/contentful/b3';
 import { Typography, Container, Box, Paper } from '@mui/material';
 import Image from 'next/image';
 import Link from 'next/link';
+import TrailStatus from '@/src/components/TrailStatus';
 
 export default async function B3() {
   const [logo, trailMap, futureMap] = await getB3Assets();
@@ -9,9 +10,9 @@ export default async function B3() {
   return (
     <>
       <Container maxWidth="md" sx={{ paddingTop: 12, paddingBottom: 0 }}>
-        <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ color: 'white' }}>
-          Big Branch Bike Park
-        </Typography>
+        <Box sx={{ mb: 4 }}>
+          <TrailStatus showTitle={false} />
+        </Box>
         
         <Box sx={{ textAlign: 'center', mb: 3, display: 'flex', justifyContent: 'center' }}>
           {logo.fields.file?.url && (

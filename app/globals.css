@@ -27,11 +27,11 @@ body {
 }
 
 .content-wrapper {
-  padding-top: 0;
+  padding-top: 64px; /* Standard height for MUI AppBar */
 }
 
 @media (max-width: 600px) {
   .content-wrapper {
-    padding-top: 30px;
+    padding-top: 56px; /* Mobile height for MUI AppBar */
   }
 }
