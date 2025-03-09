@@ -8,6 +8,12 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.contentful.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Use a more balanced approach to caching

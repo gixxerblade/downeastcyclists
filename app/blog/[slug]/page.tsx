@@ -86,7 +86,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <div className="my-6 relative">
                   {src && (
                     <Image 
-                      src={src} 
+                      src={src?.startsWith('//') ? `https:${src}` : src} 
                       alt={alt || ''} 
                       width={800}
                       height={450}

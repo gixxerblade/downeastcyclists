@@ -1,6 +1,6 @@
 import { TypeBlogPostSkeleton } from '@/src/contentful/types';
 import { Entry } from 'contentful';
-import { client } from './contentfulClient';
+import { client, getEntriesCached } from './contentfulClient';
 import { ContentImage, parseContentfulContentImage } from './contentImage';
 import { PaginatedData } from './types/PaginatedData';
 import { Config } from '@/constants/Config';
@@ -35,7 +35,7 @@ export const parseContentfulBlogPost = (blogPostEntry?: BlogPostEntry): BlogPost
 }
 
 export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<BlogPost>> => {
-  const blogPostsResult = await client.getEntries<TypeBlogPostSkeleton>({
+  const blogPostsResult = await getEntriesCached<TypeBlogPostSkeleton>({
     content_type: 'blogPost',
     limit: Config.LIMIT,
     order: ['-fields.publishDate'], // Sort by publishDate in descending order (newest first)
@@ -57,7 +57,7 @@ export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<Bl
 }
 
 export const fetchBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
-  const blogPostResult = await client.getEntries<TypeBlogPostSkeleton>({
+  const blogPostResult = await getEntriesCached<TypeBlogPostSkeleton>({
     content_type: 'blogPost',
     'fields.slug': slug,
     limit: 1,

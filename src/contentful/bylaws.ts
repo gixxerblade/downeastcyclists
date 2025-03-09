@@ -1,6 +1,6 @@
 import { TypeBylawSkeleton } from '@/src/contentful/types/TypeBylaw';
 import { Entry } from 'contentful';
-import { client } from './contentfulClient';
+import { client, getEntriesCached } from './contentfulClient';
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer';
 import { Document, BLOCKS, INLINES, MARKS } from '@contentful/rich-text-types';
 import { bylaws as localBylaws } from '@/src/data/bylaws';
@@ -93,7 +93,7 @@ export const parseContentfulBylaw = (bylawEntry?: BylawEntry): Bylaw => {
 
 export const fetchBylaws = async (): Promise<Bylaw[]> => {
   try {
-    const bylawsResult = await client.getEntries<TypeBylawSkeleton>({
+    const bylawsResult = await getEntriesCached<TypeBylawSkeleton>({
       content_type: 'bylaws',
       order: ['fields.order'], // Sort by order field
     });

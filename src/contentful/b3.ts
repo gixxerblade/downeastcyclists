@@ -1,4 +1,4 @@
-import { client } from './contentfulClient';
+import { client, getAssetCached } from './contentfulClient';
 
 export async function getB3Assets() {
   const assets = [
@@ -6,7 +6,7 @@ export async function getB3Assets() {
     '4nGfC80BPGaEa2KDhE09ST',
     '1qzDU1ZDpWfCfjwD4lU6lk',
   ]
-  const response = await Promise.all(assets.map((asset) => client.getAsset(asset)))
+  const response = await Promise.all(assets.map((asset) => getAssetCached(asset)))
   // console.log(JSON.stringify(response, null, 2))
   return response
 }

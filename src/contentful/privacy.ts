@@ -1,6 +1,6 @@
 import { TypePrivacySkeleton } from '@/src/contentful/types/TypePrivacy';
 import { Entry } from 'contentful';
-import { client } from './contentfulClient';
+import { client, getEntriesCached } from './contentfulClient';
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer';
 import { Document, BLOCKS, INLINES, MARKS } from '@contentful/rich-text-types';
 import { privacy as localPrivacy } from '@/src/data/privacy';
@@ -119,7 +119,7 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
 
 export const fetchPrivacy = async (): Promise<Privacy[]> => {
   try {
-    const privacyResult = await client.getEntries<TypePrivacySkeleton>({
+    const privacyResult = await getEntriesCached<TypePrivacySkeleton>({
       content_type: 'privacy',
       order: ['fields.order'], // Sort by order field
     });
