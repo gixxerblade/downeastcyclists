@@ -31,7 +31,7 @@ export async function GET() {
           result.push(obj);
         }
       });
-
+      console.log(result)
       return NextResponse.json(result);
     }
 

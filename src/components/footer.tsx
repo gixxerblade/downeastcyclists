@@ -97,7 +97,7 @@ const Footer = () => {
                 title="Strava Club Mileage"
                 height="160"
                 width="300"
-                allowTransparency={true}
+                // allowTransparency={true}
                 scrolling="no"
                 loading="lazy"
                 src="https://www.strava.com/clubs/down-east-cyclists/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"

@@ -68,7 +68,7 @@ export default function TrailStatus({ showTitle = true }: TrailStatusProps) {
       )}
 
       {trails.map((trail) => (
-        <Card key={trail.id} sx={{ mb: 2 }}>
+        <Card key={trail.id} sx={{ mb: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6" component="h3">

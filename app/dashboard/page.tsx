@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Button, 
-  Paper, 
+import {
+  Container,
+  Typography,
+  Box,
+  Button,
+  Paper,
   Grid,
   Card,
   CardContent,
@@ -31,7 +31,7 @@ interface TabPanelProps {
   value: number;
 }
 
-function TabPanel(props: TabPanelProps) {
+function TabPanel (props: TabPanelProps) {
   const { children, value, index, ...other } = props;
 
   return (
@@ -51,7 +51,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export default function DashboardPage() {
+export default function DashboardPage () {
   const [isLoading, setIsLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const router = useRouter();
@@ -63,13 +63,13 @@ export default function DashboardPage() {
   useEffect(() => {
     // Check if the auth token exists
     const hasToken = document.cookie.includes('auth-token=');
-    
+
     if (!hasToken) {
       // If no token, redirect to login
       router.replace('/login');
       return;
     }
-    
+
     // Check Firebase authentication state
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -77,7 +77,7 @@ export default function DashboardPage() {
         router.replace('/login');
         return;
       }
-      
+
       // Check if the user's email is allowed
       if (user.email !== ALLOWED_EMAIL) {
         setAuthError('You are not authorized to access this dashboard.');
@@ -88,11 +88,11 @@ export default function DashboardPage() {
         });
         return;
       }
-      
+
       // User is authenticated and authorized
       setIsLoading(false);
     });
-    
+
     // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [router, ALLOWED_EMAIL]);
@@ -106,13 +106,13 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      
+
       // Sign out from Firebase
       await signOutUser();
-      
+
       // Clear the auth token cookie
       document.cookie = 'auth-token=; path=/; max-age=0';
-      
+
       // Clear browser history before redirecting
       window.history.replaceState(null, '', '/login');
       router.replace('/login');
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       </Container>
     );
   }
-  
+
   if (authError) {
     return (
       <Container>
@@ -150,20 +150,62 @@ export default function DashboardPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: { xs: 8, sm: 4 }, mb: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'center' }, 
+        mb: 4,
+        gap: 2
+      }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Admin Dashboard
         </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          startIcon={isLoggingOut ? <CircularProgress size={20} color="inherit" /> : null}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 2,
+          }}
         >
-          {isLoggingOut ? 'Logging Out...' : 'Logout'}
-        </Button>
+          {auth.currentUser && (
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                mr: { xs: 0, sm: 2 }
+              }}
+            >
+              Welcome, <Typography 
+                component="span" 
+                variant="body1" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  ml: 0.5,
+                  mr: 1
+                }}
+              >
+                {auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || auth.currentUser.email}
+              </Typography>
+            </Typography>
+          )}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            startIcon={isLoggingOut ? <CircularProgress size={20} color="inherit" /> : null}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 'auto' }
+            }}
+          >
+            {isLoggingOut ? 'Logging Out...' : 'Logout'}
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -238,18 +280,18 @@ export default function DashboardPage() {
             <Typography paragraph>
               View and update the status of all trails. Toggle trails between open and closed, and add notes about current conditions.
             </Typography>
-            
+
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="trail status tabs">
                 <Tab label="View Status" id="dashboard-tab-0" aria-controls="dashboard-tabpanel-0" />
                 <Tab label="Update Status" id="dashboard-tab-1" aria-controls="dashboard-tabpanel-1" />
               </Tabs>
             </Box>
-            
+
             <TabPanel value={tabValue} index={0}>
               <TrailStatus showTitle={false} />
             </TabPanel>
-            
+
             <TabPanel value={tabValue} index={1}>
               <TrailStatusEditor />
             </TabPanel>
