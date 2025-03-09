@@ -9,6 +9,8 @@ interface TrailData {
   shouldShow: boolean;
 }
 
+export const revalidate = 300;
+
 export async function GET() {
   try {
     // Match the Netlify function implementation exactly
