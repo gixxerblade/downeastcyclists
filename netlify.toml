@@ -16,9 +16,9 @@
   targetPort = 3000
   framework = "nextjs"
 
-# Handle form submissions
+# Handle form submissions - using a different path pattern
 [[redirects]]
-  from = "/.netlify/functions/submission-created"
+  from = "/api/form-submission"
   to = "/.netlify/functions/submission-created"
   status = 200
   force = true

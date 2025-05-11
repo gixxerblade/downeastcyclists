@@ -21,8 +21,14 @@ export async function POST(request: NextRequest) {
       body: new URLSearchParams(formData as any).toString(),
     };
 
-    // Submit to Netlify's form handling endpoint
-    const netlifyResponse = await fetch('/.netlify/functions/submission-created', fetchOptions);
+    // Submit to our Next.js API route that forwards to Netlify
+    const netlifyResponse = await fetch('/api/form-submission', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(Object.fromEntries(formData)),
+    });
     
     if (!netlifyResponse.ok) {
       console.error('Netlify form submission failed:', await netlifyResponse.text());
