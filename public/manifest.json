@@ -1,0 +1,64 @@
+{
+  "name": "DownEast Cyclists",
+  "short_name": "DEC",
+  "description": "A Recreational Cycling Club in Eastern North Carolina",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/dec.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/bicycle.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Trails",
+      "short_name": "Trails",
+      "description": "View trail status",
+      "url": "/trails/b3",
+      "icons": [
+        {
+          "src": "/bicycle.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Contact",
+      "short_name": "Contact",
+      "description": "Contact DownEast Cyclists",
+      "url": "/contact",
+      "icons": [
+        {
+          "src": "/dec.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "caching": {
+    "pages": {
+      "strategy": "stale-while-revalidate",
+      "maxAge": 86400
+    },
+    "assets": {
+      "strategy": "cache-first",
+      "maxAge": 2592000
+    },
+    "api": {
+      "strategy": "network-first",
+      "maxAge": 300
+    }
+  }
+}

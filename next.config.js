@@ -18,12 +18,18 @@ const nextConfig = {
       },
     ],
   },
-  // Use a more balanced approach to caching
+  // Enhanced caching configuration
   onDemandEntries: {
-    // Keep the build cache for a reasonable time
-    maxInactiveAge: 60 * 60 * 1000, // 1 hour
-    // Number of pages to keep in memory
-    pagesBufferLength: 5,
+    // Keep the build cache for a longer time
+    maxInactiveAge: 24 * 60 * 60 * 1000, // 24 hours
+    // Increase number of pages to keep in memory
+    pagesBufferLength: 10,
+  },
+  // Configure static generation and ISR
+  staticPageGenerationTimeout: 120, // Increase timeout for static generation (in seconds)
+  experimental: {
+    // Optimize serverless function size
+    serverComponentsExternalPackages: ['@google-cloud/firestore'],
   },
   // Add redirect from /about to /about/bylaws
   async redirects() {

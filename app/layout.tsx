@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Navbar from '@/src/components/navbar';
 import FooterWrapper from '@/src/components/FooterWrapper';
@@ -10,9 +10,22 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter';
 import ThemeRegistry from '@/src/components/ThemeRegistry/ThemeRegistry';
 import QueryProvider from '@/src/providers/QueryProvider';
 
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
   title: 'Down East Cycists',
   description: 'A Recreational Cycling Club in Eastern North Carolina',
+  manifest: '/manifest.json',
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'black',
+    'format-detection': 'telephone=no',
+    'mobile-web-app-capable': 'yes',
+  },
 }
 
 export default function RootLayout ({
@@ -22,6 +35,12 @@ export default function RootLayout ({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Add cache control meta tags */}
+        <meta httpEquiv="Cache-Control" content="public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="86400" />
+      </head>
       <body>
         <ThemeRegistry>
           <QueryProvider>

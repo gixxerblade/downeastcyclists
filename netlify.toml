@@ -9,6 +9,28 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  included_files = ["!node_modules/@google-cloud/firestore/**/*"]
+  
+# Cache configuration for Next.js Server Handler
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/image*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=31536000"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "public, max-age=60, s-maxage=300, stale-while-revalidate=3600"
 
 [dev]
   command = "yarn dev"

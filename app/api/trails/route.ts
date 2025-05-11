@@ -9,11 +9,17 @@ interface TrailData {
   shouldShow: boolean;
 }
 
-export const revalidate = 300;
+let cachedTrails: TrailData[] | null = null;
+let cachedAt: number = 0;
+const CACHE_TTL = 300_000; // 5 minutes
 
 export async function GET() {
+  const now = Date.now();
+  if (cachedTrails && now - cachedAt < CACHE_TTL) {
+    return NextResponse.json(cachedTrails);
+  }
+
   try {
-    // Match the Netlify function implementation exactly
     const db = new Firestore({
       projectId: process.env.GOOGLE_PROJECT_ID,
       credentials: {
@@ -23,21 +29,14 @@ export async function GET() {
     });
 
     const snapshot = await db.collection('trails').get();
+    const result: TrailData[] = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as TrailData))
+      .filter((item): item is TrailData => item.shouldShow);
 
-    if (snapshot) {
-      const result: TrailData[] = [];
-      snapshot.forEach(item => {
-        const obj = item.data() as any;
-        obj.id = item.id;
-        if (obj.shouldShow) {
-          result.push(obj);
-        }
-      });
-      console.log(result)
-      return NextResponse.json(result);
-    }
+    cachedTrails = result;
+    cachedAt = now;
 
-    return NextResponse.json({ data: 'No data' }, { status: 400 });
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching trails:', error);
     return NextResponse.json(

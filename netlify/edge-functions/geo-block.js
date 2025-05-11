@@ -83,11 +83,15 @@ export default async function geoBlock(req, context) {
       </html>
     `;
 
-    // Return the HTML with appropriate headers
+    // Return the HTML with appropriate headers including security headers
     return new Response(html, {
       headers: { 
-        'content-type': 'text/html',
-        'Cache-Control': 'no-cache'
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
       },
       status: 403 // Forbidden status code
     });
