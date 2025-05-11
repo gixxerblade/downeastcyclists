@@ -26,36 +26,28 @@ export default function Contact () {
   };
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
-    // Create FormData for Netlify
-    const formData = new FormData();
-    
-    // Add form-name field which Netlify requires
+    const formData = new URLSearchParams();
     formData.append("form-name", "contact");
-    
-    // Add all form fields
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
 
     try {
-      // Submit to our API route that handles Netlify form submissions
-      const response = await fetch("/api/submit-form", {
+      const response = await fetch("/", {
         method: "POST",
-        body: formData
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
       });
-      
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        router.push('/thanks');
+
+      if (response.ok) {
+        router.push("/thanks");
       } else {
-        // Handle error
-        console.error("Form submission error:", result);
-        router.push('/thanks?error=true');
+        console.error("Form submission error:", await response.text());
+        router.push("/thanks?error=true");
       }
     } catch (error) {
       console.error("Form submission error:", error);
-      router.push('/thanks?error=true');
+      router.push("/thanks?error=true");
     }
   };
 
