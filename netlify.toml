@@ -1,0 +1,28 @@
+[build]
+  command = "yarn build"
+  publish = ".next"
+  functions = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[dev]
+  command = "yarn dev"
+  port = 8888
+  targetPort = 3000
+  framework = "nextjs"
+
+# Handle form submissions
+[[redirects]]
+  from = "/.netlify/functions/submission-created"
+  to = "/.netlify/functions/submission-created"
+  status = 200
+  force = true
+
+# Ensure all form submissions are processed by Netlify
+[build.processing.html]
+  pretty_urls = true

@@ -38,17 +38,19 @@ export default function Contact () {
     });
 
     try {
-      // Submit to Netlify forms
-      const response = await fetch("/", {
+      // Submit to our API route that handles Netlify form submissions
+      const response = await fetch("/api/submit-form", {
         method: "POST",
         body: formData
       });
       
-      if (response.ok) {
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
         router.push('/thanks');
       } else {
         // Handle error
-        console.error("Form submission error:", response);
+        console.error("Form submission error:", result);
         router.push('/thanks?error=true');
       }
     } catch (error) {

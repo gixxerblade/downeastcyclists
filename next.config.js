@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configuration for Netlify deployment
+  distDir: '.next',
   images: {
     remotePatterns: [
       {
