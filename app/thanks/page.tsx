@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 // Client component that uses useSearchParams
 function ThanksContent() {
   const searchParams = useSearchParams();
-  const hasError = searchParams.get('error') === 'true';
+  const hasError = searchParams?.get('error') === 'true';
 
   return (
     <div className="text-center">
