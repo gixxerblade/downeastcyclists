@@ -33,7 +33,7 @@ export default function Contact () {
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     try {
-      const response = await fetch('/', {
+      const response = await fetch('/__forms.html', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -71,6 +71,7 @@ export default function Contact () {
               name="contact"
               method="POST"
               netlify-honeypot="bot-field"
+              data-netlify-recaptcha="true"
             >
               <input type="hidden" name="form-name" value="contact" />
               <p className="hidden">
@@ -139,6 +140,7 @@ export default function Contact () {
                   </div>
                 </label>
               </div>
+              <div data-netlify-recaptcha="true"></div>
               <div className="mt-6">
                 <button
                   type="submit"
