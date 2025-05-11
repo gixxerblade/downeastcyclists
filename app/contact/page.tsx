@@ -33,15 +33,21 @@ export default function Contact () {
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     try {
-      const response = await fetch('/__forms.html', {
+      // Create a FormData object
+      const formData = new FormData();
+      formData.append('form-name', 'contact');
+      Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      
+      // Submit the form using the Fetch API with FormData
+      const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          'form-name': 'contact',
-          ...data
-        }).toString()
+        body: new URLSearchParams(formData as any).toString()
       });
-      console.log("Form data:", response);
+      
+      console.log("Form submission response:", response);
 
       if (response.ok) {
         router.push("/thanks");
@@ -72,6 +78,7 @@ export default function Contact () {
               method="POST"
               netlify-honeypot="bot-field"
               data-netlify-recaptcha="true"
+              action="/"
             >
               <input type="hidden" name="form-name" value="contact" />
               <p className="hidden">
@@ -132,7 +139,8 @@ export default function Contact () {
                   </div>
                 </label>
               </div>
-              <div data-netlify-recaptcha="true"></div>
+              {/* Netlify reCAPTCHA - this div must be empty for Netlify to inject the reCAPTCHA */}
+              <div className="mb-4" data-netlify-recaptcha="true"></div>
               <div className="mt-6">
                 <button
                   type="submit"
