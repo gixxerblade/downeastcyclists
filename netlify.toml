@@ -26,3 +26,8 @@
 # Ensure all form submissions are processed by Netlify
 [build.processing.html]
   pretty_urls = true
+
+# Edge Functions configuration
+[[edge_functions]]
+  path = "/*"
+  function = "geo-block"
