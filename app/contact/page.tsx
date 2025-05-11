@@ -27,8 +27,8 @@ export default function Contact () {
     formState: { errors, isSubmitting }
   } = useForm<FormInputs>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
-    reValidateMode: "onBlur"
+    mode: "onChange",
+    reValidateMode: "onChange"
   });
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
@@ -87,7 +87,7 @@ export default function Contact () {
                       id="name"
                       placeholder="Tadej Pogačar"
                       className={`w-full p-3 border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                      {...register("name", { required: "Name is required" })}
+                      {...register("name")}
                     />
                     {errors.name && (
                       <p className="text-red-500 text-sm mt-1 text-left">{errors.name.message}</p>
@@ -105,13 +105,7 @@ export default function Contact () {
                       type="email"
                       placeholder="info@tadejpogacar.com"
                       className={`w-full p-3 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                      {...register("email", {
-                        required: "Email is required",
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: "Invalid email address"
-                        }
-                      })}
+                      {...register("email")}
                     />
                     {errors.email && (
                       <p className="text-red-500 text-sm mt-1 text-left">{errors.email.message}</p>
@@ -130,9 +124,7 @@ export default function Contact () {
                       className={`w-full p-3 border ${errors.message ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                       rows={5}
                       style={{ height: '125px' }}
-                      {...register("message", {
-                        required: "Message is required",
-                      })}
+                      {...register("message")}
                     ></textarea>
                     {errors.message && (
                       <p className="text-red-500 text-sm mt-1 text-left">{errors.message.message}</p>
