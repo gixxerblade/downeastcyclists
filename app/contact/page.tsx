@@ -3,40 +3,44 @@
 import { useRouter } from 'next/navigation';
 import { Container, Typography } from '@mui/material';
 import { useForm, SubmitHandler } from "react-hook-form";
-import HCaptcha from '@hcaptcha/react-hcaptcha';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 
 type FormInputs = {
   name: string;
   email: string;
   message: string;
-  'h-captcha-response': string;
 };
+
+const schema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  message: z.string().min(1, { message: "Message is required" }),
+});
 
 export default function Contact () {
   const router = useRouter();
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting }
-  } = useForm<FormInputs>();
-
-  const onHCaptchaChange = (token: string) => {
-    setValue("h-captcha-response", token);
-  };
+  } = useForm<FormInputs>({
+    resolver: zodResolver(schema),
+    mode: "onBlur",
+    reValidateMode: "onBlur"
+  });
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
-    const formData = new URLSearchParams();
-    formData.append("form-name", "contact");
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-
     try {
-      const response = await fetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString(),
+      console.log("Form data:", data);
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          'form-name': 'contact',
+          ...data
+        }).toString()
       });
 
       if (response.ok) {
@@ -135,15 +139,6 @@ export default function Contact () {
                   </div>
                 </label>
               </div>
-
-              <div className="mt-6">
-                <HCaptcha
-                  sitekey="50b2fe65-b00b-4b9e-ad62-3ba471098be2"
-                  reCaptchaCompat={false}
-                  onVerify={onHCaptchaChange}
-                />
-              </div>
-
               <div className="mt-6">
                 <button
                   type="submit"
