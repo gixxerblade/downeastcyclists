@@ -26,35 +26,34 @@ export default function Contact () {
   };
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
-    // Add the access key to the form data
-    const formData = {
-      ...data,
-      access_key: process.env.NEXT_PUBLIC_WEB3FORM || '',
-      form_name: 'contact'
-    };
+    // Create FormData for Netlify
+    const formData = new FormData();
+    
+    // Add form-name field which Netlify requires
+    formData.append("form-name", "contact");
+    
+    // Add all form fields
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
 
     try {
-      const response = await fetch("https://api.web3forms.com/submit", {
+      // Submit to Netlify forms
+      const response = await fetch("/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify(formData)
+        body: formData
       });
-
-      const result = await response.json();
-
-      if (result.success) {
+      
+      if (response.ok) {
         router.push('/thanks');
       } else {
         // Handle error
-        console.error("Form submission error:", result);
-        alert("There was an error submitting the form. Please try again.");
+        console.error("Form submission error:", response);
+        router.push('/thanks?error=true');
       }
     } catch (error) {
       console.error("Form submission error:", error);
-      alert("There was an error submitting the form. Please try again.");
+      router.push('/thanks?error=true');
     }
   };
 
@@ -70,7 +69,17 @@ export default function Contact () {
             <form
               className="form"
               onSubmit={handleSubmit(onSubmit)}
+              data-netlify="true"
+              name="contact"
+              method="POST"
+              netlify-honeypot="bot-field"
             >
+              <input type="hidden" name="form-name" value="contact" />
+              <p className="hidden">
+                <label>
+                  Don&apos;t fill this out if you&apos;re human: <input name="bot-field" />
+                </label>
+              </p>
               <div className="mb-4">
                 <label className="block text-left mb-2" htmlFor="name">
                   Name
