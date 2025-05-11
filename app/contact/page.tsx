@@ -33,7 +33,6 @@ export default function Contact () {
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     try {
-      console.log("Form data:", data);
       const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -42,6 +41,7 @@ export default function Contact () {
           ...data
         }).toString()
       });
+      console.log("Form data:", response);
 
       if (response.ok) {
         router.push("/thanks");
