@@ -22,9 +22,14 @@ export function middleware(request: NextRequest) {
     });
   }
   
+  // Check if this is a form submission
+  const isFormSubmission = 
+    request.method === 'POST' && 
+    request.headers.get('content-type')?.includes('application/x-www-form-urlencoded');
+  
   // Add caching headers based on the path
-  // Skip adding cache headers for authenticated routes and API routes that handle their own caching
-  if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/api/trails')) {
+  // Skip adding cache headers for authenticated routes, API routes that handle their own caching, and form submissions
+  if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/api/trails') && !isFormSubmission) {
     // Default caching strategy for most pages
     let cacheControl = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
     

@@ -12,10 +12,13 @@ export default async function geoBlock(req, context) {
     
     // Simple heuristic for potential DDoS detection
     // This is a basic example - in production you would use more sophisticated detection
+    const isFormSubmission = req.method === 'POST' && 
+                            (req.url.endsWith('/') || req.url.includes('?form-name='));
+    
     const suspiciousRequest = 
       !userAgent || 
       userAgent.length < 10 || 
-      (req.method !== 'GET' && req.method !== 'HEAD');
+      (req.method !== 'GET' && req.method !== 'HEAD' && !isFormSubmission);
     
     // If the request looks suspicious, return a minimal response with 429 status
     if (suspiciousRequest) {
