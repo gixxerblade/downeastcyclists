@@ -22,16 +22,8 @@ if (!webhookSecret) {
 const STRIPE_PRICE_ID_INDIVIDUAL = process.env.STRIPE_PRICE_ID_INDIVIDUAL;
 const STRIPE_PRICE_ID_FAMILY = process.env.STRIPE_PRICE_ID_FAMILY;
 
-
-// Disable Next.js default body parser for this route to access raw body
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export async function POST(request: NextRequest) {
-  const rawBody = await request.text();
+  const rawBody = await request.text(); // Standard way to get raw body in App Router
   const signature = request.headers.get('stripe-signature');
 
   if (!signature) {
