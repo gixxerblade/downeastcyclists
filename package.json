@@ -30,6 +30,8 @@
     "clsx": "2.1.1",
     "contentful": "^10.15.2",
     "firebase": "^11.4.0",
+    "@stripe/stripe-js": "^3.0.0",
+    "stripe": "^14.10.0",
     "next": "^14",
     "react": "^18",
     "react-dom": "^18",
