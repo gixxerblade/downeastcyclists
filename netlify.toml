@@ -36,7 +36,7 @@
   command = "yarn dev"
   port = 8888
   targetPort = 3000
-  framework = "nextjs"
+  framework = "next"
 
 # Ensure all form submissions are processed by Netlify
 [build.processing.html]

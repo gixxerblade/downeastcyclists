@@ -33,21 +33,23 @@ export default function Contact () {
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     try {
-      // Create a FormData object
+      // Create form data for Netlify submission following OpenNext docs
       const formData = new FormData();
       formData.append('form-name', 'contact');
+      formData.append('bot-field', ''); // Honeypot field
       Object.entries(data).forEach(([key, value]) => {
         formData.append(key, value);
       });
-      
-      // Submit the form using the Fetch API with FormData
-      const response = await fetch('/__forms.html', {
+
+      // For local development with netlify dev, submit to root
+      // For production, this will be handled by Netlify's form processing
+      const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(formData as any).toString()
       });
-      
-      console.log("Form submission response:", response);
+
+      // console.log("Form submission response:", response);
 
       if (response.ok) {
         router.push("/thanks");
@@ -78,7 +80,7 @@ export default function Contact () {
               method="POST"
               netlify-honeypot="bot-field"
               data-netlify-recaptcha="true"
-              action="/"
+              action="/thanks"
             >
               <input type="hidden" name="form-name" value="contact" />
               <p className="hidden">
