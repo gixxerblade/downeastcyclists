@@ -1,3 +1,3 @@
 export enum QueryKeys {
-  BLOG_LIST = 'blog_list',
+  BLOG_LIST = "blog_list",
 }

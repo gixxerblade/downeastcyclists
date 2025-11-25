@@ -1,11 +1,11 @@
-import React from 'react';
-import { Container, Typography } from '@mui/material';
-import Link from 'next/link';
+import React from "react";
+import { Container, Typography } from "@mui/material";
+import Link from "next/link";
 
 // Force static generation since membership info rarely changes
-export const dynamic = 'force-static';
+export const dynamic = "force-static";
 
-export default function Membership () {
+export default function Membership() {
   return (
     <Container maxWidth="md" sx={{ paddingTop: 8, paddingBottom: 8 }}>
       <Typography variant="h3" component="h1" gutterBottom align="center">
@@ -17,7 +17,7 @@ export default function Membership () {
           Discounts
         </Typography>
         <Typography variant="body1" paragraph>
-          10 percent discount at{' '}
+          10 percent discount at{" "}
           <Link
             href="https://www.thebicycle.com/"
             target="_blank"
@@ -25,8 +25,8 @@ export default function Membership () {
             className="text-blue-600 hover:underline"
           >
             The Bicycle Shop
-          </Link>
-          {' '}and{' '}
+          </Link>{" "}
+          and{" "}
           <Link
             href="https://www.bicycle-gallery.com/"
             target="_blank"
@@ -34,10 +34,9 @@ export default function Membership () {
             className="text-blue-600 hover:underline"
           >
             The Bicycle Gallery
-          </Link>
-          {' '}after 30 days of paid membership begins and only available to
-          active club members. Free supported Centuries, insured events,
-          social gatherings, and Ad Hoc Holiday parties.
+          </Link>{" "}
+          after 30 days of paid membership begins and only available to active club members. Free
+          supported Centuries, insured events, social gatherings, and Ad Hoc Holiday parties.
         </Typography>
       </div>
 
@@ -87,9 +86,8 @@ export default function Membership () {
           Cost is $30 dollars per individual or $50 a year per family!
         </Typography>
         <Typography variant="body1" paragraph>
-          Don&apos;t forget to provide your information and sign your online
-          release. Additionally, forms are available at The Bicycle Shop, Bicycle Gallery, or
-          club meetings.
+          Don&apos;t forget to provide your information and sign your online release. Additionally,
+          forms are available at The Bicycle Shop, Bicycle Gallery, or club meetings.
         </Typography>
       </div>
     </Container>

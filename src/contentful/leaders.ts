@@ -1,7 +1,7 @@
-import { TypeLeadersFields, TypeLeadersSkeleton } from '@/src/contentful/types';
-import { client, getEntriesCached } from './contentfulClient';
-import { ContentImage, parseContentfulContentImage } from './contentImage';
-import { Entry } from 'contentful';
+import { TypeLeadersFields, TypeLeadersSkeleton } from "@/src/contentful/types";
+import { client, getEntriesCached } from "./contentfulClient";
+import { ContentImage, parseContentfulContentImage } from "./contentImage";
+import { Entry } from "contentful";
 
 type LeaderEntry = Entry<TypeLeadersSkeleton, undefined, string>;
 
@@ -25,8 +25,8 @@ const parseContentfulLeaders = (leader: LeaderEntry): Leader => ({
 
 export const fetchLeaders = async (): Promise<Leader[]> => {
   const leaders = await getEntriesCached<TypeLeadersSkeleton>({
-    content_type: 'leaders',
-    order: ['fields.order'], // Sort by order field
+    content_type: "leaders",
+    order: ["fields.order"], // Sort by order field
   });
   if (!!leaders.items.length) {
     return leaders.items.map(parseContentfulLeaders);
