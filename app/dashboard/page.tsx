@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Container,
   Typography,
@@ -15,14 +15,14 @@ import {
   Divider,
   Tabs,
   Tab,
-  CircularProgress
-} from '@mui/material';
-import { PeopleAlt, DirectionsBike, Event, Article } from '@mui/icons-material';
-import TrailStatus from '@/src/components/TrailStatus';
-import TrailStatusEditor from '@/src/components/TrailStatusEditor';
-import { TrailData } from '@/src/utils/trails';
-import { signOutUser, auth } from '@/src/utils/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+  CircularProgress,
+} from "@mui/material";
+import { PeopleAlt, DirectionsBike, Event, Article } from "@mui/icons-material";
+import TrailStatus from "@/src/components/TrailStatus";
+import TrailStatusEditor from "@/src/components/TrailStatusEditor";
+import { TrailData } from "@/src/utils/trails";
+import { signOutUser, auth } from "@/src/utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 // Tab panel component for the dashboard
 interface TabPanelProps {
@@ -31,7 +31,7 @@ interface TabPanelProps {
   value: number;
 }
 
-function TabPanel (props: TabPanelProps) {
+function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
 
   return (
@@ -42,31 +42,27 @@ function TabPanel (props: TabPanelProps) {
       aria-labelledby={`dashboard-tab-${index}`}
       {...other}
     >
-      {value === index && (
-        <Box sx={{ pt: 3 }}>
-          {children}
-        </Box>
-      )}
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
     </div>
   );
 }
 
-export default function DashboardPage () {
+export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const router = useRouter();
 
   // Get the allowed email from environment variable
-  const ALLOWED_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'your-admin-email@example.com';
+  const ALLOWED_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "your-admin-email@example.com";
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if the auth token exists
-    const hasToken = document.cookie.includes('auth-token=');
+    const hasToken = document.cookie.includes("auth-token=");
 
     if (!hasToken) {
       // If no token, redirect to login
-      router.replace('/login');
+      router.replace("/login");
       return;
     }
 
@@ -74,17 +70,17 @@ export default function DashboardPage () {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         // No user is signed in, redirect to login
-        router.replace('/login');
+        router.replace("/login");
         return;
       }
 
       // Check if the user's email is allowed
       if (user.email !== ALLOWED_EMAIL) {
-        setAuthError('You are not authorized to access this dashboard.');
+        setAuthError("You are not authorized to access this dashboard.");
         // Sign out the user
         signOutUser().then(() => {
-          document.cookie = 'auth-token=; path=/; max-age=0';
-          router.replace('/login');
+          document.cookie = "auth-token=; path=/; max-age=0";
+          router.replace("/login");
         });
         return;
       }
@@ -111,13 +107,13 @@ export default function DashboardPage () {
       await signOutUser();
 
       // Clear the auth token cookie
-      document.cookie = 'auth-token=; path=/; max-age=0';
+      document.cookie = "auth-token=; path=/; max-age=0";
 
       // Clear browser history before redirecting
-      window.history.replaceState(null, '', '/login');
-      router.replace('/login');
+      window.history.replaceState(null, "", "/login");
+      router.replace("/login");
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     } finally {
       setIsLoggingOut(false);
     }
@@ -126,7 +122,7 @@ export default function DashboardPage () {
   if (isLoading) {
     return (
       <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
           <CircularProgress />
         </Box>
       </Container>
@@ -136,13 +132,11 @@ export default function DashboardPage () {
   if (authError) {
     return (
       <Container>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: 8 }}>
           <Typography color="error" variant="h6" gutterBottom>
             {authError}
           </Typography>
-          <Typography>
-            You will be redirected to the login page.
-          </Typography>
+          <Typography>You will be redirected to the login page.</Typography>
           <CircularProgress sx={{ mt: 2 }} />
         </Box>
       </Container>
@@ -151,45 +145,50 @@ export default function DashboardPage () {
 
   return (
     <Container maxWidth="lg" sx={{ mt: { xs: 8, sm: 4 }, mb: 4 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'flex-start', sm: 'center' }, 
-        mb: 4,
-        gap: 2
-      }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+          mb: 4,
+          gap: 2,
+        }}
+      >
         <Typography variant="h4" component="h1" gutterBottom>
           Admin Dashboard
         </Typography>
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'flex-start', sm: 'center' },
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "flex-start", sm: "center" },
             gap: 2,
           }}
         >
           {auth.currentUser && (
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                mr: { xs: 0, sm: 2 }
+            <Typography
+              variant="body1"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                mr: { xs: 0, sm: 2 },
               }}
             >
-              Welcome, <Typography 
-                component="span" 
-                variant="body1" 
-                sx={{ 
-                  fontWeight: 'bold',
+              Welcome,{" "}
+              <Typography
+                component="span"
+                variant="body1"
+                sx={{
+                  fontWeight: "bold",
                   ml: 0.5,
-                  mr: 1
+                  mr: 1,
                 }}
               >
-                {auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || auth.currentUser.email}
+                {auth.currentUser.displayName ||
+                  auth.currentUser.email?.split("@")[0] ||
+                  auth.currentUser.email}
               </Typography>
             </Typography>
           )}
@@ -199,11 +198,11 @@ export default function DashboardPage () {
             onClick={handleLogout}
             disabled={isLoggingOut}
             startIcon={isLoggingOut ? <CircularProgress size={20} color="inherit" /> : null}
-            sx={{ 
-              minWidth: { xs: '100%', sm: 'auto' }
+            sx={{
+              minWidth: { xs: "100%", sm: "auto" },
             }}
           >
-            {isLoggingOut ? 'Logging Out...' : 'Logout'}
+            {isLoggingOut ? "Logging Out..." : "Logout"}
           </Button>
         </Box>
       </Box>
@@ -214,7 +213,7 @@ export default function DashboardPage () {
           <Card>
             <CardHeader title="Members" />
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <PeopleAlt sx={{ fontSize: 40, mr: 2 }} />
                 <Typography variant="h4">124</Typography>
               </Box>
@@ -225,7 +224,7 @@ export default function DashboardPage () {
           <Card>
             <CardHeader title="Trails" />
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <DirectionsBike sx={{ fontSize: 40, mr: 2 }} />
                 <Typography variant="h4">8</Typography>
               </Box>
@@ -236,7 +235,7 @@ export default function DashboardPage () {
           <Card>
             <CardHeader title="Events" />
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Event sx={{ fontSize: 40, mr: 2 }} />
                 <Typography variant="h4">12</Typography>
               </Box>
@@ -247,7 +246,7 @@ export default function DashboardPage () {
           <Card>
             <CardHeader title="Blog Posts" />
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Article sx={{ fontSize: 40, mr: 2 }} />
                 <Typography variant="h4">36</Typography>
               </Box>
@@ -262,8 +261,9 @@ export default function DashboardPage () {
               Welcome to the Down East Cyclists Admin Dashboard
             </Typography>
             <Typography paragraph>
-              This dashboard provides administrative tools and analytics for managing the Down East Cyclists website.
-              From here, you can manage content, view statistics, and update site information.
+              This dashboard provides administrative tools and analytics for managing the Down East
+              Cyclists website. From here, you can manage content, view statistics, and update site
+              information.
             </Typography>
             <Typography paragraph>
               Note: This is a protected area that requires authentication to access.
@@ -278,13 +278,22 @@ export default function DashboardPage () {
               Trail Status Management
             </Typography>
             <Typography paragraph>
-              View and update the status of all trails. Toggle trails between open and closed, and add notes about current conditions.
+              View and update the status of all trails. Toggle trails between open and closed, and
+              add notes about current conditions.
             </Typography>
 
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="trail status tabs">
-                <Tab label="View Status" id="dashboard-tab-0" aria-controls="dashboard-tabpanel-0" />
-                <Tab label="Update Status" id="dashboard-tab-1" aria-controls="dashboard-tabpanel-1" />
+                <Tab
+                  label="View Status"
+                  id="dashboard-tab-0"
+                  aria-controls="dashboard-tabpanel-0"
+                />
+                <Tab
+                  label="Update Status"
+                  id="dashboard-tab-1"
+                  aria-controls="dashboard-tabpanel-1"
+                />
               </Tabs>
             </Box>
 

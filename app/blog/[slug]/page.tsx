@@ -1,10 +1,10 @@
-import { fetchBlogPostBySlug } from '@/src/contentful/blogPosts';
-import Image from 'next/image';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import DecLogo from '../../../assets/images/hungry_toad-48.webp';
+import { fetchBlogPostBySlug } from "@/src/contentful/blogPosts";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import DecLogo from "../../../assets/images/hungry_toad-48.webp";
 
 // Set a reasonable revalidation time (e.g., 1 hour)
 export const revalidate = 3600;
@@ -40,10 +40,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {post.publishDate && (
           <time dateTime={post.publishDate} className="mr-4">
             <span className="font-medium">Published: </span>
-            {new Date(post.publishDate).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
+            {new Date(post.publishDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
             })}
           </time>
         )}
@@ -70,24 +70,32 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
       <div className="prose prose-lg max-w-none">
         {post.body ? (
-          <ReactMarkdown 
+          <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              h1: ({ node, ...props }) => <h1 className="text-3xl font-bold mt-8 mb-4" {...props} />,
-              h2: ({ node, ...props }) => <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />,
+              h1: ({ node, ...props }) => (
+                <h1 className="text-3xl font-bold mt-8 mb-4" {...props} />
+              ),
+              h2: ({ node, ...props }) => (
+                <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />
+              ),
               h3: ({ node, ...props }) => <h3 className="text-xl font-bold mt-5 mb-2" {...props} />,
               p: ({ node, ...props }) => <p className="my-4" {...props} />,
               ul: ({ node, ...props }) => <ul className="list-disc pl-6 my-4" {...props} />,
               ol: ({ node, ...props }) => <ol className="list-decimal pl-6 my-4" {...props} />,
               li: ({ node, ...props }) => <li className="mb-1" {...props} />,
-              a: ({ node, ...props }) => <a className="text-red-600 hover:text-red-800 underline" {...props} />,
-              blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4" {...props} />,
+              a: ({ node, ...props }) => (
+                <a className="text-red-600 hover:text-red-800 underline" {...props} />
+              ),
+              blockquote: ({ node, ...props }) => (
+                <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4" {...props} />
+              ),
               img: ({ node, src, alt, ...props }) => (
                 <div className="my-6 relative">
                   {src && (
-                    <Image 
-                      src={src?.startsWith('//') ? `https:${src}` : src} 
-                      alt={alt || ''} 
+                    <Image
+                      src={src?.startsWith("//") ? `https:${src}` : src}
+                      alt={alt || ""}
                       width={800}
                       height={450}
                       className="rounded-lg max-w-full"

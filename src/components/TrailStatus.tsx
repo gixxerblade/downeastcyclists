@@ -1,25 +1,19 @@
 "use client";
 
-import { Box, Card, CardContent, Typography, Chip, CircularProgress, Button } from '@mui/material';
-import { Refresh as RefreshIcon } from '@mui/icons-material';
-import { useTrails } from '@/src/hooks/useTrailQueries';
+import { Box, Card, CardContent, Typography, Chip, CircularProgress, Button } from "@mui/material";
+import { Refresh as RefreshIcon } from "@mui/icons-material";
+import { useTrails } from "@/src/hooks/useTrailQueries";
 
 interface TrailStatusProps {
   showTitle?: boolean;
 }
 
 export default function TrailStatus({ showTitle = true }: TrailStatusProps) {
-  const { 
-    data: trails = [], 
-    isLoading, 
-    isError, 
-    error, 
-    refetch 
-  } = useTrails();
+  const { data: trails = [], isLoading, isError, error, refetch } = useTrails();
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
         <CircularProgress />
       </Box>
     );
@@ -29,12 +23,12 @@ export default function TrailStatus({ showTitle = true }: TrailStatusProps) {
     return (
       <Box sx={{ p: 2 }}>
         <Typography color="error">
-          Failed to load trail status: {error instanceof Error ? error.message : 'Unknown error'}
+          Failed to load trail status: {error instanceof Error ? error.message : "Unknown error"}
         </Typography>
-        <Button 
-          variant="outlined" 
-          startIcon={<RefreshIcon />} 
-          onClick={() => refetch()} 
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={() => refetch()}
           sx={{ mt: 2 }}
         >
           Retry
@@ -47,10 +41,10 @@ export default function TrailStatus({ showTitle = true }: TrailStatusProps) {
     return (
       <Box sx={{ p: 2 }}>
         <Typography>No trail status information available.</Typography>
-        <Button 
-          variant="outlined" 
-          startIcon={<RefreshIcon />} 
-          onClick={() => refetch()} 
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={() => refetch()}
           sx={{ mt: 2 }}
         >
           Refresh
@@ -70,7 +64,9 @@ export default function TrailStatus({ showTitle = true }: TrailStatusProps) {
       {trails.map((trail) => (
         <Card key={trail.id} sx={{ mb: 0 }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}
+            >
               <Typography variant="h6" component="h3">
                 {trail.trail}
               </Typography>

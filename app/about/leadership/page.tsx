@@ -1,11 +1,11 @@
-import { fetchLeaders } from '@/src/contentful/leaders';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Fragment } from 'react';
+import { fetchLeaders } from "@/src/contentful/leaders";
+import Image from "next/image";
+import Link from "next/link";
+import { Fragment } from "react";
 
-import { Container, Typography } from '@mui/material';
+import { Container, Typography } from "@mui/material";
 
-export default async function Leaders () {
+export default async function Leaders() {
   const data = await fetchLeaders();
 
   return (
@@ -16,12 +16,12 @@ export default async function Leaders () {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map((leader) => (
           <Fragment key={leader.name}>
-            <Link href={leader.link?.url || ''} target="_blank">
+            <Link href={leader.link?.url || ""} target="_blank">
               <div className="flex flex-col items-center justify-center">
-                <Image 
-                  src={leader.image?.src || ''} 
-                  height={300} 
-                  width={300} 
+                <Image
+                  src={leader.image?.src || ""}
+                  height={300}
+                  width={300}
                   alt={`Image of ${leader.name}`}
                   className="rounded-md"
                 />
