@@ -14,10 +14,7 @@ const isSlowConnection = () => {
     const connection = navigator.connection;
     if (connection) {
       // @ts-ignore - Connection API might not be fully typed
-      if (
-        connection.saveData ||
-        connection.effectiveType === "slow-2g" ||
-        connection.effectiveType === "2g"
+      if (connection.saveData ||connection.effectiveType === "slow-2g" ||connection.effectiveType === "2g"
       ) {
         return true;
       }
