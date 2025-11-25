@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
 
 /**
  * Check if the user is authenticated
@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
  */
 export function isAuthenticated(): boolean {
   const cookieStore = cookies();
-  return !!cookieStore.get('auth-token');
+  return !!cookieStore.get("auth-token");
 }
 
 /**
@@ -15,5 +15,5 @@ export function isAuthenticated(): boolean {
  */
 export function getAuthToken(): string | null {
   const cookieStore = cookies();
-  return cookieStore.get('auth-token')?.value || null;
+  return cookieStore.get("auth-token")?.value || null;
 }

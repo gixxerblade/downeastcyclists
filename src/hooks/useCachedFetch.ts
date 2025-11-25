@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface CachedFetchOptions {
   cacheKey?: string;
@@ -24,7 +24,7 @@ const cache = new Map<string, { data: any; timestamp: number }>();
  */
 export function useCachedFetch<T = any>(
   url: string | null,
-  options: CachedFetchOptions = {}
+  options: CachedFetchOptions = {},
 ): CachedData<T> {
   const {
     cacheKey = url,
@@ -53,11 +53,7 @@ export function useCachedFetch<T = any>(
     const now = Date.now();
 
     // If we have a valid cached item and we're not revalidating, use it
-    if (
-      cachedItem &&
-      now - cachedItem.timestamp < cacheDuration &&
-      !shouldRevalidate
-    ) {
+    if (cachedItem && now - cachedItem.timestamp < cacheDuration && !shouldRevalidate) {
       setState({
         data: cachedItem.data,
         error: null,
@@ -76,23 +72,23 @@ export function useCachedFetch<T = any>(
         isValidating: true,
       });
     } else {
-      setState(prev => ({ ...prev, isLoading: true, isValidating: true }));
+      setState((prev) => ({ ...prev, isLoading: true, isValidating: true }));
     }
 
     try {
       // We've already checked that url is not null above
       const response = await fetch(url as string);
-      
+
       // Handle non-OK responses
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Update cache
       cache.set(cacheKey as string, { data, timestamp: Date.now() });
-      
+
       setState({
         data,
         error: null,
@@ -120,7 +116,7 @@ export function useCachedFetch<T = any>(
       });
       return;
     }
-    
+
     // Initial fetch
     fetchData();
 
@@ -139,16 +135,16 @@ export function useCachedFetch<T = any>(
     };
 
     // Add event listeners
-    if (typeof window !== 'undefined') {
-      window.addEventListener('focus', onFocus);
-      window.addEventListener('online', onReconnect);
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", onFocus);
+      window.addEventListener("online", onReconnect);
     }
 
     // Clean up
     return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('focus', onFocus);
-        window.removeEventListener('online', onReconnect);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", onFocus);
+        window.removeEventListener("online", onReconnect);
       }
     };
   }, [url, cacheKey, cacheDuration, revalidateOnFocus, revalidateOnReconnect]);
@@ -168,13 +164,13 @@ export function clearCache(cacheKey?: string) {
 // Helper function to manually update the cache
 export function updateCache<T>(cacheKey: string, updater: (oldData: T | null) => T) {
   const cachedItem = cache.get(cacheKey);
-  const oldData = cachedItem?.data as T || null;
+  const oldData = (cachedItem?.data as T) || null;
   const newData = updater(oldData);
-  
+
   cache.set(cacheKey, {
     data: newData,
     timestamp: Date.now(),
   });
-  
+
   return newData;
 }

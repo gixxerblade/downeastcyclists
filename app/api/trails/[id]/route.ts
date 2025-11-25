@@ -8,29 +8,20 @@ interface TrailUpdateData {
   notes?: string;
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Check authentication
     const cookieStore = cookies();
     const authToken = cookieStore.get("auth-token");
 
     if (!authToken) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
     // Get the trail ID from the URL params
     const id = params.id;
     if (!id) {
-      return NextResponse.json(
-        { error: "Trail ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Trail ID is required" }, { status: 400 });
     }
 
     // Parse the request body
@@ -57,8 +48,11 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating trail:", error);
     return NextResponse.json(
-      { error: "Failed to update trail", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      {
+        error: "Failed to update trail",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
     );
   }
 }
