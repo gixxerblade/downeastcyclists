@@ -1,64 +1,72 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button, TextField, Box, Typography, Container, Alert, CircularProgress } from '@mui/material';
-import { signInWithEmail } from '@/src/utils/firebase';
-import { FirebaseError } from 'firebase/app';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Button,
+  TextField,
+  Box,
+  Typography,
+  Container,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
+import { signInWithEmail } from "@/src/utils/firebase";
+import { FirebaseError } from "firebase/app";
 
-export default function LoginPage () {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  
+
   // Check for redirect cookie on component mount
   useEffect(() => {
     // If we were redirected here from middleware, clear browser history
-    const hasRedirectCookie = document.cookie.includes('auth-redirect=true');
+    const hasRedirectCookie = document.cookie.includes("auth-redirect=true");
     if (hasRedirectCookie) {
       // Clear the redirect cookie
-      document.cookie = 'auth-redirect=; path=/; max-age=0';
-      
+      document.cookie = "auth-redirect=; path=/; max-age=0";
+
       // Replace the current history entry to prevent back navigation
-      window.history.replaceState(null, '', '/login');
+      window.history.replaceState(null, "", "/login");
     }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
       // Sign in with Firebase
       const user = await signInWithEmail(email, password);
-      
+
       // Get the ID token
       const idToken = await user.getIdToken();
-      
+
       // Set a cookie with the Firebase ID token
       document.cookie = `auth-token=${idToken}; path=/; max-age=${60 * 60 * 24 * 7}`; // 1 week
 
       // Redirect to dashboard, replacing history so there's no back button
-      router.replace('/dashboard');
+      router.replace("/dashboard");
       router.refresh(); // Refresh to ensure middleware picks up the new cookie
     } catch (err) {
-      console.error('Login error:', err);
-      
+      console.error("Login error:", err);
+
       if (err instanceof FirebaseError) {
         // Handle Firebase-specific errors
         switch (err.code) {
-          case 'auth/invalid-email':
-            setError('Invalid email address format');
+          case "auth/invalid-email":
+            setError("Invalid email address format");
             break;
-          case 'auth/user-not-found':
-          case 'auth/wrong-password':
-            setError('Invalid email or password');
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+            setError("Invalid email or password");
             break;
-          case 'auth/too-many-requests':
-            setError('Too many failed login attempts. Please try again later');
+          case "auth/too-many-requests":
+            setError("Too many failed login attempts. Please try again later");
             break;
           default:
             setError(`Authentication error: ${err.message}`);
@@ -66,7 +74,7 @@ export default function LoginPage () {
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unknown error occurred during login');
+        setError("An unknown error occurred during login");
       }
     } finally {
       setIsLoading(false);
@@ -78,9 +86,9 @@ export default function LoginPage () {
       <Box
         sx={{
           marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
         <Typography component="h1" variant="h5">
@@ -88,7 +96,7 @@ export default function LoginPage () {
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+          <Alert severity="error" sx={{ width: "100%", mt: 2 }}>
             {error}
           </Alert>
         )}
@@ -131,7 +139,7 @@ export default function LoginPage () {
                 Signing In...
               </>
             ) : (
-              'Sign In'
+              "Sign In"
             )}
           </Button>
         </Box>
