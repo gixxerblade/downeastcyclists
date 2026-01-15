@@ -55,3 +55,38 @@ Successfully implemented the Stripe Membership Management System with Effect-TS.
 
   Total new lines: ~1,179
   ```
+
+## Required Environment Variables
+
+```.env
+  STRIPE_SECRET_KEY=sk_test_...
+  STRIPE_WEBHOOK_SECRET=whsec_...
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+Where to find them in Stripe Dashboard:
+
+1. STRIPE_SECRET_KEY (Test mode):
+
+- Go to <https://dashboard.stripe.com/test/apikeys>
+- Copy the "Secret key" (starts with sk_test_)
+
+2. NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (Test mode):
+
+- Same page as above
+- Copy the "Publishable key" (starts with pk_test_)
+
+3. STRIPE_WEBHOOK_SECRET:
+
+- Go to <https://dashboard.stripe.com/test/webhooks>
+- Click "Add endpoint"
+- Endpoint URL: <https://your-domain.com/api/webhooks/stripe> (or use Stripe CLI for local testing)
+- Select events to listen for:
+  - checkout.session.completed
+  - customer.subscription.updated
+  - customer.subscription.deleted
+- After creating the endpoint, click to reveal the "Signing secret" (starts with whsec_)
+
+For local development, you can use the Stripe CLI:
+`stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+This will give you a webhook signing secret to use for local testing.
