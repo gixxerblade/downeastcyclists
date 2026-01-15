@@ -1,6 +1,7 @@
 import { Context, Effect, Layer, pipe } from "effect";
 import type { Schema as S } from "@effect/schema";
 import type Stripe from "stripe";
+import { Timestamp } from "@google-cloud/firestore";
 import { StripeService } from "./stripe.service";
 import { FirestoreService } from "./firestore.service";
 import {
@@ -16,10 +17,10 @@ import type {
   MembershipStatus,
 } from "./schemas";
 
-// Price ID to plan type mapping
+// Price ID to plan type mapping - loaded from environment variables
 const PRICE_TO_PLAN: Record<string, "individual" | "family"> = {
-  "price_1SWflzFmXLvhjtKwhFF4WM5Z": "individual",
-  "price_1SWfg7FmXLvhjtKwoDzxhEZ6": "family",
+  [process.env.STRIPE_PRICE_INDIVIDUAL || ""]: "individual",
+  [process.env.STRIPE_PRICE_FAMILY || ""]: "family",
 };
 
 // Service interface
@@ -130,8 +131,25 @@ const make = Effect.gen(function* () {
 
         // Retrieve subscription details
         const subscription = yield* stripe.retrieveSubscription(subscriptionId);
+
         const priceId = subscription.items.data[0]?.price.id;
         const planType = PRICE_TO_PLAN[priceId] || "individual";
+
+        // Extract period dates from the subscription items
+        const subscriptionItem = subscription.items.data[0];
+        const currentPeriodStart = (subscriptionItem as any).current_period_start;
+        const currentPeriodEnd = (subscriptionItem as any).current_period_end;
+
+        yield* Effect.log(`Subscription dates - start: ${currentPeriodStart}, end: ${currentPeriodEnd}`);
+
+        if (!currentPeriodStart || !currentPeriodEnd) {
+          return yield* Effect.fail(
+            new StripeError({
+              code: "INVALID_SUBSCRIPTION_DATA",
+              message: "Missing subscription period dates"
+            })
+          );
+        }
 
         // Find or create user
         let userDocId = userId;
@@ -147,22 +165,18 @@ const make = Effect.gen(function* () {
           id: userDocId,
           email: customerEmail || "",
           stripeCustomerId: customerId,
-          createdAt: new Date() as unknown as undefined,
-        });
+          createdAt: Timestamp.now(),
+        } as any);
 
-        // Create membership document
-        // Access subscription period dates safely
-        const subData = subscription as unknown as { current_period_start: number; current_period_end: number };
+        // Create membership document with proper Firestore Timestamps
         yield* firestore.setMembership(userDocId, subscriptionId, {
           stripeSubscriptionId: subscriptionId,
           planType,
           status: subscription.status as MembershipStatus,
-          startDate: new Date(subData.current_period_start * 1000) as unknown as undefined,
-          endDate: new Date(subData.current_period_end * 1000) as unknown as undefined,
+          startDate: Timestamp.fromDate(new Date(currentPeriodStart * 1000)),
+          endDate: Timestamp.fromDate(new Date(currentPeriodEnd * 1000)),
           autoRenew: !subscription.cancel_at_period_end,
-          createdAt: new Date() as unknown as undefined,
-          updatedAt: new Date() as unknown as undefined,
-        });
+        } as any);
 
         yield* Effect.log(
           `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`
@@ -184,15 +198,17 @@ const make = Effect.gen(function* () {
           return;
         }
 
-        // Update membership
-        // Access subscription period dates safely
-        const subData = subscription as unknown as { current_period_start: number; current_period_end: number };
+        // Update membership - extract period dates from subscription items
+        const subscriptionItem = subscription.items.data[0];
+        const currentPeriodStart = (subscriptionItem as any).current_period_start;
+        const currentPeriodEnd = (subscriptionItem as any).current_period_end;
+
         yield* firestore.updateMembership(user.id, subscriptionId, {
           status: subscription.status as MembershipStatus,
-          startDate: new Date(subData.current_period_start * 1000) as unknown as undefined,
-          endDate: new Date(subData.current_period_end * 1000) as unknown as undefined,
+          startDate: Timestamp.fromDate(new Date(currentPeriodStart * 1000)),
+          endDate: Timestamp.fromDate(new Date(currentPeriodEnd * 1000)),
           autoRenew: !subscription.cancel_at_period_end,
-        });
+        } as any);
 
         yield* Effect.log(`Membership updated: ${subscriptionId}`);
       }),

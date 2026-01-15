@@ -27,11 +27,11 @@ export interface StripeService {
 // Service tag
 export const StripeService = Context.GenericTag<StripeService>("StripeService");
 
-// Valid price IDs
+// Valid price IDs - loaded from environment variables
 const VALID_PRICE_IDS = [
-  "price_1SWflzFmXLvhjtKwhFF4WM5Z", // Individual
-  "price_1SWfg7FmXLvhjtKwoDzxhEZ6", // Family
-];
+  process.env.STRIPE_PRICE_INDIVIDUAL,
+  process.env.STRIPE_PRICE_FAMILY,
+].filter(Boolean) as string[];
 
 // Create Stripe client lazily
 const createStripeClient = (): { stripe: Stripe; webhookSecret: string | undefined } => {
