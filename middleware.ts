@@ -63,10 +63,11 @@ export const config = {
      * Match all request paths except:
      * 1. /api/trails (has its own caching)
      * 2. /api/submit-form (should not be cached)
-     * 3. /_next/static (handled by Netlify headers)
-     * 4. /_next/image (handled by Netlify headers)
-     * 5. /favicon.ico, /sitemap.xml, /robots.txt (static files)
+     * 3. /api/webhooks (webhook handlers - must not be modified)
+     * 4. /_next/static (handled by Netlify headers)
+     * 5. /_next/image (handled by Netlify headers)
+     * 6. /favicon.ico, /sitemap.xml, /robots.txt (static files)
      */
-    "/((?!api/trails|api/submit-form|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!api/trails|api/submit-form|api/webhooks|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
 };

@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Admin SDK only
+
+      // Memberships subcollection
+      match /memberships/{membershipId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Admin SDK only
+      }
+    }
+
+    // Membership Plans collection (public read)
+    match /membershipPlans/{planId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Trails collection (existing)
+    match /trails/{trailId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

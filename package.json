@@ -16,6 +16,7 @@
     "@contentful/rich-text-html-renderer": "^17.0.0",
     "@contentful/rich-text-react-renderer": "^16.0.1",
     "@contentful/rich-text-types": "^17.0.0",
+    "@effect/schema": "^0.75.5",
     "@emotion/cache": "11.14.0",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.0",
@@ -31,6 +32,7 @@
     "@tanstack/react-query": "5.66.11",
     "clsx": "2.1.1",
     "contentful": "^10.15.2",
+    "effect": "^3.19.14",
     "firebase": "^11.4.0",
     "next": "^14",
     "npm-only-allow": "^1.2.6",
@@ -42,6 +44,7 @@
     "react-markdown": "^10.0.0",
     "react-typed": "^2.0.12",
     "remark-gfm": "^4.0.1",
+    "stripe": "^20.1.2",
     "zod": "^3.24.4"
   },
   "devDependencies": {
