@@ -72,10 +72,7 @@ export function MemberTable({
             {members.map((member) => {
               const endDate = member.membership?.endDate;
               const formattedEndDate = endDate
-                ? (endDate.toDate?.()
-                    ? endDate.toDate()
-                    : new Date(endDate as unknown as string)
-                  ).toLocaleDateString()
+                ? new Date(endDate).toLocaleDateString()
                 : '-';
 
               return (

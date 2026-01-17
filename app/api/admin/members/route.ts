@@ -60,5 +60,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({error: result.error}, {status: result.status});
   }
 
-  return NextResponse.json(result);
+  // Serialize Firestore Timestamps to ISO strings for JSON response
+  const data = result as {members: any[]; total: number};
+  const serializedResult = {
+    members: data.members.map((member: any) => ({
+      ...member,
+      membership: member.membership
+        ? {
+            ...member.membership,
+            startDate:
+              member.membership.startDate?.toDate?.()?.toISOString() ||
+              member.membership.startDate,
+            endDate:
+              member.membership.endDate?.toDate?.()?.toISOString() || member.membership.endDate,
+          }
+        : null,
+    })),
+    total: data.total,
+  };
+
+  return NextResponse.json(serializedResult);
 }
