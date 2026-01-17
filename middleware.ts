@@ -7,13 +7,21 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Check if the user is authenticated by looking for a token in cookies
-  const token = request.cookies.get("auth-token")?.value;
+  const token = request.cookies.get("session")?.value;
 
   // Create a response object that we'll modify and return
   let response = NextResponse.next();
 
-  // If the request is for the dashboard and there's no token, redirect to login
-  if (pathname.startsWith("/dashboard") && !token) {
+  // Redirect old signup page to new join page
+  if (pathname === "/signup") {
+    return NextResponse.redirect(new URL("/join", request.url), { status: 301 });
+  }
+
+  // Protected routes - require authentication
+  const protectedRoutes = ["/dashboard", "/member"];
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+
+  if (isProtectedRoute && !token) {
     return NextResponse.redirect(new URL("/login", request.url), {
       status: 302,
       headers: {

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const program = pipe(
     Effect.flatMap(MembershipService, (membershipService) =>
-      membershipService.getMembershipStatus(userId)
+      membershipService.getMembershipStatus(userId),
     ),
 
     Effect.catchTag("NotFoundError", (error) =>
@@ -24,20 +24,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         error: `${error.resource} not found`,
         _tag: "error" as const,
         status: 404,
-      })
+      }),
     ),
     Effect.catchTag("FirestoreError", (error) =>
       Effect.succeed({
         error: error.message,
         _tag: "error" as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
   if ("_tag" in result && result._tag === "error") {
     return NextResponse.json({ error: result.error }, { status: result.status });

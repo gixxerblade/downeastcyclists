@@ -1,14 +1,15 @@
 import { Schema as S } from "@effect/schema";
 
-// Membership status enum
+// Membership status enum - matches Stripe subscription statuses
+// Note: "trialing" is kept for Stripe API compatibility but DEC doesn't offer trials
 export const MembershipStatus = S.Literal(
   "active",
   "past_due",
   "canceled",
   "incomplete",
   "incomplete_expired",
-  "trialing",
-  "unpaid"
+  "trialing", // Kept for Stripe compatibility, not used by DEC
+  "unpaid",
 );
 export type MembershipStatus = S.Schema.Type<typeof MembershipStatus>;
 
@@ -72,6 +73,8 @@ export const CheckoutSessionRequest = S.Struct({
   email: S.optional(S.String),
   successUrl: S.String,
   cancelUrl: S.String,
+  coverFees: S.optional(S.Boolean),
+  planPrice: S.optional(S.Number),
 });
 export type CheckoutSessionRequest = S.Schema.Type<typeof CheckoutSessionRequest>;
 
@@ -93,7 +96,7 @@ export const MembershipStatusResponse = S.Struct({
       status: MembershipStatus,
       endDate: S.String, // ISO date string
       autoRenew: S.Boolean,
-    })
+    }),
   ),
 });
 export type MembershipStatusResponse = S.Schema.Type<typeof MembershipStatusResponse>;
@@ -107,3 +110,187 @@ export const StripeWebhookEvent = S.Struct({
   }),
 });
 export type StripeWebhookEvent = S.Schema.Type<typeof StripeWebhookEvent>;
+
+// Session schema
+export const SessionData = S.Struct({
+  uid: S.String,
+  email: S.NullOr(S.String),
+  emailVerified: S.Boolean,
+  expiresAt: S.Number,
+});
+export type SessionData = S.Schema.Type<typeof SessionData>;
+
+// Portal session request
+export const PortalSessionRequest = S.Struct({
+  userId: S.String,
+  returnUrl: S.String,
+});
+export type PortalSessionRequest = S.Schema.Type<typeof PortalSessionRequest>;
+
+// Member dashboard response
+export const MemberDashboardResponse = S.Struct({
+  user: S.Struct({
+    id: S.String,
+    email: S.String,
+    name: S.NullOr(S.String),
+  }),
+  membership: S.NullOr(
+    S.Struct({
+      planType: PlanType,
+      planName: S.String,
+      status: MembershipStatus,
+      startDate: S.String,
+      endDate: S.String,
+      autoRenew: S.Boolean,
+      daysRemaining: S.Number,
+    }),
+  ),
+  canManageSubscription: S.Boolean,
+});
+export type MemberDashboardResponse = S.Schema.Type<typeof MemberDashboardResponse>;
+
+// Join form validation schema
+export const JoinFormData = S.Struct({
+  email: S.String.pipe(
+    S.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
+      message: () => "Please enter a valid email address",
+    }),
+  ),
+  password: S.String.pipe(
+    S.minLength(6, {
+      message: () => "Password must be at least 6 characters",
+    }),
+  ),
+  confirmPassword: S.String,
+  name: S.optional(S.String),
+  selectedPlanId: S.String.pipe(
+    S.minLength(1, {
+      message: () => "Please select a membership plan",
+    }),
+  ),
+  selectedPriceId: S.String.pipe(
+    S.minLength(1, {
+      message: () => "Invalid plan selected",
+    }),
+  ),
+});
+export type JoinFormData = S.Schema.Type<typeof JoinFormData>;
+
+// Webhook event tracking for idempotency
+export const WebhookEventDocument = S.Struct({
+  id: S.String, // Stripe event ID (evt_xxx)
+  type: S.String, // Event type (checkout.session.completed, etc.)
+  processedAt: S.Any, // Firestore Timestamp
+  status: S.Literal("processing", "completed", "failed"),
+  errorMessage: S.optional(S.String),
+  retryCount: S.optional(S.Number),
+});
+export type WebhookEventDocument = S.Schema.Type<typeof WebhookEventDocument>;
+
+// Membership card schema
+export const MembershipCard = S.Struct({
+  id: S.String,
+  userId: S.String,
+  membershipNumber: S.String, // Format: DEC-2025-000001
+  memberName: S.String,
+  email: S.String,
+  planType: PlanType,
+  status: MembershipStatus,
+  validFrom: S.String, // ISO date
+  validUntil: S.String, // ISO date
+  qrCodeData: S.String, // Encoded verification data
+  pdfUrl: S.NullOr(S.String), // Reserved for future PDF generation (currently null)
+  createdAt: S.String,
+  updatedAt: S.String,
+});
+export type MembershipCard = S.Schema.Type<typeof MembershipCard>;
+
+// QR code payload (what's encoded in the QR)
+export const QRPayload = S.Struct({
+  mn: S.String, // membership number
+  u: S.String, // user ID (truncated)
+  v: S.String, // valid until (compact date)
+  s: S.String, // signature hash
+});
+export type QRPayload = S.Schema.Type<typeof QRPayload>;
+
+// Verification result
+export const VerificationResult = S.Struct({
+  valid: S.Boolean,
+  membershipNumber: S.String,
+  memberName: S.String,
+  planType: PlanType,
+  status: MembershipStatus,
+  expiresAt: S.String,
+  daysRemaining: S.Number,
+  message: S.String,
+});
+export type VerificationResult = S.Schema.Type<typeof VerificationResult>;
+
+// Counter document for membership numbers
+export const MembershipCounter = S.Struct({
+  year: S.Number,
+  lastNumber: S.Number,
+  updatedAt: S.Any,
+});
+export type MembershipCounter = S.Schema.Type<typeof MembershipCounter>;
+
+// Admin stats schema
+export const MembershipStats = S.Struct({
+  totalMembers: S.Number,
+  activeMembers: S.Number,
+  expiredMembers: S.Number,
+  canceledMembers: S.Number,
+  individualCount: S.Number,
+  familyCount: S.Number,
+  monthlyRevenue: S.Number,
+  yearlyRevenue: S.Number,
+  updatedAt: S.String,
+});
+export type MembershipStats = S.Schema.Type<typeof MembershipStats>;
+
+// Member search params
+export const MemberSearchParams = S.Struct({
+  query: S.optional(S.String),
+  status: S.optional(MembershipStatus),
+  planType: S.optional(PlanType),
+  expiringWithinDays: S.optional(S.Number),
+  page: S.optional(S.Number),
+  pageSize: S.optional(S.Number),
+});
+export type MemberSearchParams = S.Schema.Type<typeof MemberSearchParams>;
+
+// Member with membership (joined data)
+export const MemberWithMembership = S.Struct({
+  user: S.NullOr(UserDocument),
+  membership: S.NullOr(MembershipDocument),
+  card: S.NullOr(MembershipCard),
+});
+export type MemberWithMembership = S.Schema.Type<typeof MemberWithMembership>;
+
+// Membership adjustment request
+export const MembershipAdjustment = S.Struct({
+  userId: S.String,
+  membershipId: S.String,
+  newEndDate: S.optional(S.String),
+  newStatus: S.optional(MembershipStatus),
+  reason: S.String,
+});
+export type MembershipAdjustment = S.Schema.Type<typeof MembershipAdjustment>;
+
+// Admin claim management
+export const AdminClaimRequest = S.Struct({
+  uid: S.String,
+  isAdmin: S.Boolean,
+});
+export type AdminClaimRequest = S.Schema.Type<typeof AdminClaimRequest>;
+
+// Export options
+export const ExportOptions = S.Struct({
+  includeEmail: S.Boolean,
+  includePhone: S.Boolean,
+  includeAddress: S.Boolean,
+  statusFilter: S.optional(MembershipStatus),
+  format: S.Literal("csv", "json"),
+});
+export type ExportOptions = S.Schema.Type<typeof ExportOptions>;

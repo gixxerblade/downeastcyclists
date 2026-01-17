@@ -45,17 +45,17 @@ With Phases 1-3 complete, administrators lack the tools to:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Admin Dashboard                             │
-│          Analytics + Search + Management + Export                │
+│                      Admin Dashboard                            │
+│          Analytics + Search + Management + Export               │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       AdminService                               │
-│    (Authorization + Admin Operations)                            │
-│    - verifyAdmin                                                 │
-│    - setAdminClaim                                               │
-│    - adjustMembership                                            │
+│                       AdminService                              │
+│    (Authorization + Admin Operations)                           │
+│    - verifyAdmin                                                │
+│    - setAdminClaim                                              │
+│    - adjustMembership                                           │
 └─────────────────────────────────────────────────────────────────┘
            │                │                       │
            ▼                ▼                       ▼

@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   try {
     // Check authentication
     const cookieStore = cookies();
-    const authToken = cookieStore.get("auth-token");
+    const authToken = cookieStore.get("session");
 
     if (!authToken) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });

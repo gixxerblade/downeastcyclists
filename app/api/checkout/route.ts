@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
           field: "body",
           message: "Invalid request body",
           cause: error,
-        })
+        }),
     ),
 
     // Step 2: Create checkout session
     Effect.flatMap((validatedRequest) =>
       Effect.flatMap(MembershipService, (membershipService) =>
-        membershipService.createCheckoutSession(validatedRequest)
-      )
+        membershipService.createCheckoutSession(validatedRequest),
+      ),
     ),
 
     // Step 3: Handle specific errors with catchTag
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         field: error.field,
         _tag: "error" as const,
         status: 400,
-      })
+      }),
     ),
     Effect.catchTag("StripeError", (error) =>
       Effect.succeed({
@@ -45,28 +45,23 @@ export async function POST(request: NextRequest) {
         code: error.code,
         _tag: "error" as const,
         status: 500,
-      })
+      }),
     ),
     Effect.catchTag("FirestoreError", (error) =>
       Effect.succeed({
         error: error.message,
         _tag: "error" as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
   // Run with live services
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
   // Return appropriate response
   if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json(
-      { error: result.error },
-      { status: result.status }
-    );
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
   return NextResponse.json(result);

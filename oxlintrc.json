@@ -1,3 +1,5 @@
 {
-  "rules": {}
+  "rules": {
+    "typescript/no-non-null-assertion": "error"
+  }
 }

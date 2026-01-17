@@ -9,6 +9,7 @@ import "@fontsource/poppins/700.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v14-appRouter";
 import ThemeRegistry from "@/src/components/ThemeRegistry/ThemeRegistry";
 import QueryProvider from "@/src/providers/QueryProvider";
+import { AuthProvider } from "@/src/components/auth/AuthProvider";
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
@@ -43,9 +44,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeRegistry>
           <QueryProvider>
-            <Navbar />
-            <div className="content-wrapper">{children}</div>
-            <FooterWrapper />
+            <AuthProvider>
+              <Navbar />
+              <div className="content-wrapper">{children}</div>
+              <FooterWrapper />
+            </AuthProvider>
           </QueryProvider>
         </ThemeRegistry>
       </body>

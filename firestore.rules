@@ -21,6 +21,19 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if false; // Admin SDK only
       }
+
+      // Cards subcollection (membership cards)
+      match /cards/{cardId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Admin SDK only
+      }
+    }
+
+    // Counters collection (for membership number generation)
+    // Admin SDK only - no client access
+    match /counters/{counterId} {
+      allow read: if false;
+      allow write: if false;
     }
 
     // Membership Plans collection (public read)
@@ -32,6 +45,13 @@ service cloud.firestore {
     // Trails collection (existing)
     match /trails/{trailId} {
       allow read: if true;
+      allow write: if false;
+    }
+
+    // Webhook Events collection (idempotency tracking)
+    // Admin SDK only - no client access
+    match /webhookEvents/{eventId} {
+      allow read: if false;
       allow write: if false;
     }
   }

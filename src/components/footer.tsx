@@ -97,9 +97,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="mt-8 text-center">
-          <h2 className="text-lg">
-            <Link href="/dashboard">&copy;{new Date().getFullYear()} Down East Cyclists</Link>
-          </h2>
+          <h2 className="text-lg">&copy;{new Date().getFullYear()} Down East Cyclists</h2>
         </div>
       </footer>
     </>

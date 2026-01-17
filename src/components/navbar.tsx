@@ -16,7 +16,8 @@ import {
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 
 interface Page {
   href: string;
@@ -51,6 +52,10 @@ export default function Navbar() {
   const [anchorElDropdown, setAnchorElDropdown] = useState<null | HTMLElement>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = usePathname();
+  const router = useRouter();
+
+  // Auth state from AuthProvider
+  const { user, loading, signOut: handleSignOut } = useAuth();
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -100,6 +105,18 @@ export default function Navbar() {
       document.removeEventListener("mousemove", handleGlobalMouseMove);
     };
   }, []);
+
+  // Handle auth button click
+  const handleAuthButtonClick = async () => {
+    if (user) {
+      // Logout
+      await handleSignOut();
+      router.push("/");
+    } else {
+      // Login
+      router.push("/login");
+    }
+  };
 
   const isHomepage = location === "/";
 
@@ -203,6 +220,41 @@ export default function Navbar() {
                   </MenuItem>
                 ),
               )}
+              {/* Auth buttons in mobile menu */}
+              {!loading && (
+                <>
+                  {!user ? (
+                    <MenuItem
+                      onClick={handleCloseNavMenu}
+                      sx={{ borderTop: "1px solid rgba(0,0,0,0.12)", mt: 1, pt: 1 }}
+                    >
+                      <Typography textAlign="center" fontWeight="bold">
+                        <Link href="/join">Join</Link>
+                      </Typography>
+                    </MenuItem>
+                  ) : (
+                    <MenuItem
+                      onClick={handleCloseNavMenu}
+                      sx={{ borderTop: "1px solid rgba(0,0,0,0.12)", mt: 1, pt: 1 }}
+                    >
+                      <Typography textAlign="center" fontWeight="bold">
+                        <Link href="/member">My Account</Link>
+                      </Typography>
+                    </MenuItem>
+                  )}
+                  <MenuItem
+                    onClick={() => {
+                      handleCloseNavMenu();
+                      handleAuthButtonClick();
+                    }}
+                    sx={user ? { borderTop: "1px solid rgba(0,0,0,0.12)", mt: 1, pt: 1 } : {}}
+                  >
+                    <Typography textAlign="center" fontWeight="bold">
+                      {user ? "Logout" : "Login"}
+                    </Typography>
+                  </MenuItem>
+                </>
+              )}
             </Menu>
           </Box>
 
@@ -295,6 +347,60 @@ export default function Navbar() {
               </Fragment>
             ))}
           </Box>
+
+          {/* Auth buttons for desktop */}
+          {!loading && (
+            <Box sx={{ display: { xs: "none", md: "flex" }, ml: 2, gap: 1 }}>
+              {!user ? (
+                <Button
+                  component={Link}
+                  href="/join"
+                  variant="contained"
+                  sx={{
+                    my: 2,
+                    color: "white",
+                    backgroundColor: "#F20E02",
+                    "&:hover": {
+                      backgroundColor: "#d10d02",
+                    },
+                  }}
+                >
+                  Join
+                </Button>
+              ) : (
+                <Button
+                  component={Link}
+                  href="/member"
+                  variant="contained"
+                  sx={{
+                    my: 2,
+                    color: "white",
+                    backgroundColor: "#F20E02",
+                    "&:hover": {
+                      backgroundColor: "#d10d02",
+                    },
+                  }}
+                >
+                  My Account
+                </Button>
+              )}
+              <Button
+                onClick={handleAuthButtonClick}
+                variant="outlined"
+                sx={{
+                  my: 2,
+                  color: isHomepage ? "white" : "#F20E02",
+                  borderColor: isHomepage ? "white" : "#F20E02",
+                  "&:hover": {
+                    backgroundColor: "rgba(242, 14, 2, 0.1)",
+                    borderColor: "#F20E02",
+                  },
+                }}
+              >
+                {user ? "Logout" : "Login"}
+              </Button>
+            </Box>
+          )}
         </Toolbar>
       </Container>
     </AppBar>

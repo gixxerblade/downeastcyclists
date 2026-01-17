@@ -72,13 +72,8 @@ export default function Membership() {
         </Typography>
         <Typography variant="body1" paragraph className="flex items-center">
           <span className="mr-2">👉👉👉</span>
-          <Link
-            href="https://www.bikereg.com/down-east-cyclists-membership0"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="font-bold underline text-blue-600 hover:text-blue-800"
-          >
-            Dues can be renewed online here
+          <Link href="/join" className="font-bold underline text-blue-600 hover:text-blue-800">
+            Join or renew your membership online
           </Link>
           <span className="ml-2">👈👈👈</span>
         </Typography>
@@ -86,8 +81,7 @@ export default function Membership() {
           Cost is $30 dollars per individual or $50 a year per family!
         </Typography>
         <Typography variant="body1" paragraph>
-          Don&apos;t forget to provide your information and sign your online release. Additionally,
-          forms are available at The Bicycle Shop, Bicycle Gallery, or club meetings.
+          Create an account to manage your membership and access exclusive member benefits.
         </Typography>
       </div>
     </Container>
