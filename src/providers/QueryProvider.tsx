@@ -7,13 +7,17 @@ interface QueryProviderProps {
   children: ReactNode;
 }
 
+// Network Information API types (experimental)
+interface NetworkInformation {
+  saveData?: boolean;
+  effectiveType?: 'slow-2g' | '2g' | '3g' | '4g';
+}
+
 // Function to determine if we're on a slow connection
 const isSlowConnection = () => {
   if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-    // @ts-ignore - Connection API might not be fully typed
-    const connection = navigator.connection;
+    const connection = (navigator as Navigator & {connection?: NetworkInformation}).connection;
     if (connection) {
-      // @ts-ignore - Connection API might not be fully typed
       if (
         connection.saveData ||
         connection.effectiveType === 'slow-2g' ||
