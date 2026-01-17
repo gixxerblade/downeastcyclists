@@ -1,5 +1,5 @@
 [build]
-command = "yarn build"
+command = "pnpm build"
 publish = ".next"
 functions = "netlify/functions"
 
@@ -33,7 +33,7 @@ for = "/api/*"
 Cache-Control = "public, max-age=60, s-maxage=300, stale-while-revalidate=3600"
 
 [dev]
-command = "yarn dev"
+command = "pnpm dev"
 port = 8888
 targetPort = 3000
 framework = "next"
