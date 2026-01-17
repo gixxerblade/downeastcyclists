@@ -9,6 +9,7 @@ package = "@netlify/plugin-nextjs"
 [functions]
 directory = "netlify/functions"
 node_bundler = "esbuild"
+external_node_modules = ["stripe", "firebase-admin", "@google-cloud/firestore"]
 included_files = ["!node_modules/@google-cloud/firestore/**/*"]
 # Cache configuration for Next.js Server Handler
 [[headers]]
