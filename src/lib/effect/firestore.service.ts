@@ -1,5 +1,7 @@
 import {Firestore, FieldValue} from '@google-cloud/firestore';
 import {Context, Effect, Layer} from 'effect';
+import {readFileSync, existsSync} from 'fs';
+import {join} from 'path';
 
 import {FirestoreError} from './errors';
 import type {
@@ -101,6 +103,24 @@ export const FirestoreService = Context.GenericTag<FirestoreService>('FirestoreS
 
 // Create Firestore instance
 const createFirestoreInstance = (): Firestore => {
+  // Try to load from service account file first (production)
+  const serviceAccountPath = join(process.cwd(), 'firebase-service-account.json');
+
+  if (existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf-8'));
+    return new Firestore({
+      projectId: serviceAccount.project_id,
+      credentials: serviceAccount,
+    });
+  }
+
+  // Fall back to environment variables (local development)
+  if (!process.env.GOOGLE_PROJECT_ID || !process.env.GOOGLE_PRIVATE_KEY) {
+    throw new Error(
+      'Firebase credentials not found. Either provide firebase-service-account.json or set GOOGLE_PROJECT_ID and GOOGLE_PRIVATE_KEY environment variables.'
+    );
+  }
+
   return new Firestore({
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
