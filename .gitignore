@@ -20,6 +20,9 @@
 .DS_Store
 *.pem
 
+# Firebase service account (contains secrets)
+firebase-service-account.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

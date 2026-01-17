@@ -1,5 +1,5 @@
 [build]
-command = "pnpm build"
+command = "if [ -n \"$FIREBASE_SERVICE_ACCOUNT_BASE64\" ]; then echo $FIREBASE_SERVICE_ACCOUNT_BASE64 | base64 -d > firebase-service-account.json; fi && pnpm build"
 publish = ".next"
 functions = "netlify/functions"
 
@@ -10,7 +10,7 @@ package = "@netlify/plugin-nextjs"
 directory = "netlify/functions"
 node_bundler = "esbuild"
 external_node_modules = ["stripe", "firebase-admin", "@google-cloud/firestore"]
-included_files = ["!node_modules/@google-cloud/firestore/**/*"]
+included_files = ["firebase-service-account.json"]
 # Cache configuration for Next.js Server Handler
 [[headers]]
 for = "/*"
