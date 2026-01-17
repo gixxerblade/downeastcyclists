@@ -7,6 +7,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 ## Main Navigation
 
 ### Product Categories
+
 - Build
 - Run
 - Solutions
@@ -16,6 +17,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Support
 
 ### Build Products
+
 - App Check
 - App Hosting
 - Authentication
@@ -33,6 +35,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Generative AI
 
 ### Run Products
+
 - A/B Testing
 - App Distribution
 - Cloud Messaging
@@ -48,6 +51,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 ### Standard Edition
 
 #### Discover
+
 - Core operations overview
 - Data model
 - Data types
@@ -57,16 +61,19 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Data bundles
 
 #### Get Started
+
 - Mobile/web SDKs
 - Server client libraries
 
 #### Manage Data
+
 - Add data
 - Query data
 - Process/move data
 - Delete data
 
 #### Security & Validation
+
 - Overview
 - Get started
 - Rules structure
@@ -75,6 +82,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Testing
 
 #### Solutions
+
 - BigQuery integration
 - Enriched media
 - Generative AI
@@ -84,6 +92,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Encryption
 
 #### Usage & Pricing
+
 - Limits
 - Monitoring
 - Query performance
@@ -91,15 +100,18 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 - Examples
 
 #### Monitoring & Troubleshooting
+
 - Key Visualizer
 - Heatmaps
 - Patterns
 
 #### Backups & Recovery
+
 - Scheduled backups
 - Point-in-time recovery
 
 #### Integrations
+
 - REST API
 - Cloud Functions
 - Third-party libraries
@@ -107,10 +119,12 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 ### Enterprise Edition
 
 #### Native Mode
+
 - Core operations
 - Pipeline operations
 
 #### MongoDB Compatibility Mode
+
 - Comparable sections for data management
 - Security
 - Monitoring
@@ -119,6 +133,7 @@ This page serves as the main documentation hub for Cloud Firestore within Fireba
 ## API & SDK Reference
 
 Documentation provides references for multiple platforms:
+
 - Swift
 - Objective-C
 - Android (Kotlin)
@@ -141,18 +156,23 @@ Documentation provides references for multiple platforms:
 ## Key Features
 
 ### Realtime Updates
+
 Firestore provides real-time synchronization capabilities for keeping data in sync across clients.
 
 ### Offline Access
+
 Support for offline data access and automatic synchronization when connectivity is restored.
 
 ### Scalability
+
 Built on Google's infrastructure to scale from prototype to production.
 
 ### Security
+
 Comprehensive security rules system for data validation and access control.
 
 ### Advanced Capabilities
+
 - Vector search capabilities
 - Transaction support
 - Full-text search solutions
@@ -163,6 +183,7 @@ Comprehensive security rules system for data validation and access control.
 ## Language Support
 
 Documentation is available in multiple languages including:
+
 - English
 - German
 - Spanish
@@ -185,6 +206,7 @@ Documentation is available in multiple languages including:
 ## Related Firebase Products
 
 Firestore integrates with other Firebase products including:
+
 - Firebase Authentication
 - App Check
 - Cloud Storage

@@ -1,8 +1,9 @@
-import { Context, Effect, Layer } from "effect";
-import type { Schema as S } from "@effect/schema";
-import Stripe from "stripe";
-import { StripeError, ValidationError } from "./errors";
-import type { CheckoutSessionRequest } from "./schemas";
+import type {Schema as S} from '@effect/schema';
+import {Context, Effect, Layer} from 'effect';
+import Stripe from 'stripe';
+
+import {StripeError, ValidationError} from './errors';
+import type {CheckoutSessionRequest} from './schemas';
 
 // Service interface
 export interface StripeService {
@@ -28,7 +29,7 @@ export interface StripeService {
 
   readonly getPricesWithProducts: (
     priceIds: string[],
-  ) => Effect.Effect<Array<{ price: Stripe.Price; product: Stripe.Product }>, StripeError>;
+  ) => Effect.Effect<Array<{price: Stripe.Price; product: Stripe.Product}>, StripeError>;
 
   readonly addInvoiceItem: (
     customerId: string,
@@ -38,7 +39,7 @@ export interface StripeService {
 }
 
 // Service tag
-export const StripeService = Context.GenericTag<StripeService>("StripeService");
+export const StripeService = Context.GenericTag<StripeService>('StripeService');
 
 // Valid price IDs - loaded from environment variables
 const VALID_PRICE_IDS = [
@@ -47,21 +48,21 @@ const VALID_PRICE_IDS = [
 ].filter(Boolean) as string[];
 
 // Create Stripe client lazily
-const createStripeClient = (): { stripe: Stripe; webhookSecret: string | undefined } => {
+const createStripeClient = (): {stripe: Stripe; webhookSecret: string | undefined} => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY environment variable is not set");
+    throw new Error('STRIPE_SECRET_KEY environment variable is not set');
   }
 
   const stripe = new Stripe(secretKey);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  return { stripe, webhookSecret };
+  return {stripe, webhookSecret};
 };
 
 // Implementation
 const make = Effect.sync(() => {
-  let client: { stripe: Stripe; webhookSecret: string | undefined } | null = null;
+  let client: {stripe: Stripe; webhookSecret: string | undefined} | null = null;
 
   const getClient = () => {
     if (!client) {
@@ -76,8 +77,8 @@ const make = Effect.sync(() => {
       if (!VALID_PRICE_IDS.includes(params.priceId)) {
         return Effect.fail(
           new ValidationError({
-            field: "priceId",
-            message: "Invalid price ID",
+            field: 'priceId',
+            message: 'Invalid price ID',
           }),
         );
       }
@@ -86,15 +87,15 @@ const make = Effect.sync(() => {
       if (!params.userId && !params.email) {
         return Effect.fail(
           new ValidationError({
-            field: "email",
-            message: "Either userId or email is required",
+            field: 'email',
+            message: 'Either userId or email is required',
           }),
         );
       }
 
       return Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
 
           // Calculate processing fee if user opted in and store in metadata
           const processingFee =
@@ -104,19 +105,19 @@ const make = Effect.sync(() => {
 
           // Base session config
           const sessionConfig: any = {
-            mode: "subscription",
-            payment_method_types: ["card"],
-            line_items: [{ price: params.priceId, quantity: 1 }],
+            mode: 'subscription',
+            payment_method_types: ['card'],
+            line_items: [{price: params.priceId, quantity: 1}],
             customer_email: params.email,
             success_url: params.successUrl,
             cancel_url: params.cancelUrl,
             metadata: {
-              userId: params.userId || "",
+              userId: params.userId || '',
               processingFee: processingFee.toString(),
             },
             subscription_data: {
               metadata: {
-                userId: params.userId || "",
+                userId: params.userId || '',
                 processingFee: processingFee.toString(),
               },
             },
@@ -127,10 +128,10 @@ const make = Effect.sync(() => {
         },
         catch: (error) => {
           // Log the actual Stripe error for debugging
-          console.error("Stripe checkout session creation failed:", error);
+          console.error('Stripe checkout session creation failed:', error);
           return new StripeError({
-            code: "SESSION_CREATE_FAILED",
-            message: error instanceof Error ? error.message : "Failed to create checkout session",
+            code: 'SESSION_CREATE_FAILED',
+            message: error instanceof Error ? error.message : 'Failed to create checkout session',
             cause: error,
           });
         },
@@ -140,12 +141,12 @@ const make = Effect.sync(() => {
     retrieveSubscription: (subscriptionId) =>
       Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
           return stripe.subscriptions.retrieve(subscriptionId);
         },
         catch: (error) =>
           new StripeError({
-            code: "SUBSCRIPTION_RETRIEVE_FAILED",
+            code: 'SUBSCRIPTION_RETRIEVE_FAILED',
             message: `Failed to retrieve subscription ${subscriptionId}`,
             cause: error,
           }),
@@ -154,16 +155,16 @@ const make = Effect.sync(() => {
     verifyWebhookSignature: (body, signature) =>
       Effect.try({
         try: () => {
-          const { stripe, webhookSecret } = getClient();
+          const {stripe, webhookSecret} = getClient();
           if (!webhookSecret) {
-            throw new Error("STRIPE_WEBHOOK_SECRET not configured");
+            throw new Error('STRIPE_WEBHOOK_SECRET not configured');
           }
           return stripe.webhooks.constructEvent(body, signature, webhookSecret);
         },
         catch: (error) =>
           new StripeError({
-            code: "WEBHOOK_VERIFY_FAILED",
-            message: "Failed to verify webhook signature",
+            code: 'WEBHOOK_VERIFY_FAILED',
+            message: 'Failed to verify webhook signature',
             cause: error,
           }),
       }),
@@ -171,12 +172,12 @@ const make = Effect.sync(() => {
     getCustomer: (customerId) =>
       Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
           return stripe.customers.retrieve(customerId) as Promise<Stripe.Customer>;
         },
         catch: (error) =>
           new StripeError({
-            code: "CUSTOMER_RETRIEVE_FAILED",
+            code: 'CUSTOMER_RETRIEVE_FAILED',
             message: `Failed to retrieve customer ${customerId}`,
             cause: error,
           }),
@@ -185,7 +186,7 @@ const make = Effect.sync(() => {
     createPortalSession: (customerId, returnUrl) =>
       Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
           return stripe.billingPortal.sessions.create({
             customer: customerId,
             return_url: returnUrl,
@@ -193,8 +194,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new StripeError({
-            code: "PORTAL_CREATE_FAILED",
-            message: "Failed to create customer portal session",
+            code: 'PORTAL_CREATE_FAILED',
+            message: 'Failed to create customer portal session',
             cause: error,
           }),
       }),
@@ -202,11 +203,11 @@ const make = Effect.sync(() => {
     getPricesWithProducts: (priceIds) =>
       Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
 
           // Fetch all prices in parallel
           const pricePromises = priceIds.map((id) =>
-            stripe.prices.retrieve(id, { expand: ["product"] }),
+            stripe.prices.retrieve(id, {expand: ['product']}),
           );
 
           const prices = await Promise.all(pricePromises);
@@ -219,8 +220,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new StripeError({
-            code: "PRICES_RETRIEVE_FAILED",
-            message: "Failed to retrieve prices from Stripe",
+            code: 'PRICES_RETRIEVE_FAILED',
+            message: 'Failed to retrieve prices from Stripe',
             cause: error,
           }),
       }),
@@ -228,18 +229,18 @@ const make = Effect.sync(() => {
     addInvoiceItem: (customerId, amount, description) =>
       Effect.tryPromise({
         try: async () => {
-          const { stripe } = getClient();
+          const {stripe} = getClient();
           return stripe.invoiceItems.create({
             customer: customerId,
             amount,
-            currency: "usd",
+            currency: 'usd',
             description,
           });
         },
         catch: (error) =>
           new StripeError({
-            code: "INVOICE_ITEM_CREATE_FAILED",
-            message: "Failed to add invoice item",
+            code: 'INVOICE_ITEM_CREATE_FAILED',
+            message: 'Failed to add invoice item',
             cause: error,
           }),
       }),

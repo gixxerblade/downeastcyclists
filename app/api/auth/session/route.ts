@@ -1,18 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { AuthService, AuthServiceLive } from "@/src/lib/effect/auth.service";
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {NextRequest, NextResponse} from 'next/server';
 
-export const dynamic = "force-dynamic";
+import {AuthService, AuthServiceLive} from '@/src/lib/effect/auth.service';
 
-const SESSION_COOKIE_NAME = "session";
+export const dynamic = 'force-dynamic';
+
+const SESSION_COOKIE_NAME = 'session';
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 5 * 1000; // 5 days
 
 export async function POST(request: NextRequest) {
-  const { idToken } = await request.json();
+  const {idToken} = await request.json();
 
   if (!idToken) {
-    return NextResponse.json({ error: "ID token is required" }, { status: 400 });
+    return NextResponse.json({error: 'ID token is required'}, {status: 400});
   }
 
   const program = pipe(
@@ -28,10 +29,10 @@ export async function POST(request: NextRequest) {
       return sessionCookie;
     }),
 
-    Effect.catchTag("AuthError", (error) =>
+    Effect.catchTag('AuthError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 401,
       }),
     ),
@@ -39,21 +40,21 @@ export async function POST(request: NextRequest) {
 
   const result = await Effect.runPromise(program.pipe(Effect.provide(AuthServiceLive)));
 
-  if (typeof result === "object" && "_tag" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if (typeof result === 'object' && '_tag' in result) {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   // Set the session cookie
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, result, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: SESSION_EXPIRES_IN / 1000,
-    path: "/",
+    path: '/',
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({success: true});
 }
 
 export async function GET() {
@@ -61,7 +62,7 @@ export async function GET() {
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ authenticated: false });
+    return NextResponse.json({authenticated: false});
   }
 
   const program = pipe(
@@ -75,7 +76,7 @@ export async function GET() {
       };
     }),
 
-    Effect.catchAll(() => Effect.succeed({ authenticated: false as const })),
+    Effect.catchAll(() => Effect.succeed({authenticated: false as const})),
   );
 
   const result = await Effect.runPromise(program.pipe(Effect.provide(AuthServiceLive)));
@@ -86,5 +87,5 @@ export async function GET() {
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
-  return NextResponse.json({ success: true });
+  return NextResponse.json({success: true});
 }

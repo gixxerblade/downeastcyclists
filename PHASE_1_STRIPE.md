@@ -31,30 +31,30 @@ Successfully implemented the Stripe Membership Management System with Effect-TS.
 
 ## Files Changed
 
-  ```bash
-  Modified files (4):
-   middleware.ts  |  9 ++++---
-   package.json   |  3 +++
-   pnpm-lock.yaml | 85 ++++++++++++++
-   tsconfig.json  |  2 +-
+```bash
+Modified files (4):
+ middleware.ts  |  9 ++++---
+ package.json   |  3 +++
+ pnpm-lock.yaml | 85 ++++++++++++++
+ tsconfig.json  |  2 +-
 
-  New files (12):
+New files (12):
 
-   app/api/checkout/route.ts           73 lines
-   app/api/membership/plans/route.ts   47 lines
-   app/api/membership/[userId]/route.ts 47 lines
-   app/api/webhooks/stripe/route.ts    83 lines
-   src/lib/effect/errors.ts            37 lines
-   src/lib/effect/firestore.service.ts 278 lines
-   src/lib/effect/layers.ts            16 lines
-   src/lib/effect/membership.service.ts 282 lines
-   src/lib/effect/schemas.ts           109 lines
-   src/lib/effect/stripe.service.ts    156 lines
-   firestore.rules                     38 lines
-   firestore.indexes.json              13 lines
+ app/api/checkout/route.ts           73 lines
+ app/api/membership/plans/route.ts   47 lines
+ app/api/membership/[userId]/route.ts 47 lines
+ app/api/webhooks/stripe/route.ts    83 lines
+ src/lib/effect/errors.ts            37 lines
+ src/lib/effect/firestore.service.ts 278 lines
+ src/lib/effect/layers.ts            16 lines
+ src/lib/effect/membership.service.ts 282 lines
+ src/lib/effect/schemas.ts           109 lines
+ src/lib/effect/stripe.service.ts    156 lines
+ firestore.rules                     38 lines
+ firestore.indexes.json              13 lines
 
-  Total new lines: ~1,179
-  ```
+Total new lines: ~1,179
+```
 
 ## Required Environment Variables
 
@@ -69,12 +69,12 @@ Where to find them in Stripe Dashboard:
 1. STRIPE_SECRET_KEY (Test mode):
 
 - Go to <https://dashboard.stripe.com/test/apikeys>
-- Copy the "Secret key" (starts with sk_test_)
+- Copy the "Secret key" (starts with sk*test*)
 
 2. NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (Test mode):
 
 - Same page as above
-- Copy the "Publishable key" (starts with pk_test_)
+- Copy the "Publishable key" (starts with pk*test*)
 
 3. STRIPE_WEBHOOK_SECRET:
 
@@ -85,7 +85,7 @@ Where to find them in Stripe Dashboard:
   - checkout.session.completed
   - customer.subscription.updated
   - customer.subscription.deleted
-- After creating the endpoint, click to reveal the "Signing secret" (starts with whsec_)
+- After creating the endpoint, click to reveal the "Signing secret" (starts with whsec\_)
 
 For local development, you can use the Stripe CLI:
 `stripe listen --forward-to localhost:3000/api/webhooks/stripe`

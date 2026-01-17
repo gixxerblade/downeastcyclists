@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import {useState, useEffect} from 'react';
 
 interface CachedFetchOptions {
   cacheKey?: string;
@@ -16,7 +16,7 @@ interface CachedData<T> {
 }
 
 // Simple in-memory cache
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, {data: any; timestamp: number}>();
 
 /**
  * A custom hook for fetching data with caching capabilities
@@ -72,7 +72,7 @@ export function useCachedFetch<T = any>(
         isValidating: true,
       });
     } else {
-      setState((prev) => ({ ...prev, isLoading: true, isValidating: true }));
+      setState((prev) => ({...prev, isLoading: true, isValidating: true}));
     }
 
     try {
@@ -87,7 +87,7 @@ export function useCachedFetch<T = any>(
       const data = await response.json();
 
       // Update cache
-      cache.set(cacheKey as string, { data, timestamp: Date.now() });
+      cache.set(cacheKey as string, {data, timestamp: Date.now()});
 
       setState({
         data,
@@ -135,16 +135,16 @@ export function useCachedFetch<T = any>(
     };
 
     // Add event listeners
-    if (typeof window !== "undefined") {
-      window.addEventListener("focus", onFocus);
-      window.addEventListener("online", onReconnect);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+      window.addEventListener('online', onReconnect);
     }
 
     // Clean up
     return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("focus", onFocus);
-        window.removeEventListener("online", onReconnect);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('online', onReconnect);
       }
     };
   }, [url, cacheKey, cacheDuration, revalidateOnFocus, revalidateOnReconnect]);

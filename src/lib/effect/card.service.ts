@@ -1,13 +1,9 @@
-import { Context, Effect, Layer } from "effect";
-import { FirestoreService } from "./firestore.service";
-import { QRService } from "./qr.service";
-import { CardError, FirestoreError, NotFoundError, QRError } from "./errors";
-import type {
-  MembershipCard,
-  VerificationResult,
-  MembershipDocument,
-  UserDocument,
-} from "./schemas";
+import {Context, Effect, Layer} from 'effect';
+
+import {CardError, FirestoreError, NotFoundError, QRError} from './errors';
+import {FirestoreService} from './firestore.service';
+import {QRService} from './qr.service';
+import type {MembershipCard, VerificationResult, MembershipDocument, UserDocument} from './schemas';
 
 // Service interface
 export interface MembershipCardService {
@@ -30,7 +26,7 @@ export interface MembershipCardService {
 
 // Service tag
 export const MembershipCardService =
-  Context.GenericTag<MembershipCardService>("MembershipCardService");
+  Context.GenericTag<MembershipCardService>('MembershipCardService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -39,7 +35,7 @@ const make = Effect.gen(function* () {
 
   return MembershipCardService.of({
     // Create a new membership card - Effect.gen for complex orchestration
-    createCard: ({ userId, user, membership }) =>
+    createCard: ({userId, user, membership}) =>
       Effect.gen(function* () {
         // Get current year
         const currentYear = new Date().getFullYear();
@@ -62,7 +58,7 @@ const make = Effect.gen(function* () {
         });
 
         // Create card document
-        const card: Omit<MembershipCard, "id"> = {
+        const card: Omit<MembershipCard, 'id'> = {
           userId,
           membershipNumber,
           memberName: user.name || user.email,
@@ -82,7 +78,7 @@ const make = Effect.gen(function* () {
 
         yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
-        return { ...card, id: "current" } as MembershipCard;
+        return {...card, id: 'current'} as MembershipCard;
       }),
 
     // Get existing card - simple delegation
@@ -95,11 +91,11 @@ const make = Effect.gen(function* () {
 
         if (!result) {
           return yield* Effect.fail(
-            new NotFoundError({ resource: "membership", id: membershipNumber }),
+            new NotFoundError({resource: 'membership', id: membershipNumber}),
           );
         }
 
-        const { card } = result;
+        const {card} = result;
         const expiresAt = new Date(card.validUntil);
         const now = new Date();
         const daysRemaining = Math.max(
@@ -107,18 +103,18 @@ const make = Effect.gen(function* () {
           Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         );
 
-        const isActive = card.status === "active" || card.status === "trialing";
+        const isActive = card.status === 'active' || card.status === 'trialing';
         const isExpired = expiresAt < now;
 
         let message: string;
         if (!isActive) {
           message = `Membership is ${card.status}`;
         } else if (isExpired) {
-          message = "Membership has expired";
+          message = 'Membership has expired';
         } else if (daysRemaining <= 30) {
           message = `Valid - expires in ${daysRemaining} days`;
         } else {
-          message = "Valid membership";
+          message = 'Valid membership';
         }
 
         return {
@@ -143,12 +139,12 @@ const make = Effect.gen(function* () {
           return {
             valid: false,
             membershipNumber: payload.mn,
-            memberName: "Unknown",
-            planType: "individual" as const,
-            status: "canceled" as const,
-            expiresAt: "",
+            memberName: 'Unknown',
+            planType: 'individual' as const,
+            status: 'canceled' as const,
+            expiresAt: '',
             daysRemaining: 0,
-            message: "Invalid QR code signature",
+            message: 'Invalid QR code signature',
           };
         }
 
@@ -159,16 +155,16 @@ const make = Effect.gen(function* () {
           return {
             valid: false,
             membershipNumber: payload.mn,
-            memberName: "Unknown",
-            planType: "individual" as const,
-            status: "canceled" as const,
-            expiresAt: "",
+            memberName: 'Unknown',
+            planType: 'individual' as const,
+            status: 'canceled' as const,
+            expiresAt: '',
             daysRemaining: 0,
-            message: "Membership not found",
+            message: 'Membership not found',
           };
         }
 
-        const { card } = result;
+        const {card} = result;
         const expiresAt = new Date(card.validUntil);
         const now = new Date();
         const daysRemaining = Math.max(
@@ -176,7 +172,7 @@ const make = Effect.gen(function* () {
           Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         );
 
-        const isActive = card.status === "active" || card.status === "trialing";
+        const isActive = card.status === 'active' || card.status === 'trialing';
         const isExpired = expiresAt < now;
 
         return {
@@ -187,7 +183,7 @@ const make = Effect.gen(function* () {
           status: card.status,
           expiresAt: card.validUntil,
           daysRemaining,
-          message: isActive && !isExpired ? "Valid membership" : "Invalid or expired",
+          message: isActive && !isExpired ? 'Valid membership' : 'Invalid or expired',
         };
       }),
   });

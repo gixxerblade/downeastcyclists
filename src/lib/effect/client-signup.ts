@@ -1,8 +1,10 @@
-import { Effect } from "effect";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/src/utils/firebase";
-import { AuthError } from "./errors";
-import { createSessionCookie } from "./client-auth";
+import {Effect} from 'effect';
+import {createUserWithEmailAndPassword} from 'firebase/auth';
+
+import {auth} from '@/src/utils/firebase';
+
+import {createSessionCookie} from './client-auth';
+import {AuthError} from './errors';
 
 interface SignupCredentials {
   email: string;
@@ -13,7 +15,7 @@ interface SignupCredentials {
 // Create new user account
 export const createAccount = (
   credentials: SignupCredentials,
-): Effect.Effect<{ uid: string; email: string }, AuthError> =>
+): Effect.Effect<{uid: string; email: string}, AuthError> =>
   Effect.tryPromise({
     try: async () => {
       const userCredential = await createUserWithEmailAndPassword(
@@ -24,7 +26,7 @@ export const createAccount = (
 
       // Optionally update display name
       if (credentials.name) {
-        const { updateProfile } = await import("firebase/auth");
+        const {updateProfile} = await import('firebase/auth');
         await updateProfile(userCredential.user, {
           displayName: credentials.name,
         });
@@ -37,31 +39,31 @@ export const createAccount = (
     },
     catch: (error) => {
       // Parse Firebase error codes
-      let message = "Failed to create account";
-      let code = "SIGNUP_FAILED";
+      let message = 'Failed to create account';
+      let code = 'SIGNUP_FAILED';
 
-      if (error && typeof error === "object" && "code" in error) {
+      if (error && typeof error === 'object' && 'code' in error) {
         const firebaseCode = error.code as string;
 
         switch (firebaseCode) {
-          case "auth/email-already-in-use":
-            message = "This email is already registered";
-            code = "EMAIL_IN_USE";
+          case 'auth/email-already-in-use':
+            message = 'This email is already registered';
+            code = 'EMAIL_IN_USE';
             break;
-          case "auth/invalid-email":
-            message = "Invalid email address";
-            code = "INVALID_EMAIL";
+          case 'auth/invalid-email':
+            message = 'Invalid email address';
+            code = 'INVALID_EMAIL';
             break;
-          case "auth/weak-password":
-            message = "Password should be at least 6 characters";
-            code = "WEAK_PASSWORD";
+          case 'auth/weak-password':
+            message = 'Password should be at least 6 characters';
+            code = 'WEAK_PASSWORD';
             break;
           default:
             message = error instanceof Error ? error.message : message;
         }
       }
 
-      return new AuthError({ code, message, cause: error });
+      return new AuthError({code, message, cause: error});
     },
   });
 
@@ -69,26 +71,26 @@ export const createAccount = (
 const createFirestoreUser = (
   idToken: string,
   name?: string,
-): Effect.Effect<{ success: boolean; userId: string }, AuthError> =>
+): Effect.Effect<{success: boolean; userId: string}, AuthError> =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, name }),
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({idToken, name}),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create user in Firestore");
+        throw new Error(data.error || 'Failed to create user in Firestore');
       }
 
       return response.json();
     },
     catch: (error) =>
       new AuthError({
-        code: "FIRESTORE_USER_CREATE_FAILED",
-        message: error instanceof Error ? error.message : "Failed to create user in Firestore",
+        code: 'FIRESTORE_USER_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create user in Firestore',
         cause: error,
       }),
   });
@@ -96,24 +98,24 @@ const createFirestoreUser = (
 // Complete signup flow: create account + create Firestore document + create session
 export const signupAndLogin = (
   credentials: SignupCredentials,
-): Effect.Effect<{ success: boolean }, AuthError> =>
+): Effect.Effect<{success: boolean}, AuthError> =>
   Effect.gen(function* () {
     // Create the account
-    const user = yield* createAccount(credentials);
+    yield* createAccount(credentials);
 
     // Get ID token
     const idToken = yield* Effect.tryPromise({
       try: async () => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
-          throw new Error("User not authenticated after signup");
+          throw new Error('User not authenticated after signup');
         }
         return currentUser.getIdToken();
       },
       catch: (error) =>
         new AuthError({
-          code: "TOKEN_GET_FAILED",
-          message: "Failed to get authentication token",
+          code: 'TOKEN_GET_FAILED',
+          message: 'Failed to get authentication token',
           cause: error,
         }),
     });
@@ -124,5 +126,5 @@ export const signupAndLogin = (
     // Create session
     yield* createSessionCookie(idToken);
 
-    return { success: true };
+    return {success: true};
   });

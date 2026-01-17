@@ -70,7 +70,7 @@ We've enhanced the middleware to add cache headers to responses based on content
 if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/api/trails')) {
   // Default caching strategy for most pages
   let cacheControl = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
-  
+
   // Different caching strategies based on content type
   if (pathname.startsWith('/_next/static/')) {
     // Static assets can be cached for a very long time
@@ -82,7 +82,7 @@ if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/api/trails')) {
     // API routes should have shorter cache times
     cacheControl = 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600';
   }
-  
+
   // Add the Cache-Control header to the response
   response.headers.set('Cache-Control', cacheControl);
 }

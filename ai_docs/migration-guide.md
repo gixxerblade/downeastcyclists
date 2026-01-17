@@ -10,11 +10,11 @@ The Claude Code SDK has been renamed to the **Claude Agent SDK** and its documen
 
 ## What's Changed
 
-| Aspect                   | Old                         | New                              |
-| :----------------------- | :-------------------------- | :------------------------------- |
-| **Package Name (TS/JS)** | `@anthropic-ai/claude-code` | `@anthropic-ai/claude-agent-sdk` |
-| **Python Package**       | `claude-code-sdk`           | `claude-agent-sdk`               |
-| **Documentation Location** | Claude Code docs | API Guide → Agent SDK section |
+| Aspect                     | Old                         | New                              |
+| :------------------------- | :-------------------------- | :------------------------------- |
+| **Package Name (TS/JS)**   | `@anthropic-ai/claude-code` | `@anthropic-ai/claude-agent-sdk` |
+| **Python Package**         | `claude-code-sdk`           | `claude-agent-sdk`               |
+| **Documentation Location** | Claude Code docs            | API Guide → Agent SDK section    |
 
 <Note>
 **Documentation Changes:** The Agent SDK documentation has moved from the Claude Code docs to the API Guide under a dedicated [Agent SDK](/docs/en/agent-sdk/overview) section. The Claude Code docs now focus on the CLI tool and automation features.
@@ -42,14 +42,10 @@ Change all imports from `@anthropic-ai/claude-code` to `@anthropic-ai/claude-age
 
 ```typescript
 // Before
-import { query, tool, createSdkMcpServer } from "@anthropic-ai/claude-code";
+import {query, tool, createSdkMcpServer} from '@anthropic-ai/claude-code';
 
 // After
-import {
-  query,
-  tool,
-  createSdkMcpServer,
-} from "@anthropic-ai/claude-agent-sdk";
+import {query, tool, createSdkMcpServer} from '@anthropic-ai/claude-agent-sdk';
 ```
 
 **4. Update package.json dependencies:**
@@ -166,23 +162,23 @@ options = ClaudeAgentOptions(
 
 ```typescript TypeScript
 // BEFORE (v0.0.x) - Used Claude Code's system prompt by default
-const result = query({ prompt: "Hello" });
+const result = query({prompt: 'Hello'});
 
 // AFTER (v0.1.0) - Uses minimal system prompt by default
 // To get the old behavior, explicitly request Claude Code's preset:
 const result = query({
-  prompt: "Hello",
+  prompt: 'Hello',
   options: {
-    systemPrompt: { type: "preset", preset: "claude_code" }
-  }
+    systemPrompt: {type: 'preset', preset: 'claude_code'},
+  },
 });
 
 // Or use a custom system prompt:
 const result = query({
-  prompt: "Hello",
+  prompt: 'Hello',
   options: {
-    systemPrompt: "You are a helpful coding assistant"
-  }
+    systemPrompt: 'You are a helpful coding assistant',
+  },
 });
 ```
 
@@ -227,7 +223,7 @@ async for message in query(
 
 ```typescript TypeScript
 // BEFORE (v0.0.x) - Loaded all settings automatically
-const result = query({ prompt: "Hello" });
+const result = query({prompt: 'Hello'});
 // Would read from:
 // - ~/.claude/settings.json (user)
 // - .claude/settings.json (project)
@@ -238,18 +234,18 @@ const result = query({ prompt: "Hello" });
 // AFTER (v0.1.0) - No settings loaded by default
 // To get the old behavior:
 const result = query({
-  prompt: "Hello",
+  prompt: 'Hello',
   options: {
-    settingSources: ["user", "project", "local"]
-  }
+    settingSources: ['user', 'project', 'local'],
+  },
 });
 
 // Or load only specific sources:
 const result = query({
-  prompt: "Hello",
+  prompt: 'Hello',
   options: {
-    settingSources: ["project"]  // Only project settings
-  }
+    settingSources: ['project'], // Only project settings
+  },
 });
 ```
 
@@ -289,6 +285,7 @@ async for message in query(
 </CodeGroup>
 
 **Why this changed:** Ensures SDK applications have predictable behavior independent of local filesystem configurations. This is especially important for:
+
 - **CI/CD environments** - Consistent behavior without local customizations
 - **Deployed applications** - No dependency on filesystem settings
 - **Testing** - Isolated test environments

@@ -29,19 +29,19 @@ When Claude executes tools, the usage reporting differs based on whether tools a
 <CodeGroup>
 
 ```typescript TypeScript
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import {query} from '@anthropic-ai/claude-agent-sdk';
 
 // Example: Tracking usage in a conversation
 const result = await query({
-  prompt: "Analyze this codebase and run tests",
+  prompt: 'Analyze this codebase and run tests',
   options: {
     onMessage: (message) => {
       if (message.type === 'assistant' && message.usage) {
         console.log(`Message ID: ${message.id}`);
         console.log(`Usage:`, message.usage);
       }
-    }
-  }
+    },
+  },
 });
 ```
 
@@ -91,9 +91,9 @@ assistant (text)      { id: "msg_2", usage: { output_tokens: 98, ... } }
 ```typescript
 // All these messages have the same ID and usage
 const messages = [
-  { type: 'assistant', id: 'msg_123', usage: { output_tokens: 100 } },
-  { type: 'assistant', id: 'msg_123', usage: { output_tokens: 100 } },
-  { type: 'assistant', id: 'msg_123', usage: { output_tokens: 100 } }
+  {type: 'assistant', id: 'msg_123', usage: {output_tokens: 100}},
+  {type: 'assistant', id: 'msg_123', usage: {output_tokens: 100}},
+  {type: 'assistant', id: 'msg_123', usage: {output_tokens: 100}},
 ];
 
 // Charge only once per unique message ID
@@ -111,12 +111,14 @@ The final `result` message contains the total cumulative usage from all steps in
 ```typescript
 // Final result includes total usage
 const result = await query({
-  prompt: "Multi-step task",
-  options: { /* ... */ }
+  prompt: 'Multi-step task',
+  options: {
+    /* ... */
+  },
 });
 
-console.log("Total usage:", result.usage);
-console.log("Total cost:", result.usage.total_cost_usd);
+console.log('Total usage:', result.usage);
+console.log('Total cost:', result.usage.total_cost_usd);
 ```
 
 ### 4. Per-Model Usage Breakdown
@@ -126,17 +128,17 @@ The result message also includes `modelUsage`, which provides authoritative per-
 ```typescript
 // modelUsage provides per-model breakdown
 type ModelUsage = {
-  inputTokens: number
-  outputTokens: number
-  cacheReadInputTokens: number
-  cacheCreationInputTokens: number
-  webSearchRequests: number
-  costUSD: number
-  contextWindow: number
-}
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  webSearchRequests: number;
+  costUSD: number;
+  contextWindow: number;
+};
 
 // Access from result message
-const result = await query({ prompt: "..." });
+const result = await query({prompt: '...'});
 
 // result.modelUsage is a map of model name to ModelUsage
 for (const [modelName, usage] of Object.entries(result.modelUsage)) {
@@ -155,7 +157,7 @@ Here's a complete example of implementing a cost tracking system:
 <CodeGroup>
 
 ```typescript TypeScript
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import {query} from '@anthropic-ai/claude-agent-sdk';
 
 class CostTracker {
   private processedMessageIds = new Set<string>();
@@ -167,14 +169,14 @@ class CostTracker {
       options: {
         onMessage: (message) => {
           this.processMessage(message);
-        }
-      }
+        },
+      },
     });
 
     return {
       result,
       stepUsages: this.stepUsages,
-      totalCost: result.usage?.total_cost_usd || 0
+      totalCost: result.usage?.total_cost_usd || 0,
     };
   }
 
@@ -195,7 +197,7 @@ class CostTracker {
       messageId: message.id,
       timestamp: new Date().toISOString(),
       usage: message.usage,
-      costUSD: this.calculateCost(message.usage)
+      costUSD: this.calculateCost(message.usage),
     });
   }
 
@@ -212,8 +214,8 @@ class CostTracker {
 
 // Usage
 const tracker = new CostTracker();
-const { result, stepUsages, totalCost } = await tracker.trackConversation(
-  "Analyze and refactor this code"
+const {result, stepUsages, totalCost} = await tracker.trackConversation(
+  'Analyze and refactor this code',
 );
 
 console.log(`Steps processed: ${stepUsages.length}`);
@@ -337,42 +339,48 @@ Here's how to aggregate usage data for a billing dashboard:
 
 ```typescript
 class BillingAggregator {
-  private userUsage = new Map<string, {
-    totalTokens: number;
-    totalCost: number;
-    conversations: number;
-  }>();
+  private userUsage = new Map<
+    string,
+    {
+      totalTokens: number;
+      totalCost: number;
+      conversations: number;
+    }
+  >();
 
   async processUserRequest(userId: string, prompt: string) {
     const tracker = new CostTracker();
-    const { result, stepUsages, totalCost } = await tracker.trackConversation(prompt);
+    const {result, stepUsages, totalCost} = await tracker.trackConversation(prompt);
 
     // Update user totals
     const current = this.userUsage.get(userId) || {
       totalTokens: 0,
       totalCost: 0,
-      conversations: 0
+      conversations: 0,
     };
 
-    const totalTokens = stepUsages.reduce((sum, step) =>
-      sum + step.usage.input_tokens + step.usage.output_tokens, 0
+    const totalTokens = stepUsages.reduce(
+      (sum, step) => sum + step.usage.input_tokens + step.usage.output_tokens,
+      0,
     );
 
     this.userUsage.set(userId, {
       totalTokens: current.totalTokens + totalTokens,
       totalCost: current.totalCost + totalCost,
-      conversations: current.conversations + 1
+      conversations: current.conversations + 1,
     });
 
     return result;
   }
 
   getUserBilling(userId: string) {
-    return this.userUsage.get(userId) || {
-      totalTokens: 0,
-      totalCost: 0,
-      conversations: 0
-    };
+    return (
+      this.userUsage.get(userId) || {
+        totalTokens: 0,
+        totalCost: 0,
+        conversations: 0,
+      }
+    );
   }
 }
 ```

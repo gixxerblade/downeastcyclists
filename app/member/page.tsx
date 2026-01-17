@@ -1,14 +1,15 @@
-import { Suspense } from "react";
-import { Container, CircularProgress, Box } from "@mui/material";
-import { getMemberDashboard } from "@/src/actions/portal";
-import { MemberDashboardClient } from "@/src/components/member/MemberDashboardClient";
-import { PostCheckoutLoader } from "@/src/components/member/PostCheckoutLoader";
+import {Container, CircularProgress, Box} from '@mui/material';
+import {Suspense} from 'react';
+
+import {getMemberDashboard} from '@/src/actions/portal';
+import {MemberDashboardClient} from '@/src/components/member/MemberDashboardClient';
+import {PostCheckoutLoader} from '@/src/components/member/PostCheckoutLoader';
 
 function DashboardLoading() {
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{py: 4}}>
       <Box
-        sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}
+        sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh'}}
       >
         <CircularProgress />
       </Box>
@@ -17,10 +18,10 @@ function DashboardLoading() {
 }
 
 interface MemberDashboardPageProps {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{session_id?: string}>;
 }
 
-export default async function MemberDashboardPage({ searchParams }: MemberDashboardPageProps) {
+export default async function MemberDashboardPage({searchParams}: MemberDashboardPageProps) {
   const params = await searchParams;
   const sessionId = params.session_id;
 

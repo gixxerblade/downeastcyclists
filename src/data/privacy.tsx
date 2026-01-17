@@ -1,5 +1,5 @@
-import Link from "next/link";
-import React from "react";
+import Link from 'next/link';
+import React from 'react';
 
 export const privacy = [
   {
@@ -19,7 +19,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "1",
+    id: '1',
   },
   {
     title: () => <>Log Data</>,
@@ -35,7 +35,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "2",
+    id: '2',
   },
   {
     title: () => <>Cookies</>,
@@ -56,7 +56,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "3",
+    id: '3',
   },
   {
     title: () => <>Service Providers</>,
@@ -76,7 +76,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "4",
+    id: '4',
   },
   {
     title: () => <>Security</>,
@@ -92,7 +92,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "5",
+    id: '5',
   },
   {
     title: () => <>Links To Other Sites</>,
@@ -112,7 +112,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "6",
+    id: '6',
   },
   {
     title: () => <>Children’s Privacy</>,
@@ -131,7 +131,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "7",
+    id: '7',
   },
   {
     title: () => <>Compliance With Laws</>,
@@ -144,7 +144,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "8",
+    id: '8',
   },
   {
     title: () => <>Changes To This Privacy Policy</>,
@@ -163,7 +163,7 @@ export const privacy = [
         </div>
       </>
     ),
-    id: "9",
+    id: '9',
   },
   {
     title: () => <>Contact Us</>,
@@ -171,12 +171,12 @@ export const privacy = [
       <>
         <div className="content">
           <p>
-            If you have any questions about this Privacy Policy, please{" "}
+            If you have any questions about this Privacy Policy, please{' '}
             <Link href="/contact">contact us</Link>
           </p>
         </div>
       </>
     ),
-    id: "10",
+    id: '10',
   },
 ];

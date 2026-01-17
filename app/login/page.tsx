@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { Container, Box, Paper, CircularProgress } from "@mui/material";
-import { LoginForm } from "@/src/components/auth/LoginForm";
-import { Suspense } from "react";
+import {Container, Box, Paper, CircularProgress} from '@mui/material';
+import {Suspense} from 'react';
+
+import {LoginForm} from '@/src/components/auth/LoginForm';
 
 function LoginLoading() {
   return (
@@ -10,9 +11,9 @@ function LoginLoading() {
       <Box
         sx={{
           marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
         <CircularProgress />
@@ -28,12 +29,12 @@ export default function LoginPage() {
         sx={{
           marginTop: 8,
           marginBottom: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ p: 4, width: "100%" }}>
+        <Paper elevation={3} sx={{p: 4, width: '100%'}}>
           <Suspense fallback={<LoginLoading />}>
             <LoginForm />
           </Suspense>

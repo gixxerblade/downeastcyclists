@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {Effect, pipe} from 'effect';
+import {NextResponse} from 'next/server';
+
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {MembershipService} from '@/src/lib/effect/membership.service';
 
 // Prevent static generation of this route
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 // In-memory cache for plans
 let cachedPlans: Array<{
@@ -28,10 +29,10 @@ export async function GET() {
   const program = pipe(
     Effect.flatMap(MembershipService, (membershipService) => membershipService.getPlans()),
 
-    Effect.catchTag("StripeError", (error) =>
+    Effect.catchTag('StripeError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
       }),
     ),
@@ -39,8 +40,8 @@ export async function GET() {
 
   const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   // Update cache - result is now definitely the plans array

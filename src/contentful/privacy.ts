@@ -1,10 +1,12 @@
-import { TypePrivacySkeleton } from "@/src/contentful/types/TypePrivacy";
-import { Entry } from "contentful";
-import { client, getEntriesCached } from "./contentfulClient";
-import { documentToHtmlString } from "@contentful/rich-text-html-renderer";
-import { Document, BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { privacy as localPrivacy } from "@/src/data/privacy";
-import React, { ReactNode } from "react";
+import {documentToHtmlString} from '@contentful/rich-text-html-renderer';
+import {Document, BLOCKS, INLINES, MARKS} from '@contentful/rich-text-types';
+import {Entry} from 'contentful';
+import React, {ReactNode} from 'react';
+
+import {TypePrivacySkeleton} from '@/src/contentful/types/TypePrivacy';
+import {privacy as localPrivacy} from '@/src/data/privacy';
+
+import {client, getEntriesCached} from './contentfulClient';
 
 type PrivacyEntry = Entry<TypePrivacySkeleton, undefined, string>;
 
@@ -23,19 +25,19 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
     try {
       // If it's already a Document object, use it directly
       if (
-        typeof privacyEntry.fields.body === "object" &&
+        typeof privacyEntry.fields.body === 'object' &&
         privacyEntry.fields.body !== null &&
-        "nodeType" in privacyEntry.fields.body &&
-        privacyEntry.fields.body.nodeType === "document"
+        'nodeType' in privacyEntry.fields.body &&
+        privacyEntry.fields.body.nodeType === 'document'
       ) {
         richTextDocument = privacyEntry.fields.body as Document;
       }
       // If it's a string (JSON), parse it
-      else if (typeof privacyEntry.fields.body === "string") {
+      else if (typeof privacyEntry.fields.body === 'string') {
         richTextDocument = JSON.parse(privacyEntry.fields.body) as Document;
       }
     } catch (error) {
-      console.error("Error parsing rich text document:", error);
+      console.error('Error parsing rich text document:', error);
     }
   }
 
@@ -67,7 +69,7 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
           [BLOCKS.HEADING_6]: (node, next) =>
             `<h6 class="text-xs font-bold mt-3 mb-1">${next(node.content)}</h6>`,
           [INLINES.HYPERLINK]: (node, next) => {
-            const { uri } = node.data;
+            const {uri} = node.data;
             return `<a href="${uri}" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">${next(
               node.content,
             )}</a>`;
@@ -75,13 +77,13 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
           [BLOCKS.EMBEDDED_ENTRY]: (node, next) =>
             `<div class="embedded-entry my-4">${next(node.content)}</div>`,
           [BLOCKS.EMBEDDED_ASSET]: (node) => {
-            const { target } = node.data;
+            const {target} = node.data;
             if (target?.fields?.file?.url) {
               return `<img src="${target.fields.file.url}" alt="${
                 target.fields.description || target.fields.title
               }" class="max-w-full h-auto rounded my-4" />`;
             }
-            return "";
+            return '';
           },
           [BLOCKS.QUOTE]: (node, next) =>
             `<blockquote class="border-l-4 border-gray-300 pl-4 italic my-4">${next(
@@ -104,14 +106,14 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
           [BLOCKS.DOCUMENT]: (node, next) => next(node.content),
         },
       })
-    : "";
+    : '';
 
   return {
-    id: privacyEntry?.fields.id || "",
-    title: privacyEntry?.fields.title || "",
+    id: privacyEntry?.fields.id || '',
+    title: privacyEntry?.fields.title || '',
     // Use dangerouslySetInnerHTML to render the HTML string
     body: htmlContent
-      ? React.createElement("div", { dangerouslySetInnerHTML: { __html: htmlContent } })
+      ? React.createElement('div', {dangerouslySetInnerHTML: {__html: htmlContent}})
       : null,
     order: privacyEntry?.fields.order || 0,
   };
@@ -120,8 +122,8 @@ export const parseContentfulPrivacy = (privacyEntry?: PrivacyEntry): Privacy => 
 export const fetchPrivacy = async (): Promise<Privacy[]> => {
   try {
     const privacyResult = await getEntriesCached<TypePrivacySkeleton>({
-      content_type: "privacy",
-      order: ["fields.order"], // Sort by order field
+      content_type: 'privacy',
+      order: ['fields.order'], // Sort by order field
     });
 
     if (privacyResult.items.length > 0) {
@@ -131,18 +133,18 @@ export const fetchPrivacy = async (): Promise<Privacy[]> => {
     // If no Contentful data, fall back to local data
     return localPrivacy.map((privacy, index) => ({
       id: privacy.id,
-      title: typeof privacy.title === "function" ? privacy.title() : privacy.title,
-      body: typeof privacy.body === "function" ? privacy.body() : privacy.body,
+      title: typeof privacy.title === 'function' ? privacy.title() : privacy.title,
+      body: typeof privacy.body === 'function' ? privacy.body() : privacy.body,
       order: index + 1,
     }));
   } catch (error) {
-    console.error("Error fetching privacy from Contentful:", error);
+    console.error('Error fetching privacy from Contentful:', error);
 
     // Fall back to local data in case of error
     return localPrivacy.map((privacy, index) => ({
       id: privacy.id,
-      title: typeof privacy.title === "function" ? privacy.title() : privacy.title,
-      body: typeof privacy.body === "function" ? privacy.body() : privacy.body,
+      title: typeof privacy.title === 'function' ? privacy.title() : privacy.title,
+      body: typeof privacy.body === 'function' ? privacy.body() : privacy.body,
       order: index + 1,
     }));
   }

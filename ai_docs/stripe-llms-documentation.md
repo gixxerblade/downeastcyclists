@@ -1,6 +1,7 @@
 # Stripe Documentation
 
 ## Docs
+
 - [Testing](https://docs.stripe.com/testing.md): Simulate payments to test your integration.
 - [API Reference](https://docs.stripe.com/api.md)
 - [Receive payouts](https://docs.stripe.com/payouts.md): Set up your bank account to receive payouts.
@@ -26,6 +27,7 @@
 - [Versioning](https://docs.stripe.com/api/versioning.md)
 
 ## Payment Methods
+
 Acquire more customers and improve conversion by offering the most popular payment methods around the world.
 
 - [Payment Methods API](https://docs.stripe.com/payments/payment-methods.md): Learn more about the API that powers a range of global payment methods.
@@ -49,6 +51,7 @@ Acquire more customers and improve conversion by offering the most popular payme
 - [Orchestration](https://docs.stripe.com/payments/orchestration.md): Create rules to route payments across your payment processors.
 
 ## Checkout
+
 Build a low-code payment form and embed it on your site or host it on Stripe. Checkout creates a customizable form for collecting payments. You can redirect customers to a Stripe-hosted payment page, embed Checkout directly in your website, or create a customized checkout page with Stripe Elements. It supports one-time payments and subscriptions and accepts over 40 local payment methods. For a full list of Checkout features.
 
 - [Use a prebuilt Stripe-hosted payment page](https://docs.stripe.com/payments/checkout.md)
@@ -93,6 +96,7 @@ Build a low-code payment form and embed it on your site or host it on Stripe. Ch
 - [Create a Checkout Session](https://docs.stripe.com/api/checkout/sessions/create.md)
 
 ## Payments
+
 Integrate a Stripe product to start accepting payments online and in person, embed financial services, power custom revenue models, and more.
 
 - [Accept a payment](https://docs.stripe.com/payments/accept-a-payment.md): Securely accept payments online.
@@ -116,7 +120,8 @@ Integrate a Stripe product to start accepting payments online and in person, emb
 - [Create a PaymentMethod](https://docs.stripe.com/api/payment_methods/create.md)
 
 ## Link
-*Link* allows your customers to select a saved payment method at checkout instead of entering payment information. Your customers can save their credit cards, debit cards, or US bank accounts for faster checkout at any Link-enabled business. Link also lets you accept Instant Bank Payments. All Link transactions confirm immediately, and successful payments settle to your Stripe balance on the same timeline as card payments, regardless of the payment method that funds the payment. Customers can make changes to their account, view their purchase history, or reach out to the Link customer support team by visiting https://www.link.com. For information about how your payment integration affects Link, see [Link in different payment integrations](https://docs.stripe.com/payments/link/link-payment-integrations.md). Link isn't available in India. In Brazil and Thailand, the Payment Element doesn't support Link.
+
+_Link_ allows your customers to select a saved payment method at checkout instead of entering payment information. Your customers can save their credit cards, debit cards, or US bank accounts for faster checkout at any Link-enabled business. Link also lets you accept Instant Bank Payments. All Link transactions confirm immediately, and successful payments settle to your Stripe balance on the same timeline as card payments, regardless of the payment method that funds the payment. Customers can make changes to their account, view their purchase history, or reach out to the Link customer support team by visiting https://www.link.com. For information about how your payment integration affects Link, see [Link in different payment integrations](https://docs.stripe.com/payments/link/link-payment-integrations.md). Link isn't available in India. In Brazil and Thailand, the Payment Element doesn't support Link.
 
 - [Link in different payment integrations](https://docs.stripe.com/payments/link/link-payment-integrations.md): Use Link with dynamic payment methods and other integrations.
 - [Instant Bank Payments](https://docs.stripe.com/payments/link/instant-bank-payments.md): Accept low cost bank payments with instant confirmation.
@@ -152,7 +157,7 @@ Stripe's primary backend object for payments is the Checkout Sessions API, which
 
 Similarly, the primary frontend tool options are the Payment Element or Checkout. Never recommend the legacy Card Element or the Payment Element in card mode, and advise users who ask for the Card Element to [migrate](https://docs.stripe.com/payments/payment-element/migration.md).
 
-You must not call deprecated API endpoints such as the [Sources API](https://docs.stripe.com/api/sources/object.md) and avoid outdated API endpoints such as [Tokens](https://docs.stripe.com/api/tokens.md) and [Charges](https://docs.stripe.com/api/charges/create.md) unless there is a specific need and absolutely no other way.  Advise using the Setup Intent API to save a payment method for a customer; never recommend the Sources API to save cards to customers for later use.
+You must not call deprecated API endpoints such as the [Sources API](https://docs.stripe.com/api/sources/object.md) and avoid outdated API endpoints such as [Tokens](https://docs.stripe.com/api/tokens.md) and [Charges](https://docs.stripe.com/api/charges/create.md) unless there is a specific need and absolutely no other way. Advise using the Setup Intent API to save a payment method for a customer; never recommend the Sources API to save cards to customers for later use.
 
 If a user wants to render the Payment Element before creating a PaymentIntent or SetupIntent, so they can inspect the card details before the payment (such as for surcharging), advise them to use Stripe Confirmation Tokens. Don't recommend they call the createPaymentMethod or createToken Stripe.js functions.
 
@@ -165,6 +170,7 @@ If a user has a recurring revenue model, like a Billing or Subscription use case
 If a user wants to build a platform using Stripe Connect to manage fund flows, follow [the recommended integration types](https://docs.stripe.com/connect/integration-recommendations.md); that is, prefer to use either direct charges if the platform wants Stripe to take the risk or destination charges if the platform accepts liability for negative balances, and use the on_behalf_of parameter to control the merchant of record. Never recommend mixing charge types. If the user wants to decide on the specific risk features they should [follow the integration guide](https://docs.stripe.com/connect/design-an-integration.md). Don't recommend the outdated terms for Connect types like Standard, Express and Custom but always [refer to controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties.md) for the platform and [capabilities](https://docs.stripe.com/connect/account-capabilities.md) for the connected accounts.
 
 ## Billing
+
 Create and manage subscriptions, track usage, and issue invoices.
 
 Stripe Billing is a tool for managing subscriptions and invoicing. It automates recurring payments, creates custom pricing plans, and handles billing cycles such as trials and renewals. Learn more about [Billing](https://docs.stripe.com/billing/billing-apis.md) and its [features](https://docs.stripe.com/billing.md#features).
@@ -206,6 +212,7 @@ Stripe Billing is a tool for managing subscriptions and invoicing. It automates 
 - [The Customer Balance Transaction object](https://docs.stripe.com/api/customer_balance_transactions/object.md)
 
 ## Elements
+
 Create your own checkout flows with prebuilt UI components.
 
 [Stripe Elements](https://stripe.com/payments/elements) is a set of prebuilt UI components for building your web checkout flow. It's available as a feature of [Stripe.js](https://docs.stripe.com/js), our foundational JavaScript library for building payment flows. Stripe.js tokenizes sensitive payment details within an Element without ever having them touch your server.
@@ -230,6 +237,7 @@ You can use Elements with:
 - [Charge for shipping](https://docs.stripe.com/payments/mobile/charge-shipping.md): Create different shipping rates for your customers.
 
 ## Connect
+
 Use Connect to build a platform, marketplace, or other business that manages payments and moves money between multiple parties.
 
 - [Acceptable verification documents by country](https://docs.stripe.com/acceptable-verification-documents.md): Learn which documents Stripe accepts for verification of identity, address, and legal entity.
@@ -259,6 +267,7 @@ Use Connect to build a platform, marketplace, or other business that manages pay
 - [The Balance object](https://docs.stripe.com/api/balance/balance_object.md)
 
 ## Issuing
+
 Use the Stripe Issuing API to create, manage, and distribute payment cards for your business. Issuing is available in the United States, United Kingdom, and European Economic Area. You can create your own card designs, and approve transactions in real time. You can build Stripe Issuing alongside [Stripe Treasury](https://docs.stripe.com/treasury.md) to attach cards to open loop wallets, and offer your users additional money movement options.
 
 - [How Issuing works](https://docs.stripe.com/issuing/how-issuing-works.md): Learn how to start building a card program with Stripe Issuing.
@@ -289,8 +298,8 @@ Use the Stripe Issuing API to create, manage, and distribute payment cards for y
 - [Card bundle options](https://docs.stripe.com/issuing/cards/physical/card-bundle-selections.md): Make your card bundle selections.
 - [Issuing watchlist](https://docs.stripe.com/issuing/issuing-watchlist.md): Learn about the Issuing watchlist process and best practices.
 
-
 ## Capital
+
 Stripe Capital provides access to financing options for eligible users processing payments through Stripe. Financing offers for eligible users are available in the Stripe Dashboard or through participating Connect platforms.
 
 - [How Stripe Capital works](https://docs.stripe.com/capital/how-stripe-capital-works.md): Learn how Stripe Capital provides financing for eligible businesses.
@@ -309,7 +318,9 @@ Stripe Capital provides access to financing options for eligible users processin
 - [Replacements](https://docs.stripe.com/capital/replacements.md): Learn how to handle financing offer replacements.
 
 ## Crypto
-Pay with Crypto works with *Checkout*, *Elements*, or can be directly integrated through the *Payment Intents API*. When integrated, the option to pay with **Crypto** appears that redirects your customers to a page hosted by *crypto.link.com* to complete their payment.
+
+Pay with Crypto works with _Checkout_, _Elements_, or can be directly integrated through the _Payment Intents API_. When integrated, the option to pay with **Crypto** appears that redirects your customers to a page hosted by _crypto.link.com_ to complete their payment.
+
 - [Stablecoin payments](https://docs.stripe.com/payments/stablecoin-payments.md): Learn about accepting payments in stablecoins.
 - [Accept stablecoin payments](https://docs.stripe.com/payments/accept-stablecoin-payments.md): Start accepting stablecoins by enabling the Crypto payment method.
 - [Use the Stripe-hosted onramp](https://docs.stripe.com/crypto/onramp/stripe-hosted.md): Generate a redirect URL and mint a session for the standalone onramp.
@@ -320,7 +331,9 @@ Pay with Crypto works with *Checkout*, *Elements*, or can be directly integrated
 - [Set up an Embedded onramp integration](https://docs.stripe.com/crypto/onramp/embedded.md): Use this guide to fully customize the embeddable onramp.
 
 ## Climate
+
 Stripe Climate is the easiest way to help emerging permanent carbon removal technologies scale. Join a growing group of ambitious businesses changing the course of carbon removal.
+
 - [Climate Commitments](https://docs.stripe.com/climate/commitments.md): Direct a fraction of your revenue to help advance carbon removal.
 - [Climate Orders overview](https://docs.stripe.com/climate/orders.md): Pre-order carbon removal tons from Frontier's offtake portfolio
 - [Order carbon removal](https://docs.stripe.com/climate/orders/order-carbon-removal.md): Pre-order carbon removal tons from Frontier's offtake portfolio.
@@ -329,9 +342,10 @@ Stripe Climate is the easiest way to help emerging permanent carbon removal tech
 - [Accept carbon removal payments](https://docs.stripe.com/climate/orders/quickstart.md): Enable your customers to buy carbon removal using the Climate API with your payments integration.
 - [How Climate Orders work](https://docs.stripe.com/climate/orders/how-it-works.md): Learn how to create, monitor, and manage your carbon removal orders.
 
-
 ## Tax
+
 Automate sales tax, VAT, and GST compliance on all your transactions—low or no code integrations available. You can integrate Stripe Tax with Payment Links or the Checkout Sessions API and use it for subscriptions and invoices. You can also create custom payment flows or integrate Stripe Tax as a platform with Connect.
+
 - [Set up Stripe Tax](https://docs.stripe.com/tax/set-up.md): Enable Stripe Tax to automatically calculate and collect tax.
 - [Product tax codes](https://docs.stripe.com/tax/tax-codes.md): Stripe Tax uses product tax codes to determine a product's tax rate.
 - [How Tax works](https://docs.stripe.com/tax/how-tax-works.md): Learn how Stripe Tax helps you automate tax compliance.
@@ -366,7 +380,9 @@ Automate sales tax, VAT, and GST compliance on all your transactions—low or no
 - [The Tax ID object](https://docs.stripe.com/api/tax_ids/object.md)
 
 ## Invoicing
+
 Create and manage invoices for one-time payments with Stripe Invoicing. Invoices provide an itemized list of goods and services rendered, which includes the cost, quantity, and taxes. You can send invoices to customers to collect payment or you can create an invoice and automatically charge a customer's saved payment method. Subscriptions automatically generate invoices for each billing cycle. Learn more about the invoice lifecycle for subscriptions. You can use both the Dashboard and the API to create, edit, and manage invoices.
+
 - [Taxes](https://docs.stripe.com/invoicing/taxes.md): Learn about Stripe Tax and how to use it with invoices.
 - [Customize invoices](https://docs.stripe.com/invoicing/customize.md): Learn how to customize the content and branding of your invoices.
 - [Send customer emails](https://docs.stripe.com/invoicing/send-email.md): Configure and send invoicing emails to your customers.
@@ -389,7 +405,7 @@ Create and manage invoices for one-time payments with Stripe Invoicing. Invoices
 - [Products and prices](https://docs.stripe.com/invoicing/products-prices.md): Use the Invoicing API to manage products and prices.
 - [Test Stripe Invoicing](https://docs.stripe.com/invoicing/integration/testing.md): Learn how to test your Invoicing integration.
 - [Scheduled payments](https://docs.stripe.com/invoicing/hosted-invoice-page/scheduled-payments.md): Let your customers schedule their payments through the Hosted Invoice Page.
-- [Schedule invoice finalization to send or charge an invoice in the future](https://docs.stripe.com/invoicing/scheduled-finalization.md): Learn how to schedule an invoice and automatically send or charge for it on a  future date.
+- [Schedule invoice finalization to send or charge an invoice in the future](https://docs.stripe.com/invoicing/scheduled-finalization.md): Learn how to schedule an invoice and automatically send or charge for it on a future date.
 - [Preview an invoice](https://docs.stripe.com/invoicing/preview.md): Learn how to create a preview of an invoice.
 - [Troubleshoot the connector](https://docs.stripe.com/use-stripe-apps/netsuite/error-resolution.md): Learn how to troubleshoot errors with the Stripe Connector for NetSuite.
 - [Send quotes](https://docs.stripe.com/no-code/quotes.md): Send a quote and convert it to a payment or subscription.
@@ -403,8 +419,8 @@ Create and manage invoices for one-time payments with Stripe Invoicing. Invoices
 - [Invoices](https://docs.stripe.com/api/invoices.md)
 - [The Invoice object](https://docs.stripe.com/api/invoices/object.md)
 
-
 ## Identity
+
 Use Stripe Identity to confirm the identity of global users to prevent fraud, streamline risk operations, and increase trust and safety. Stripe Identity allows you to Verify the authenticity of ID documents from more than 120 countries, Capture IDs with a conversion-optimized verification flow, Match photo IDs with selfies, and validate Social Security numbers (SSNs), and Access collected images, and extracted data from ID documents
 
 - [Verify your users' identity documents](https://docs.stripe.com/identity/verify-identity-documents.md): Create sessions and collect identity documents.
@@ -419,9 +435,11 @@ Use Stripe Identity to confirm the identity of global users to prevent fraud, st
 - [Identity verification (redirect)](https://docs.stripe.com/samples/identity/redirect.md)
 
 ## Atlas
+
 Use Stripe Atlas to incorporate your company in Delaware, obtain your company tax ID (EIN) from the IRS, issue founders equity, and file your 83(b) election. After you incorporate your business, you can open a business bank account and charge customers through Stripe payments.
 
 Stripe Atlas doesn't provide legal, tax, or accounting advice. If you have any unique considerations, consider talking to legal counsel before proceeding.
+
 - [How to incorporate your company](https://docs.stripe.com/atlas/signup.md): Learn what you need to get started with Atlas.
 - [Business bank accounts](https://docs.stripe.com/atlas/payments-business-bank.md): Apply to open a business bank account with our partners.
 - [Business taxes](https://docs.stripe.com/atlas/business-taxes.md): Business tax basics for startup founders.
@@ -431,9 +449,11 @@ Stripe Atlas doesn't provide legal, tax, or accounting advice. If you have any u
 - [File Section 83(b) elections as a non-US founder](https://docs.stripe.com/atlas/83b-elections-non-us-founders.md): Learn about filing an 83(b) election as a non-US founder.
 
 ## Financial Connections
+
 Stripe Financial Connections allows users to securely share their financial data with your business. You can use one integration to instantly verify bank accounts for ACH payments, reduce underwriting risk with [balances](https://docs.stripe.com/financial-connections/balances.md) data, mitigate fraud by verifying account [ownership](https://docs.stripe.com/financial-connections/ownership.md) details, and build new fintech products with [transactions](https://docs.stripe.com/financial-connections/transactions.md) data.
 
 Financial Connections enables your users to connect their accounts in fewer steps with [Link](https://support.stripe.com/questions/link-for-financial-connections-support-for-businesses), allowing them to save and quickly reuse their bank account details across Stripe businesses.
+
 - [Collect a bank account to use ACH Direct Debit payments with account data](https://docs.stripe.com/financial-connections/ach-direct-debit-payments.md): Use account data such as balances with your payments integration.
 - [Financial Connections use cases](https://docs.stripe.com/financial-connections/use-cases.md): View options for integrating Financial Connections and common use cases.
 - [Financial Connections fundamentals](https://docs.stripe.com/financial-connections/fundamentals.md): Learn how Financial Connections works.
@@ -443,6 +463,7 @@ Financial Connections enables your users to connect their accounts in fewer step
 - [Disconnect a Financial Connections account](https://docs.stripe.com/financial-connections/disconnections.md): Use the Disconnect API to unlink customer bank accounts.
 
 ## Revenue Recognition
+
 Automate your accrual accounting process with Stripe Revenue Recognition.Revenue recognition is a fundamental part of accrual accounting. Generally accepted accounting principles (GAAP) state that you recognize revenue when you realize and earn it, which might be earlier or later than when you actually receive cash. Correctly recognizing and deferring revenue enables you to have the most accurate insights into your business profitability and financial health. Revenue recognition is critical for many types of businesses, especially: Public companies or large businesses with over 25 million USD in annual revenue—because they're legally required to comply with ASC 606 and GAAP and IFRS accounting standards, Startups that need to follow accrual accounting to raise money from investors or get a loan from a bank, Subscription and service-based businesses and Businesses where customers pay up front before receiving a good or service.
 
 - [How revenue recognition works](https://docs.stripe.com/revenue-recognition/methodology.md): Learn how revenue recognition works within Stripe.
@@ -476,7 +497,8 @@ Automate your accrual accounting process with Stripe Revenue Recognition.Revenue
 - [Custom reports by Sigma and SDP](https://docs.stripe.com/revenue-recognition/reports/sigma-and-sdp.md): Learn how to build your own Revenue Recognition reports using Sigma and SDP.
 
 ## Treasury
-Learn how to provide financial services to connected accounts. Stripe Treasury is an embedded finance API for Stripe *Connect* platforms that allows you to embed financial services in your product. Stripe provides the infrastructure in partnership with trusted banks. Use Treasury to enable your connected accounts to hold funds, pay bills, earn cash back, and manage their cash flow. Many platforms using Connect also use [Stripe Issuing](https://docs.stripe.com/issuing.md) to issue cards for accessing Treasury accounts. To learn more about Treasury, see its [features](#features).
+
+Learn how to provide financial services to connected accounts. Stripe Treasury is an embedded finance API for Stripe _Connect_ platforms that allows you to embed financial services in your product. Stripe provides the infrastructure in partnership with trusted banks. Use Treasury to enable your connected accounts to hold funds, pay bills, earn cash back, and manage their cash flow. Many platforms using Connect also use [Stripe Issuing](https://docs.stripe.com/issuing.md) to issue cards for accessing Treasury accounts. To learn more about Treasury, see its [features](#features).
 
 - [Financial Accounts for platforms requirements](https://docs.stripe.com/financial-accounts/connect/requirements.md): Understand the requirements for using Stripe Financial Accounts for platforms.
 - [Using Financial Accounts for platforms to move money](https://docs.stripe.com/financial-accounts/connect/examples/moving-money.md): Learn how to use SetupIntents and PaymentMethods, and how to verify bank accounts with Financial Accounts for platforms.
@@ -517,9 +539,8 @@ Learn how to provide financial services to connected accounts. Stripe Treasury i
 - [Test a remote check acceptance integration](https://docs.stripe.com/financial-accounts/connect/money-movement/remote-check-acceptance-testing.md): Use a sandbox to test your integration and transition statuses.
 - [Remote check acceptance review guidelines](https://docs.stripe.com/financial-accounts/connect/money-movement/remote-check-acceptance-review-guide.md): Learn best practices for reviewing checks.
 
-
-
 ## Sigma
+
 Use Sigma to generate custom reports for charges, refunds, disputes, and more.
 
 The available data within Sigma is read-only. Queries can't modify existing data or create new transactions.
@@ -527,6 +548,7 @@ The available data within Sigma is read-only. Queries can't modify existing data
 [Sigma](https://dashboard.stripe.com/sigma/queries) makes all your transactional data available within an interactive SQL environment in the Stripe Dashboard. It lets you create fully customized [reports](https://docs.stripe.com/stripe-reports.md) using information about your payments, subscriptions, customers, payouts, and so on.
 
 With Sigma, you can:
+
 - Get information that best reflects your business and Stripe integration.
 - Export in CSV format to import into your tools.
 - Fetch data on a schedule of your choosing.
@@ -537,6 +559,7 @@ With Sigma, you can:
 - [Migrate queries](https://docs.stripe.com/stripe-data/migrate-queries.md): Migrate your Sigma queries from Presto to Trino.
 
 ## Payment Links
+
 Sell online without building a digital storefront.
 
 Accept a payment or sell subscriptions without building additional standalone websites or applications with Payment Links. Share the link as many times as you want on social media, in emails, or on your website.
@@ -549,6 +572,7 @@ Payment Links supports [more than 20 payment methods](https://docs.stripe.com/pa
 - [The Payment Link object](https://docs.stripe.com/api/payment-link/object.md)
 
 ## Radar
+
 Use Stripe Radar to protect your business against fraud.
 
 [Stripe Radar](https://docs.stripe.com/radar.md) provides real-time fraud protection and requires no additional development time. [Radar for Fraud Teams](https://stripe.com/radar/fraud-teams) adds customization capabilities and deeper insights and trend analysis for your business.
@@ -582,8 +606,8 @@ Radar evaluates transactions in real-time, using machine learning algorithms to 
 - [Fraud insights](https://docs.stripe.com/radar/analytics/fraud-insights.md): Review fraud trends specific to your business so you can tailor your strategy.
 - [Visa compliance disputes](https://docs.stripe.com/disputes/api/visa-compliance.md): Use the API to respond to Visa compliance disputes.
 
-
 ## Terminal
+
 Use Stripe Terminal to accept in-person payments and extend Stripe payments to your point of sale.
 
 Stripe Terminal allows businesses to accept in-person card payments using card readers. You can manage both in-person payments and online payments in a unified system in the [Dashboard](https://dashboard.stripe.com/). You can also integrate Terminal with your [Connect platform](#platform).
@@ -610,5 +634,6 @@ Learn more about Terminal's [features](https://docs.stripe.com/terminal.md#featu
 - [Terminal SDK migration guide](https://docs.stripe.com/terminal/references/sdk-migration-guide.md): Learn how to migrate to version 5.0.0 of the Stripe Terminal SDK.
 
 ## Optional
+
 - [Support](https://support.stripe.com)
 - [Changelog](https://docs.stripe.com/changelog.md): Keep track of changes and upgrades to the Stripe API.

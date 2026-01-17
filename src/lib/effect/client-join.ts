@@ -1,7 +1,9 @@
-import { Effect } from "effect";
-import { auth } from "@/src/utils/firebase";
-import { AuthError } from "./errors";
-import { createAccount } from "./client-signup";
+import {Effect} from 'effect';
+
+import {auth} from '@/src/utils/firebase';
+
+import {createAccount} from './client-signup';
+import {AuthError} from './errors';
 
 export interface JoinRequest {
   email: string;
@@ -22,26 +24,26 @@ export interface JoinResult {
 const createFirestoreUser = (
   idToken: string,
   name?: string,
-): Effect.Effect<{ success: boolean; userId: string }, AuthError> =>
+): Effect.Effect<{success: boolean; userId: string}, AuthError> =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, name }),
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({idToken, name}),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create user in Firestore");
+        throw new Error(data.error || 'Failed to create user in Firestore');
       }
 
       return response.json();
     },
     catch: (error) =>
       new AuthError({
-        code: "FIRESTORE_USER_CREATE_FAILED",
-        message: error instanceof Error ? error.message : "Failed to create user in Firestore",
+        code: 'FIRESTORE_USER_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create user in Firestore',
         cause: error,
       }),
   });
@@ -55,12 +57,12 @@ const createCheckoutSession = (params: {
   cancelUrl: string;
   coverFees: boolean;
   planPrice: number;
-}): Effect.Effect<{ sessionId: string; url: string }, AuthError> =>
+}): Effect.Effect<{sessionId: string; url: string}, AuthError> =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           priceId: params.priceId,
           userId: params.userId,
@@ -74,15 +76,15 @@ const createCheckoutSession = (params: {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create checkout session");
+        throw new Error(data.error || 'Failed to create checkout session');
       }
 
       return response.json();
     },
     catch: (error) =>
       new AuthError({
-        code: "CHECKOUT_CREATE_FAILED",
-        message: error instanceof Error ? error.message : "Failed to create checkout session",
+        code: 'CHECKOUT_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create checkout session',
         cause: error,
       }),
   });
@@ -102,14 +104,14 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
       try: async () => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
-          throw new Error("User not authenticated after signup");
+          throw new Error('User not authenticated after signup');
         }
         return currentUser.getIdToken();
       },
       catch: (error) =>
         new AuthError({
-          code: "TOKEN_GET_FAILED",
-          message: "Failed to get authentication token",
+          code: 'TOKEN_GET_FAILED',
+          message: 'Failed to get authentication token',
           cause: error,
         }),
     });
@@ -128,5 +130,5 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
       planPrice: request.planPrice,
     });
 
-    return { checkoutUrl: checkout.url };
+    return {checkoutUrl: checkout.url};
   });

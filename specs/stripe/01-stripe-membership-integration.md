@@ -159,33 +159,33 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 Create `src/lib/effect/errors.ts`:
 
 ```typescript
-import { Data } from "effect";
+import {Data} from 'effect';
 
 // Tagged errors for granular handling with Effect.catchTag
-export class StripeError extends Data.TaggedError("StripeError")<{
+export class StripeError extends Data.TaggedError('StripeError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class FirestoreError extends Data.TaggedError("FirestoreError")<{
+export class FirestoreError extends Data.TaggedError('FirestoreError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class ValidationError extends Data.TaggedError("ValidationError")<{
+export class ValidationError extends Data.TaggedError('ValidationError')<{
   readonly field: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class NotFoundError extends Data.TaggedError("NotFoundError")<{
+export class NotFoundError extends Data.TaggedError('NotFoundError')<{
   readonly resource: string;
   readonly id: string;
 }> {}
 
-export class UnauthorizedError extends Data.TaggedError("UnauthorizedError")<{
+export class UnauthorizedError extends Data.TaggedError('UnauthorizedError')<{
   readonly message: string;
 }> {}
 
@@ -203,22 +203,22 @@ export type AppError =
 Create `src/lib/effect/schemas.ts`:
 
 ```typescript
-import { Schema as S } from "@effect/schema";
+import {Schema as S} from '@effect/schema';
 
 // Membership status enum
 export const MembershipStatus = S.Literal(
-  "active",
-  "past_due",
-  "canceled",
-  "incomplete",
-  "incomplete_expired",
-  "trialing",
-  "unpaid"
+  'active',
+  'past_due',
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'trialing',
+  'unpaid',
 );
 export type MembershipStatus = S.Schema.Type<typeof MembershipStatus>;
 
 // Plan type enum
-export const PlanType = S.Literal("individual", "family");
+export const PlanType = S.Literal('individual', 'family');
 export type PlanType = S.Schema.Type<typeof PlanType>;
 
 // Address schema
@@ -263,7 +263,7 @@ export const MembershipPlanDocument = S.Struct({
   description: S.String,
   stripePriceId: S.String,
   price: S.Number,
-  interval: S.Literal("year", "month"),
+  interval: S.Literal('year', 'month'),
   benefits: S.Array(S.String),
   isActive: S.Boolean,
   sortOrder: S.Number,
@@ -298,7 +298,7 @@ export const MembershipStatusResponse = S.Struct({
       status: MembershipStatus,
       endDate: S.String, // ISO date string
       autoRenew: S.Boolean,
-    })
+    }),
   ),
 });
 export type MembershipStatusResponse = S.Schema.Type<typeof MembershipStatusResponse>;
@@ -319,39 +319,37 @@ export type StripeWebhookEvent = S.Schema.Type<typeof StripeWebhookEvent>;
 Create `src/lib/effect/stripe.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import { Schema as S } from "@effect/schema";
-import Stripe from "stripe";
-import { StripeError, ValidationError } from "./errors";
-import { CheckoutSessionRequest } from "./schemas";
+import {Context, Effect, Layer} from 'effect';
+import {Schema as S} from '@effect/schema';
+import Stripe from 'stripe';
+import {StripeError, ValidationError} from './errors';
+import {CheckoutSessionRequest} from './schemas';
 
 // Service interface
 export interface StripeService {
   readonly createCheckoutSession: (
-    params: S.Schema.Type<typeof CheckoutSessionRequest>
+    params: S.Schema.Type<typeof CheckoutSessionRequest>,
   ) => Effect.Effect<Stripe.Checkout.Session, StripeError | ValidationError>;
 
   readonly retrieveSubscription: (
-    subscriptionId: string
+    subscriptionId: string,
   ) => Effect.Effect<Stripe.Subscription, StripeError>;
 
   readonly verifyWebhookSignature: (
     body: string,
-    signature: string
+    signature: string,
   ) => Effect.Effect<Stripe.Event, StripeError>;
 
-  readonly getCustomer: (
-    customerId: string
-  ) => Effect.Effect<Stripe.Customer, StripeError>;
+  readonly getCustomer: (customerId: string) => Effect.Effect<Stripe.Customer, StripeError>;
 }
 
 // Service tag
-export const StripeService = Context.GenericTag<StripeService>("StripeService");
+export const StripeService = Context.GenericTag<StripeService>('StripeService');
 
 // Valid price IDs
 const VALID_PRICE_IDS = [
-  "price_1SWflzFmXLvhjtKwhFF4WM5Z", // Individual
-  "price_1SWfg7FmXLvhjtKwoDzxhEZ6", // Family
+  'price_1SWflzFmXLvhjtKwhFF4WM5Z', // Individual
+  'price_1SWfg7FmXLvhjtKwoDzxhEZ6', // Family
 ];
 
 // Implementation using Effect.gen for complex flows
@@ -360,14 +358,14 @@ const make = Effect.gen(function* () {
   if (!secretKey) {
     return yield* Effect.fail(
       new StripeError({
-        code: "MISSING_CONFIG",
-        message: "STRIPE_SECRET_KEY environment variable is not set",
-      })
+        code: 'MISSING_CONFIG',
+        message: 'STRIPE_SECRET_KEY environment variable is not set',
+      }),
     );
   }
 
   const stripe = new Stripe(secretKey, {
-    apiVersion: "2024-12-18.acacia",
+    apiVersion: '2024-12-18.acacia',
     typescript: true,
   });
 
@@ -380,9 +378,9 @@ const make = Effect.gen(function* () {
         if (!VALID_PRICE_IDS.includes(params.priceId)) {
           return yield* Effect.fail(
             new ValidationError({
-              field: "priceId",
-              message: "Invalid price ID",
-            })
+              field: 'priceId',
+              message: 'Invalid price ID',
+            }),
           );
         }
 
@@ -390,30 +388,30 @@ const make = Effect.gen(function* () {
         if (!params.userId && !params.email) {
           return yield* Effect.fail(
             new ValidationError({
-              field: "email",
-              message: "Either userId or email is required",
-            })
+              field: 'email',
+              message: 'Either userId or email is required',
+            }),
           );
         }
 
         return yield* Effect.tryPromise({
           try: () =>
             stripe.checkout.sessions.create({
-              mode: "subscription",
-              payment_method_types: ["card"],
-              line_items: [{ price: params.priceId, quantity: 1 }],
+              mode: 'subscription',
+              payment_method_types: ['card'],
+              line_items: [{price: params.priceId, quantity: 1}],
               customer_email: params.email,
               success_url: params.successUrl,
               cancel_url: params.cancelUrl,
-              metadata: { userId: params.userId || "" },
+              metadata: {userId: params.userId || ''},
               subscription_data: {
-                metadata: { userId: params.userId || "" },
+                metadata: {userId: params.userId || ''},
               },
             }),
           catch: (error) =>
             new StripeError({
-              code: "SESSION_CREATE_FAILED",
-              message: "Failed to create checkout session",
+              code: 'SESSION_CREATE_FAILED',
+              message: 'Failed to create checkout session',
               cause: error,
             }),
         });
@@ -424,7 +422,7 @@ const make = Effect.gen(function* () {
         try: () => stripe.subscriptions.retrieve(subscriptionId),
         catch: (error) =>
           new StripeError({
-            code: "SUBSCRIPTION_RETRIEVE_FAILED",
+            code: 'SUBSCRIPTION_RETRIEVE_FAILED',
             message: `Failed to retrieve subscription ${subscriptionId}`,
             cause: error,
           }),
@@ -434,14 +432,14 @@ const make = Effect.gen(function* () {
       Effect.try({
         try: () => {
           if (!webhookSecret) {
-            throw new Error("STRIPE_WEBHOOK_SECRET not configured");
+            throw new Error('STRIPE_WEBHOOK_SECRET not configured');
           }
           return stripe.webhooks.constructEvent(body, signature, webhookSecret);
         },
         catch: (error) =>
           new StripeError({
-            code: "WEBHOOK_VERIFY_FAILED",
-            message: "Failed to verify webhook signature",
+            code: 'WEBHOOK_VERIFY_FAILED',
+            message: 'Failed to verify webhook signature',
             cause: error,
           }),
       }),
@@ -451,7 +449,7 @@ const make = Effect.gen(function* () {
         try: () => stripe.customers.retrieve(customerId) as Promise<Stripe.Customer>,
         catch: (error) =>
           new StripeError({
-            code: "CUSTOMER_RETRIEVE_FAILED",
+            code: 'CUSTOMER_RETRIEVE_FAILED',
             message: `Failed to retrieve customer ${customerId}`,
             cause: error,
           }),
@@ -468,68 +466,64 @@ export const StripeServiceLive = Layer.effect(StripeService, make);
 Create `src/lib/effect/firestore.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import { Firestore, FieldValue } from "@google-cloud/firestore";
-import { FirestoreError, NotFoundError } from "./errors";
-import type { UserDocument, MembershipDocument, MembershipPlanDocument } from "./schemas";
+import {Context, Effect, Layer} from 'effect';
+import {Firestore, FieldValue} from '@google-cloud/firestore';
+import {FirestoreError, NotFoundError} from './errors';
+import type {UserDocument, MembershipDocument, MembershipPlanDocument} from './schemas';
 
 // Collection names
 export const COLLECTIONS = {
-  USERS: "users",
-  MEMBERSHIPS: "memberships",
-  MEMBERSHIP_PLANS: "membershipPlans",
+  USERS: 'users',
+  MEMBERSHIPS: 'memberships',
+  MEMBERSHIP_PLANS: 'membershipPlans',
 } as const;
 
 // Service interface
 export interface FirestoreService {
-  readonly getUser: (
-    userId: string
-  ) => Effect.Effect<UserDocument | null, FirestoreError>;
+  readonly getUser: (userId: string) => Effect.Effect<UserDocument | null, FirestoreError>;
 
-  readonly getUserByEmail: (
-    email: string
-  ) => Effect.Effect<UserDocument | null, FirestoreError>;
+  readonly getUserByEmail: (email: string) => Effect.Effect<UserDocument | null, FirestoreError>;
 
   readonly getUserByStripeCustomerId: (
-    customerId: string
+    customerId: string,
   ) => Effect.Effect<UserDocument | null, FirestoreError>;
 
   readonly setUser: (
     userId: string,
     data: Partial<UserDocument>,
-    merge?: boolean
+    merge?: boolean,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly getMembership: (
     userId: string,
-    membershipId: string
+    membershipId: string,
   ) => Effect.Effect<MembershipDocument | null, FirestoreError>;
 
   readonly getActiveMembership: (
-    userId: string
+    userId: string,
   ) => Effect.Effect<MembershipDocument | null, FirestoreError>;
 
   readonly setMembership: (
     userId: string,
     membershipId: string,
-    data: Omit<MembershipDocument, "id">
+    data: Omit<MembershipDocument, 'id'>,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly updateMembership: (
     userId: string,
     membershipId: string,
-    data: Partial<MembershipDocument>
+    data: Partial<MembershipDocument>,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly getPlans: () => Effect.Effect<MembershipPlanDocument[], FirestoreError>;
 
   readonly getPlan: (
-    planId: string
+    planId: string,
   ) => Effect.Effect<MembershipPlanDocument | null, FirestoreError>;
 }
 
 // Service tag
-export const FirestoreService = Context.GenericTag<FirestoreService>("FirestoreService");
+export const FirestoreService = Context.GenericTag<FirestoreService>('FirestoreService');
 
 // Create Firestore instance
 const createFirestoreInstance = (): Firestore => {
@@ -537,7 +531,7 @@ const createFirestoreInstance = (): Firestore => {
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
     },
   });
 };
@@ -552,11 +546,11 @@ const make = Effect.sync(() => {
         try: async () => {
           const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_FAILED",
+            code: 'GET_USER_FAILED',
             message: `Failed to get user ${userId}`,
             cause: error,
           }),
@@ -567,16 +561,16 @@ const make = Effect.sync(() => {
         try: async () => {
           const snapshot = await db
             .collection(COLLECTIONS.USERS)
-            .where("email", "==", email)
+            .where('email', '==', email)
             .limit(1)
             .get();
           if (snapshot.empty) return null;
           const doc = snapshot.docs[0];
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_BY_EMAIL_FAILED",
+            code: 'GET_USER_BY_EMAIL_FAILED',
             message: `Failed to get user by email ${email}`,
             cause: error,
           }),
@@ -587,16 +581,16 @@ const make = Effect.sync(() => {
         try: async () => {
           const snapshot = await db
             .collection(COLLECTIONS.USERS)
-            .where("stripeCustomerId", "==", customerId)
+            .where('stripeCustomerId', '==', customerId)
             .limit(1)
             .get();
           if (snapshot.empty) return null;
           const doc = snapshot.docs[0];
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_BY_CUSTOMER_ID_FAILED",
+            code: 'GET_USER_BY_CUSTOMER_ID_FAILED',
             message: `Failed to get user by Stripe customer ID ${customerId}`,
             cause: error,
           }),
@@ -605,16 +599,19 @@ const make = Effect.sync(() => {
     setUser: (userId, data, merge = true) =>
       Effect.tryPromise({
         try: () =>
-          db.collection(COLLECTIONS.USERS).doc(userId).set(
-            {
-              ...data,
-              updatedAt: FieldValue.serverTimestamp(),
-            },
-            { merge }
-          ),
+          db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .set(
+              {
+                ...data,
+                updatedAt: FieldValue.serverTimestamp(),
+              },
+              {merge},
+            ),
         catch: (error) =>
           new FirestoreError({
-            code: "SET_USER_FAILED",
+            code: 'SET_USER_FAILED',
             message: `Failed to set user ${userId}`,
             cause: error,
           }),
@@ -630,11 +627,11 @@ const make = Effect.sync(() => {
             .doc(membershipId)
             .get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as MembershipDocument;
+          return {id: doc.id, ...doc.data()} as MembershipDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_MEMBERSHIP_FAILED",
+            code: 'GET_MEMBERSHIP_FAILED',
             message: `Failed to get membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -647,17 +644,17 @@ const make = Effect.sync(() => {
             .collection(COLLECTIONS.USERS)
             .doc(userId)
             .collection(COLLECTIONS.MEMBERSHIPS)
-            .where("status", "in", ["active", "trialing", "past_due"])
-            .orderBy("endDate", "desc")
+            .where('status', 'in', ['active', 'trialing', 'past_due'])
+            .orderBy('endDate', 'desc')
             .limit(1)
             .get();
           if (snapshot.empty) return null;
           const doc = snapshot.docs[0];
-          return { id: doc.id, ...doc.data() } as MembershipDocument;
+          return {id: doc.id, ...doc.data()} as MembershipDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_ACTIVE_MEMBERSHIP_FAILED",
+            code: 'GET_ACTIVE_MEMBERSHIP_FAILED',
             message: `Failed to get active membership for user ${userId}`,
             cause: error,
           }),
@@ -678,7 +675,7 @@ const make = Effect.sync(() => {
             }),
         catch: (error) =>
           new FirestoreError({
-            code: "SET_MEMBERSHIP_FAILED",
+            code: 'SET_MEMBERSHIP_FAILED',
             message: `Failed to set membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -698,7 +695,7 @@ const make = Effect.sync(() => {
             }),
         catch: (error) =>
           new FirestoreError({
-            code: "UPDATE_MEMBERSHIP_FAILED",
+            code: 'UPDATE_MEMBERSHIP_FAILED',
             message: `Failed to update membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -709,17 +706,17 @@ const make = Effect.sync(() => {
         try: async () => {
           const snapshot = await db
             .collection(COLLECTIONS.MEMBERSHIP_PLANS)
-            .where("isActive", "==", true)
-            .orderBy("sortOrder", "asc")
+            .where('isActive', '==', true)
+            .orderBy('sortOrder', 'asc')
             .get();
           return snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as MembershipPlanDocument
+            (doc) => ({id: doc.id, ...doc.data()}) as MembershipPlanDocument,
           );
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_PLANS_FAILED",
-            message: "Failed to get membership plans",
+            code: 'GET_PLANS_FAILED',
+            message: 'Failed to get membership plans',
             cause: error,
           }),
       }),
@@ -727,16 +724,13 @@ const make = Effect.sync(() => {
     getPlan: (planId) =>
       Effect.tryPromise({
         try: async () => {
-          const doc = await db
-            .collection(COLLECTIONS.MEMBERSHIP_PLANS)
-            .doc(planId)
-            .get();
+          const doc = await db.collection(COLLECTIONS.MEMBERSHIP_PLANS).doc(planId).get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as MembershipPlanDocument;
+          return {id: doc.id, ...doc.data()} as MembershipPlanDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_PLAN_FAILED",
+            code: 'GET_PLAN_FAILED',
             message: `Failed to get plan ${planId}`,
             cause: error,
           }),
@@ -753,67 +747,61 @@ export const FirestoreServiceLive = Layer.effect(FirestoreService, make);
 Create `src/lib/effect/membership.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe } from "effect";
-import { Schema as S } from "@effect/schema";
-import type Stripe from "stripe";
-import { StripeService } from "./stripe.service";
-import { FirestoreService, COLLECTIONS } from "./firestore.service";
-import {
-  StripeError,
-  FirestoreError,
-  ValidationError,
-  NotFoundError,
-} from "./errors";
+import {Context, Effect, Layer, pipe} from 'effect';
+import {Schema as S} from '@effect/schema';
+import type Stripe from 'stripe';
+import {StripeService} from './stripe.service';
+import {FirestoreService, COLLECTIONS} from './firestore.service';
+import {StripeError, FirestoreError, ValidationError, NotFoundError} from './errors';
 import {
   CheckoutSessionRequest,
   CheckoutSessionResponse,
   MembershipStatusResponse,
   MembershipStatus,
-} from "./schemas";
+} from './schemas';
 
 // Price ID to plan type mapping
-const PRICE_TO_PLAN: Record<string, "individual" | "family"> = {
-  "price_1SWflzFmXLvhjtKwhFF4WM5Z": "individual",
-  "price_1SWfg7FmXLvhjtKwoDzxhEZ6": "family",
+const PRICE_TO_PLAN: Record<string, 'individual' | 'family'> = {
+  price_1SWflzFmXLvhjtKwhFF4WM5Z: 'individual',
+  price_1SWfg7FmXLvhjtKwoDzxhEZ6: 'family',
 };
 
 // Service interface
 export interface MembershipService {
   readonly createCheckoutSession: (
-    request: S.Schema.Type<typeof CheckoutSessionRequest>
+    request: S.Schema.Type<typeof CheckoutSessionRequest>,
   ) => Effect.Effect<
     S.Schema.Type<typeof CheckoutSessionResponse>,
     StripeError | FirestoreError | ValidationError
   >;
 
   readonly processCheckoutCompleted: (
-    session: Stripe.Checkout.Session
+    session: Stripe.Checkout.Session,
   ) => Effect.Effect<void, StripeError | FirestoreError>;
 
   readonly processSubscriptionUpdated: (
-    subscription: Stripe.Subscription
+    subscription: Stripe.Subscription,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly processSubscriptionDeleted: (
-    subscription: Stripe.Subscription
+    subscription: Stripe.Subscription,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly getMembershipStatus: (
-    userId: string
+    userId: string,
   ) => Effect.Effect<
     S.Schema.Type<typeof MembershipStatusResponse>,
     FirestoreError | NotFoundError
   >;
 
   readonly getPlans: () => Effect.Effect<
-    Array<{ id: string; name: string; price: number; benefits: string[] }>,
+    Array<{id: string; name: string; price: number; benefits: string[]}>,
     FirestoreError
   >;
 }
 
 // Service tag
-export const MembershipService =
-  Context.GenericTag<MembershipService>("MembershipService");
+export const MembershipService = Context.GenericTag<MembershipService>('MembershipService');
 
 // Implementation - depends on StripeService and FirestoreService
 const make = Effect.gen(function* () {
@@ -827,7 +815,7 @@ const make = Effect.gen(function* () {
         // Step 1: Validate request using Effect Schema
         Effect.succeed(request),
         Effect.tap(() =>
-          Effect.log(`Creating checkout session for ${request.email || request.userId}`)
+          Effect.log(`Creating checkout session for ${request.email || request.userId}`),
         ),
 
         // Step 2: Look up existing user if userId provided
@@ -839,13 +827,13 @@ const make = Effect.gen(function* () {
                   ...req,
                   stripeCustomerId: user?.stripeCustomerId,
                   customerEmail: user?.email || req.email,
-                }))
+                })),
               )
             : Effect.succeed({
                 ...req,
                 stripeCustomerId: undefined,
                 customerEmail: req.email,
-              })
+              }),
         ),
 
         // Step 3: Create Stripe checkout session
@@ -856,7 +844,7 @@ const make = Effect.gen(function* () {
             email: enrichedRequest.customerEmail,
             successUrl: enrichedRequest.successUrl,
             cancelUrl: enrichedRequest.cancelUrl,
-          })
+          }),
         ),
 
         // Step 4: Transform to response
@@ -865,9 +853,7 @@ const make = Effect.gen(function* () {
           url: session.url!,
         })),
 
-        Effect.tap((response) =>
-          Effect.log(`Checkout session created: ${response.sessionId}`)
-        )
+        Effect.tap((response) => Effect.log(`Checkout session created: ${response.sessionId}`)),
       ),
 
     // Webhook: checkout.session.completed
@@ -875,18 +861,17 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
-        const customerEmail =
-          session.customer_email || session.customer_details?.email;
+        const customerEmail = session.customer_email || session.customer_details?.email;
         const userId = session.metadata?.userId;
 
         yield* Effect.log(
-          `Processing checkout completed for ${customerEmail}, subscription ${subscriptionId}`
+          `Processing checkout completed for ${customerEmail}, subscription ${subscriptionId}`,
         );
 
         // Retrieve subscription details
         const subscription = yield* stripe.retrieveSubscription(subscriptionId);
         const priceId = subscription.items.data[0]?.price.id;
-        const planType = PRICE_TO_PLAN[priceId] || "individual";
+        const planType = PRICE_TO_PLAN[priceId] || 'individual';
 
         // Find or create user
         let userDocId = userId;
@@ -900,7 +885,7 @@ const make = Effect.gen(function* () {
         // Update user document
         yield* firestore.setUser(userDocId, {
           id: userDocId,
-          email: customerEmail || "",
+          email: customerEmail || '',
           stripeCustomerId: customerId,
           createdAt: new Date() as any,
         });
@@ -918,7 +903,7 @@ const make = Effect.gen(function* () {
         });
 
         yield* Effect.log(
-          `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`
+          `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`,
         );
       }),
 
@@ -963,7 +948,7 @@ const make = Effect.gen(function* () {
         }
 
         yield* firestore.updateMembership(user.id, subscriptionId, {
-          status: "canceled",
+          status: 'canceled',
           autoRenew: false,
         });
 
@@ -976,28 +961,27 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "user", id: userId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         const membership = yield* firestore.getActiveMembership(userId);
 
-        let membershipData: MembershipStatusResponse["membership"] = null;
+        let membershipData: MembershipStatusResponse['membership'] = null;
 
         if (membership) {
           const plan = yield* firestore.getPlan(membership.planType);
           const planName =
             plan?.name ||
-            (membership.planType === "family"
-              ? "Family Annual Membership"
-              : "Individual Annual Membership");
+            (membership.planType === 'family'
+              ? 'Family Annual Membership'
+              : 'Individual Annual Membership');
 
           membershipData = {
             planType: membership.planType,
             planName,
             status: membership.status,
-            endDate: membership.endDate.toDate?.()?.toISOString() ||
+            endDate:
+              membership.endDate.toDate?.()?.toISOString() ||
               new Date(membership.endDate as any).toISOString(),
             autoRenew: membership.autoRenew,
           };
@@ -1006,9 +990,7 @@ const make = Effect.gen(function* () {
         return {
           userId,
           email: user.email,
-          isActive:
-            membershipData?.status === "active" ||
-            membershipData?.status === "trialing",
+          isActive: membershipData?.status === 'active' || membershipData?.status === 'trialing',
           membership: membershipData,
         };
       }),
@@ -1023,8 +1005,8 @@ const make = Effect.gen(function* () {
             name: p.name,
             price: p.price,
             benefits: p.benefits,
-          }))
-        )
+          })),
+        ),
       ),
   });
 });
@@ -1038,16 +1020,16 @@ export const MembershipServiceLive = Layer.effect(MembershipService, make);
 Create `src/lib/effect/layers.ts`:
 
 ```typescript
-import { Layer } from "effect";
-import { StripeService, StripeServiceLive } from "./stripe.service";
-import { FirestoreService, FirestoreServiceLive } from "./firestore.service";
-import { MembershipService, MembershipServiceLive } from "./membership.service";
+import {Layer} from 'effect';
+import {StripeService, StripeServiceLive} from './stripe.service';
+import {FirestoreService, FirestoreServiceLive} from './firestore.service';
+import {MembershipService, MembershipServiceLive} from './membership.service';
 
 // Compose all live layers
 // Layer.provide handles the dependency injection
 export const LiveLayer = MembershipServiceLive.pipe(
   Layer.provide(StripeServiceLive),
-  Layer.provide(FirestoreServiceLive)
+  Layer.provide(FirestoreServiceLive),
 );
 
 // Type for services available in LiveLayer
@@ -1059,13 +1041,13 @@ export type LiveServices = StripeService | FirestoreService | MembershipService;
 Create `app/api/checkout/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { Schema as S } from "@effect/schema";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
-import { CheckoutSessionRequest } from "@/src/lib/effect/schemas";
-import { ValidationError, StripeError, FirestoreError } from "@/src/lib/effect/errors";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {Schema as S} from '@effect/schema';
+import {MembershipService} from '@/src/lib/effect/membership.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {CheckoutSessionRequest} from '@/src/lib/effect/schemas';
+import {ValidationError, StripeError, FirestoreError} from '@/src/lib/effect/errors';
 
 export async function POST(request: NextRequest) {
   // Parse request body
@@ -1078,10 +1060,10 @@ export async function POST(request: NextRequest) {
     Effect.mapError(
       (error) =>
         new ValidationError({
-          field: "body",
-          message: "Invalid request body",
+          field: 'body',
+          message: 'Invalid request body',
           cause: error,
-        })
+        }),
     ),
 
     // Step 2: Create checkout session
@@ -1089,46 +1071,41 @@ export async function POST(request: NextRequest) {
       Effect.gen(function* () {
         const membershipService = yield* MembershipService;
         return yield* membershipService.createCheckoutSession(validatedRequest);
-      })
+      }),
     ),
 
     // Step 3: Handle specific errors with catchTag
-    Effect.catchTag("ValidationError", (error) =>
+    Effect.catchTag('ValidationError', (error) =>
       Effect.succeed({
         error: error.message,
         field: error.field,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 400,
-      })
+      }),
     ),
-    Effect.catchTag("StripeError", (error) =>
+    Effect.catchTag('StripeError', (error) =>
       Effect.succeed({
         error: error.message,
         code: error.code,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
-      })
+      }),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
+    Effect.catchTag('FirestoreError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
   // Run with live services
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
   // Return appropriate response
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json(
-      { error: result.error },
-      { status: result.status }
-    );
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1140,24 +1117,21 @@ export async function POST(request: NextRequest) {
 Create `app/api/webhooks/stripe/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { headers } from "next/headers";
-import type Stripe from "stripe";
-import { StripeService } from "@/src/lib/effect/stripe.service";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {headers} from 'next/headers';
+import type Stripe from 'stripe';
+import {StripeService} from '@/src/lib/effect/stripe.service';
+import {MembershipService} from '@/src/lib/effect/membership.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const headersList = await headers();
-  const signature = headersList.get("stripe-signature");
+  const signature = headersList.get('stripe-signature');
 
   if (!signature) {
-    return NextResponse.json(
-      { error: "Missing stripe-signature header" },
-      { status: 400 }
-    );
+    return NextResponse.json({error: 'Missing stripe-signature header'}, {status: 400});
   }
 
   // Define the webhook processing pipeline
@@ -1176,19 +1150,19 @@ export async function POST(request: NextRequest) {
         yield* Effect.log(`Processing webhook event: ${event.type}`);
 
         switch (event.type) {
-          case "checkout.session.completed": {
+          case 'checkout.session.completed': {
             const session = event.data.object as Stripe.Checkout.Session;
             yield* membershipService.processCheckoutCompleted(session);
             break;
           }
 
-          case "customer.subscription.updated": {
+          case 'customer.subscription.updated': {
             const subscription = event.data.object as Stripe.Subscription;
             yield* membershipService.processSubscriptionUpdated(subscription);
             break;
           }
 
-          case "customer.subscription.deleted": {
+          case 'customer.subscription.deleted': {
             const subscription = event.data.object as Stripe.Subscription;
             yield* membershipService.processSubscriptionDeleted(subscription);
             break;
@@ -1198,28 +1172,26 @@ export async function POST(request: NextRequest) {
             yield* Effect.log(`Unhandled event type: ${event.type}`);
         }
 
-        return { received: true };
-      })
+        return {received: true};
+      }),
     ),
 
     // Step 3: Error handling
-    Effect.catchTag("StripeError", (error) => {
-      console.error("Stripe error in webhook:", error);
-      return Effect.succeed({ error: error.message, _tag: "error" as const, status: 400 });
+    Effect.catchTag('StripeError', (error) => {
+      console.error('Stripe error in webhook:', error);
+      return Effect.succeed({error: error.message, _tag: 'error' as const, status: 400});
     }),
-    Effect.catchTag("FirestoreError", (error) => {
-      console.error("Firestore error in webhook:", error);
-      return Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 });
-    })
+    Effect.catchTag('FirestoreError', (error) => {
+      console.error('Firestore error in webhook:', error);
+      return Effect.succeed({error: error.message, _tag: 'error' as const, status: 500});
+    }),
   );
 
   // Run with live services
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1231,20 +1203,20 @@ export async function POST(request: NextRequest) {
 Create `app/api/membership/[userId]/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {MembershipService} from '@/src/lib/effect/membership.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 interface RouteParams {
-  params: Promise<{ userId: string }>;
+  params: Promise<{userId: string}>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { userId } = await params;
+export async function GET(request: NextRequest, {params}: RouteParams) {
+  const {userId} = await params;
 
   if (!userId) {
-    return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    return NextResponse.json({error: 'User ID is required'}, {status: 400});
   }
 
   const program = pipe(
@@ -1253,28 +1225,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return yield* membershipService.getMembershipStatus(userId);
     }),
 
-    Effect.catchTag("NotFoundError", (error) =>
+    Effect.catchTag('NotFoundError', (error) =>
       Effect.succeed({
         error: `${error.resource} not found`,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 404,
-      })
+      }),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
+    Effect.catchTag('FirestoreError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1286,10 +1256,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 Create `app/api/membership/plans/route.ts`:
 
 ```typescript
-import { NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {MembershipService} from '@/src/lib/effect/membership.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 // In-memory cache for plans
 let cachedPlans: any[] | null = null;
@@ -1310,21 +1280,19 @@ export async function GET() {
       return yield* membershipService.getPlans();
     }),
 
-    Effect.catchTag("FirestoreError", (error) =>
+    Effect.catchTag('FirestoreError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   // Update cache
@@ -1391,8 +1359,8 @@ Create `firestore.indexes.json`:
       "collectionGroup": "memberships",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "endDate", "order": "DESCENDING" }
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "DESCENDING"}
       ]
     }
   ],
@@ -1407,7 +1375,7 @@ Update `middleware.ts:60-72` to exclude webhook routes:
 ```typescript
 export const config = {
   matcher: [
-    "/((?!api/trails|api/submit-form|api/webhooks|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    '/((?!api/trails|api/submit-form|api/webhooks|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };
 ```
@@ -1424,11 +1392,11 @@ export const config = {
 
 ### When to use Effect.pipe vs Effect.gen
 
-| Pattern | Use When | Example |
-|---------|----------|---------|
-| `Effect.pipe` | Simple linear transformations, mapping, error handling | `pipe(getData, Effect.map(transform), Effect.catchTag(...))` |
-| `Effect.gen` | Complex flows with multiple dependent operations, conditional logic | Webhook processing, checkout creation |
-| `Effect.all` | Parallel independent operations | Fetching user and plans simultaneously |
+| Pattern       | Use When                                                            | Example                                                      |
+| ------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `Effect.pipe` | Simple linear transformations, mapping, error handling              | `pipe(getData, Effect.map(transform), Effect.catchTag(...))` |
+| `Effect.gen`  | Complex flows with multiple dependent operations, conditional logic | Webhook processing, checkout creation                        |
+| `Effect.all`  | Parallel independent operations                                     | Fetching user and plans simultaneously                       |
 
 ### Error Handling Strategy
 

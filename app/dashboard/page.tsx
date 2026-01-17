@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {PeopleAlt, DirectionsBike, Event} from '@mui/icons-material';
 import {
   Container,
   Typography,
@@ -16,17 +15,19 @@ import {
   Tab,
   CircularProgress,
   Alert,
-} from "@mui/material";
-import { PeopleAlt, DirectionsBike, Event } from "@mui/icons-material";
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import TrailStatus from "@/src/components/TrailStatus";
-import TrailStatusEditor from "@/src/components/TrailStatusEditor";
-import { MembershipManagement } from "@/src/components/admin/MembershipManagement";
-import { useAuth } from "@/src/components/auth/AuthProvider";
-import { refreshStats } from "@/src/lib/effect/client-admin";
-import type { MembershipStats } from "@/src/lib/effect/schemas";
-import type { FirestoreError, UnauthorizedError } from "@/src/lib/effect/errors";
+} from '@mui/material';
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {useRouter} from 'next/navigation';
+import {useEffect, useState} from 'react';
+
+import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
+import {useAuth} from '@/src/components/auth/AuthProvider';
+import TrailStatus from '@/src/components/TrailStatus';
+import TrailStatusEditor from '@/src/components/TrailStatusEditor';
+import {refreshStats} from '@/src/lib/effect/client-admin';
+import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
+import type {MembershipStats} from '@/src/lib/effect/schemas';
 
 interface DashboardStats {
   totalMembers: number;
@@ -44,7 +45,7 @@ interface TabPanelProps {
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const {children, value, index, ...other} = props;
 
   return (
     <div
@@ -54,7 +55,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`dashboard-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{pt: 3}}>{children}</Box>}
     </div>
   );
 }
@@ -62,7 +63,7 @@ function TabPanel(props: TabPanelProps) {
 export default function DashboardPage() {
   const [tabValue, setTabValue] = useState(0);
   const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const {user, loading, signOut} = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
@@ -94,20 +95,20 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const response = await fetch("/api/admin/check");
+        const response = await fetch('/api/admin/check');
         const data = await response.json();
 
         if (!data.authenticated) {
           // Not authenticated at all
-          router.replace("/login");
+          router.replace('/login');
           return;
         }
 
         if (!data.isAdmin) {
           // Authenticated but not admin
-          setAuthError("You are not authorized to access this dashboard.");
+          setAuthError('You are not authorized to access this dashboard.');
           signOut().then(() => {
-            router.replace("/login");
+            router.replace('/login');
           });
           return;
         }
@@ -115,8 +116,8 @@ export default function DashboardPage() {
         // User is admin
         setIsAdmin(true);
       } catch (error) {
-        console.error("Failed to check admin status:", error);
-        setAuthError("Failed to verify admin access.");
+        console.error('Failed to check admin status:', error);
+        setAuthError('Failed to verify admin access.');
       } finally {
         setCheckingAdmin(false);
       }
@@ -125,15 +126,15 @@ export default function DashboardPage() {
     if (!loading && user) {
       checkAdminStatus();
     } else if (!loading && !user) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [user, loading, router, signOut]);
-  
+
   // Fetch dashboard stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch("/api/admin/stats");
+        const response = await fetch('/api/admin/stats');
         if (response.ok) {
           const data = await response.json();
           setDashboardStats((prev) => ({
@@ -143,7 +144,7 @@ export default function DashboardPage() {
           }));
         }
       } catch (error) {
-        console.error("Failed to fetch stats:", error);
+        console.error('Failed to fetch stats:', error);
       }
     };
 
@@ -162,10 +163,10 @@ export default function DashboardPage() {
     try {
       setIsLoggingOut(true);
       await signOut();
-      window.history.replaceState(null, "", "/");
-      router.replace("/");
+      window.history.replaceState(null, '', '/');
+      router.replace('/');
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error('Error signing out:', error);
     } finally {
       setIsLoggingOut(false);
     }
@@ -174,7 +175,7 @@ export default function DashboardPage() {
   if (loading || checkingAdmin) {
     return (
       <Container>
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <Box sx={{display: 'flex', justifyContent: 'center', mt: 8}}>
           <CircularProgress />
         </Box>
       </Container>
@@ -184,25 +185,25 @@ export default function DashboardPage() {
   if (authError || !isAdmin) {
     return (
       <Container>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: 8 }}>
+        <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8}}>
           <Typography color="error" variant="h6" gutterBottom>
-            {authError || "Access denied"}
+            {authError || 'Access denied'}
           </Typography>
           <Typography>You will be redirected to the login page.</Typography>
-          <CircularProgress sx={{ mt: 2 }} />
+          <CircularProgress sx={{mt: 2}} />
         </Box>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: { xs: 8, sm: 4 }, mb: 4 }}>
+    <Container maxWidth="lg" sx={{mt: {xs: 8, sm: 4}, mb: 4}}>
       <Box
         sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-start", sm: "center" },
+          display: 'flex',
+          flexDirection: {xs: 'column', sm: 'row'},
+          justifyContent: 'space-between',
+          alignItems: {xs: 'flex-start', sm: 'center'},
           mb: 4,
           gap: 2,
         }}
@@ -212,9 +213,9 @@ export default function DashboardPage() {
         </Typography>
         <Box
           sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: { xs: "flex-start", sm: "center" },
+            display: 'flex',
+            flexDirection: {xs: 'column', sm: 'row'},
+            alignItems: {xs: 'flex-start', sm: 'center'},
             gap: 2,
           }}
         >
@@ -222,23 +223,23 @@ export default function DashboardPage() {
             <Typography
               variant="body1"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                mr: { xs: 0, sm: 2 },
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                mr: {xs: 0, sm: 2},
               }}
             >
-              Welcome,{" "}
+              Welcome,{' '}
               <Typography
                 component="span"
                 variant="body1"
                 sx={{
-                  fontWeight: "bold",
+                  fontWeight: 'bold',
                   ml: 0.5,
                   mr: 1,
                 }}
               >
-                {user.displayName || user.email?.split("@")[0] || user.email}
+                {user.displayName || user.email?.split('@')[0] || user.email}
               </Typography>
             </Typography>
           )}
@@ -249,10 +250,10 @@ export default function DashboardPage() {
             disabled={isLoggingOut}
             startIcon={isLoggingOut ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{
-              minWidth: { xs: "100%", sm: "auto" },
+              minWidth: {xs: '100%', sm: 'auto'},
             }}
           >
-            {isLoggingOut ? "Logging Out..." : "Logout"}
+            {isLoggingOut ? 'Logging Out...' : 'Logout'}
           </Button>
         </Box>
       </Box>
@@ -260,7 +261,7 @@ export default function DashboardPage() {
       <Grid container spacing={3}>
         {/* Stats Section Header with Refresh Button */}
         <Grid item xs={12}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
             <Typography variant="h5" component="h2">
               Membership Overview
             </Typography>
@@ -270,12 +271,12 @@ export default function DashboardPage() {
               disabled={refreshStatsMutation.isPending}
               startIcon={refreshStatsMutation.isPending ? <CircularProgress size={20} /> : null}
             >
-              {refreshStatsMutation.isPending ? "Refreshing..." : "Refresh Stats"}
+              {refreshStatsMutation.isPending ? 'Refreshing...' : 'Refresh Stats'}
             </Button>
           </Box>
           {/* Error display for stats refresh */}
           {refreshStatsMutation.error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{mb: 2}}>
               {refreshStatsMutation.error.message}
             </Alert>
           )}
@@ -286,8 +287,8 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Total Members" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <PeopleAlt sx={{ fontSize: 40, mr: 2, color: "#1976d2" }} />
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <PeopleAlt sx={{fontSize: 40, mr: 2, color: '#1976d2'}} />
                 <Typography variant="h4">{dashboardStats.totalMembers}</Typography>
               </Box>
             </CardContent>
@@ -297,8 +298,8 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Active Members" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <PeopleAlt sx={{ fontSize: 40, mr: 2, color: "#2e7d32" }} />
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <PeopleAlt sx={{fontSize: 40, mr: 2, color: '#2e7d32'}} />
                 <Typography variant="h4">{dashboardStats.activeMembers}</Typography>
               </Box>
             </CardContent>
@@ -308,8 +309,8 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Trails" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <DirectionsBike sx={{ fontSize: 40, mr: 2 }} />
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <DirectionsBike sx={{fontSize: 40, mr: 2}} />
                 <Typography variant="h4">{dashboardStats.trails}</Typography>
               </Box>
             </CardContent>
@@ -319,8 +320,8 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Events" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Event sx={{ fontSize: 40, mr: 2 }} />
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <Event sx={{fontSize: 40, mr: 2}} />
                 <Typography variant="h6">Coming Soon</Typography>
               </Box>
             </CardContent>
@@ -329,7 +330,7 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{p: 3}}>
             <Typography variant="h5" gutterBottom>
               Welcome to the Down East Cyclists Admin Dashboard
             </Typography>
@@ -346,8 +347,8 @@ export default function DashboardPage() {
 
         {/* Management Sections */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Paper sx={{p: 3}}>
+            <Box sx={{borderBottom: 1, borderColor: 'divider'}}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="admin dashboard tabs">
                 <Tab
                   label="Membership Management"

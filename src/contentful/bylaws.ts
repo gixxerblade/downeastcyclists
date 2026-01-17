@@ -1,10 +1,12 @@
-import { TypeBylawSkeleton } from "@/src/contentful/types/TypeBylaw";
-import { Entry } from "contentful";
-import { client, getEntriesCached } from "./contentfulClient";
-import { documentToHtmlString } from "@contentful/rich-text-html-renderer";
-import { Document, BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { bylaws as localBylaws } from "@/src/data/bylaws";
-import React, { ReactNode } from "react";
+import {documentToHtmlString} from '@contentful/rich-text-html-renderer';
+import {Document, BLOCKS, INLINES, MARKS} from '@contentful/rich-text-types';
+import {Entry} from 'contentful';
+import React, {ReactNode} from 'react';
+
+import {TypeBylawSkeleton} from '@/src/contentful/types/TypeBylaw';
+import {bylaws as localBylaws} from '@/src/data/bylaws';
+
+import {client, getEntriesCached} from './contentfulClient';
 
 type BylawEntry = Entry<TypeBylawSkeleton, undefined, string>;
 
@@ -23,19 +25,19 @@ export const parseContentfulBylaw = (bylawEntry?: BylawEntry): Bylaw => {
     try {
       // If it's already a Document object, use it directly
       if (
-        typeof bylawEntry.fields.body === "object" &&
+        typeof bylawEntry.fields.body === 'object' &&
         bylawEntry.fields.body !== null &&
-        "nodeType" in bylawEntry.fields.body &&
-        bylawEntry.fields.body.nodeType === "document"
+        'nodeType' in bylawEntry.fields.body &&
+        bylawEntry.fields.body.nodeType === 'document'
       ) {
         richTextDocument = bylawEntry.fields.body as Document;
       }
       // If it's a string (JSON), parse it
-      else if (typeof bylawEntry.fields.body === "string") {
+      else if (typeof bylawEntry.fields.body === 'string') {
         richTextDocument = JSON.parse(bylawEntry.fields.body) as Document;
       }
     } catch (error) {
-      console.error("Error parsing rich text document:", error);
+      console.error('Error parsing rich text document:', error);
     }
   }
 
@@ -67,17 +69,17 @@ export const parseContentfulBylaw = (bylawEntry?: BylawEntry): Bylaw => {
           [BLOCKS.HEADING_6]: (node, next) =>
             `<h6 class="text-xs font-bold mt-3 mb-1">${next(node.content)}</h6>`,
           [INLINES.HYPERLINK]: (node, next) => {
-            const { uri } = node.data;
+            const {uri} = node.data;
             return `<a href="${uri}" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">${next(node.content)}</a>`;
           },
           [BLOCKS.EMBEDDED_ENTRY]: (node, next) =>
             `<div class="embedded-entry my-4">${next(node.content)}</div>`,
           [BLOCKS.EMBEDDED_ASSET]: (node) => {
-            const { target } = node.data;
+            const {target} = node.data;
             if (target?.fields?.file?.url) {
               return `<img src="${target.fields.file.url}" alt="${target.fields.description || target.fields.title}" class="max-w-full h-auto rounded my-4" />`;
             }
-            return "";
+            return '';
           },
           [BLOCKS.QUOTE]: (node, next) =>
             `<blockquote class="border-l-4 border-gray-300 pl-4 italic my-4">${next(node.content)}</blockquote>`,
@@ -94,14 +96,14 @@ export const parseContentfulBylaw = (bylawEntry?: BylawEntry): Bylaw => {
           [BLOCKS.DOCUMENT]: (node, next) => next(node.content),
         },
       })
-    : "";
+    : '';
 
   return {
-    id: bylawEntry?.fields.id || "",
-    title: bylawEntry?.fields.title || "",
+    id: bylawEntry?.fields.id || '',
+    title: bylawEntry?.fields.title || '',
     // Use dangerouslySetInnerHTML to render the HTML string
     body: htmlContent
-      ? React.createElement("div", { dangerouslySetInnerHTML: { __html: htmlContent } })
+      ? React.createElement('div', {dangerouslySetInnerHTML: {__html: htmlContent}})
       : null,
     order: bylawEntry?.fields.order || 0,
   };
@@ -110,8 +112,8 @@ export const parseContentfulBylaw = (bylawEntry?: BylawEntry): Bylaw => {
 export const fetchBylaws = async (): Promise<Bylaw[]> => {
   try {
     const bylawsResult = await getEntriesCached<TypeBylawSkeleton>({
-      content_type: "bylaws",
-      order: ["fields.order"], // Sort by order field
+      content_type: 'bylaws',
+      order: ['fields.order'], // Sort by order field
     });
 
     if (bylawsResult.items.length > 0) {
@@ -121,18 +123,18 @@ export const fetchBylaws = async (): Promise<Bylaw[]> => {
     // If no Contentful data, fall back to local data
     return localBylaws.map((bylaw, index) => ({
       id: bylaw.id,
-      title: typeof bylaw.title === "function" ? bylaw.title() : bylaw.title,
-      body: typeof bylaw.body === "function" ? bylaw.body() : bylaw.body,
+      title: typeof bylaw.title === 'function' ? bylaw.title() : bylaw.title,
+      body: typeof bylaw.body === 'function' ? bylaw.body() : bylaw.body,
       order: index + 1,
     }));
   } catch (error) {
-    console.error("Error fetching bylaws from Contentful:", error);
+    console.error('Error fetching bylaws from Contentful:', error);
 
     // Fall back to local data in case of error
     return localBylaws.map((bylaw, index) => ({
       id: bylaw.id,
-      title: typeof bylaw.title === "function" ? bylaw.title() : bylaw.title,
-      body: typeof bylaw.body === "function" ? bylaw.body() : bylaw.body,
+      title: typeof bylaw.title === 'function' ? bylaw.title() : bylaw.title,
+      body: typeof bylaw.body === 'function' ? bylaw.body() : bylaw.body,
       order: index + 1,
     }));
   }

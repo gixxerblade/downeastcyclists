@@ -1,8 +1,10 @@
-import { Context, Effect, Layer } from "effect";
-import QRCode from "qrcode";
-import crypto from "crypto";
-import { QRError } from "./errors";
-import type { QRPayload } from "./schemas";
+import crypto from 'crypto';
+
+import {Context, Effect, Layer} from 'effect';
+import QRCode from 'qrcode';
+
+import {QRError} from './errors';
+import type {QRPayload} from './schemas';
 
 // Service interface
 export interface QRService {
@@ -14,19 +16,17 @@ export interface QRService {
 
   readonly generateQRImage: (
     data: string,
-    options?: { width?: number; margin?: number },
+    options?: {width?: number; margin?: number},
   ) => Effect.Effect<string, QRError>; // Returns data URL
 
-  readonly verifyQRData: (
-    data: string,
-  ) => Effect.Effect<QRPayload & { verified: boolean }, QRError>;
+  readonly verifyQRData: (data: string) => Effect.Effect<QRPayload & {verified: boolean}, QRError>;
 }
 
 // Service tag
-export const QRService = Context.GenericTag<QRService>("QRService");
+export const QRService = Context.GenericTag<QRService>('QRService');
 
 // Secret for signing (should be in env)
-const getSigningSecret = () => process.env.QR_SIGNING_SECRET || "dec-membership-secret-2025";
+const getSigningSecret = () => process.env.QR_SIGNING_SECRET || 'dec-membership-secret-2025';
 
 // Implementation
 const make = Effect.sync(() => {
@@ -34,18 +34,18 @@ const make = Effect.sync(() => {
 
   return QRService.of({
     // Generate compact QR payload with signature
-    generateQRData: ({ membershipNumber, userId, validUntil }) =>
+    generateQRData: ({membershipNumber, userId, validUntil}) =>
       Effect.try({
         try: () => {
           // Create compact date (YYYYMMDD)
-          const compactDate = validUntil.toISOString().slice(0, 10).replace(/-/g, "");
+          const compactDate = validUntil.toISOString().slice(0, 10).replace(/-/g, '');
 
           // Create signature
           const dataToSign = `${membershipNumber}:${userId.slice(0, 8)}:${compactDate}`;
           const signature = crypto
-            .createHmac("sha256", secret)
+            .createHmac('sha256', secret)
             .update(dataToSign)
-            .digest("hex")
+            .digest('hex')
             .slice(0, 8); // Truncate for compact QR
 
           const payload: QRPayload = {
@@ -59,8 +59,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new QRError({
-            code: "QR_DATA_GENERATION_FAILED",
-            message: "Failed to generate QR data",
+            code: 'QR_DATA_GENERATION_FAILED',
+            message: 'Failed to generate QR data',
             cause: error,
           }),
       }),
@@ -72,12 +72,12 @@ const make = Effect.sync(() => {
           QRCode.toDataURL(data, {
             width: options.width || 200,
             margin: options.margin || 2,
-            errorCorrectionLevel: "M",
+            errorCorrectionLevel: 'M',
           }),
         catch: (error) =>
           new QRError({
-            code: "QR_IMAGE_GENERATION_FAILED",
-            message: "Failed to generate QR code image",
+            code: 'QR_IMAGE_GENERATION_FAILED',
+            message: 'Failed to generate QR code image',
             cause: error,
           }),
       }),
@@ -91,9 +91,9 @@ const make = Effect.sync(() => {
           // Recreate signature to verify
           const dataToSign = `${payload.mn}:${payload.u}:${payload.v}`;
           const expectedSignature = crypto
-            .createHmac("sha256", secret)
+            .createHmac('sha256', secret)
             .update(dataToSign)
-            .digest("hex")
+            .digest('hex')
             .slice(0, 8);
 
           return {
@@ -103,8 +103,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new QRError({
-            code: "QR_VERIFICATION_FAILED",
-            message: "Failed to verify QR data",
+            code: 'QR_VERIFICATION_FAILED',
+            message: 'Failed to verify QR data',
             cause: error,
           }),
       }),

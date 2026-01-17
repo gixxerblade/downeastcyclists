@@ -1,9 +1,5 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
 import {
   Container,
   Box,
@@ -12,13 +8,18 @@ import {
   Alert,
   TextField,
   Button,
-} from "@mui/material";
-import { isValidSignInLink, completeMagicLinkSignIn } from "@/src/lib/effect/client-auth";
-import type { AuthError } from "@/src/lib/effect/errors";
+} from '@mui/material';
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {useRouter} from 'next/navigation';
+import {useEffect, useState} from 'react';
+
+import {isValidSignInLink, completeMagicLinkSignIn} from '@/src/lib/effect/client-auth';
+import type {AuthError} from '@/src/lib/effect/errors';
 
 export default function VerifyPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [needsEmail, setNeedsEmail] = useState(false);
   const [isValidLink, setIsValidLink] = useState<boolean | null>(null);
 
@@ -27,14 +28,14 @@ export default function VerifyPage() {
     mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
     onSuccess: (_, email) => {
       // Check if user is admin - normalize email comparison
-      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "info@downeastcyclists.com")
+      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
         .toLowerCase()
         .trim();
       const userEmail = email.toLowerCase().trim();
       const isAdmin = userEmail === adminEmail;
 
       // Use window.location for a hard redirect to ensure it works
-      const redirectUrl = isAdmin ? "/dashboard" : "/member";
+      const redirectUrl = isAdmin ? '/dashboard' : '/member';
       window.location.href = redirectUrl;
     },
   });
@@ -52,7 +53,7 @@ export default function VerifyPage() {
       setIsValidLink(true);
 
       // Get the email from localStorage
-      const storedEmail = window.localStorage.getItem("emailForSignIn");
+      const storedEmail = window.localStorage.getItem('emailForSignIn');
 
       if (!storedEmail) {
         // Email not found, ask user to provide it
@@ -81,13 +82,13 @@ export default function VerifyPage() {
         <Box
           sx={{
             marginTop: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
           }}
         >
           <CircularProgress />
-          <Typography sx={{ mt: 2 }}>Verifying sign-in link...</Typography>
+          <Typography sx={{mt: 2}}>Verifying sign-in link...</Typography>
         </Box>
       </Container>
     );
@@ -100,15 +101,15 @@ export default function VerifyPage() {
         <Box
           sx={{
             marginTop: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
           }}
         >
-          <Alert severity="error" sx={{ width: "100%" }}>
+          <Alert severity="error" sx={{width: '100%'}}>
             Invalid sign-in link
           </Alert>
-          <Button variant="text" onClick={() => router.push("/login")} sx={{ mt: 2 }}>
+          <Button variant="text" onClick={() => router.push('/login')} sx={{mt: 2}}>
             Back to login
           </Button>
         </Box>
@@ -123,25 +124,25 @@ export default function VerifyPage() {
         <Box
           sx={{
             marginTop: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
           }}
         >
           <Typography component="h1" variant="h5" gutterBottom>
             Confirm your email
           </Typography>
-          <Typography color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
+          <Typography color="text.secondary" textAlign="center" sx={{mb: 2}}>
             Please enter the email address you used to request the sign-in link.
           </Typography>
 
           {verifyMutation.error && (
-            <Alert severity="error" sx={{ width: "100%", mb: 2 }}>
+            <Alert severity="error" sx={{width: '100%', mb: 2}}>
               {verifyMutation.error.message}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleEmailSubmit} sx={{ width: "100%" }}>
+          <Box component="form" onSubmit={handleEmailSubmit} sx={{width: '100%'}}>
             <TextField
               fullWidth
               label="Email"
@@ -156,10 +157,10 @@ export default function VerifyPage() {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 2 }}
+              sx={{mt: 2}}
               disabled={verifyMutation.isPending}
             >
-              {verifyMutation.isPending ? "Verifying..." : "Continue"}
+              {verifyMutation.isPending ? 'Verifying...' : 'Continue'}
             </Button>
           </Box>
         </Box>

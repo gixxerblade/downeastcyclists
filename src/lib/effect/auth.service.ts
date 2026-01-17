@@ -1,7 +1,9 @@
-import { Context, Effect, Layer } from "effect";
-import type { DecodedIdToken } from "firebase-admin/auth";
-import { initializeFirebaseAdmin } from "../firebase-admin";
-import { AuthError, SessionError } from "./errors";
+import {Context, Effect, Layer} from 'effect';
+import type {DecodedIdToken} from 'firebase-admin/auth';
+
+import {initializeFirebaseAdmin} from '../firebase-admin';
+
+import {AuthError, SessionError} from './errors';
 
 // Service interface
 export interface AuthService {
@@ -21,24 +23,24 @@ export interface AuthService {
   readonly getUser: (
     uid: string,
   ) => Effect.Effect<
-    { uid: string; email: string | undefined; displayName: string | undefined },
+    {uid: string; email: string | undefined; displayName: string | undefined},
     AuthError
   >;
 
   readonly setCustomClaims: (
     uid: string,
-    claims: { admin?: boolean },
+    claims: {admin?: boolean},
   ) => Effect.Effect<void, AuthError>;
 
-  readonly getCustomClaims: (uid: string) => Effect.Effect<{ admin?: boolean }, AuthError>;
+  readonly getCustomClaims: (uid: string) => Effect.Effect<{admin?: boolean}, AuthError>;
 
   readonly verifyAdminClaim: (
     sessionCookie: string,
-  ) => Effect.Effect<{ uid: string; email?: string; isAdmin: boolean }, AuthError | SessionError>;
+  ) => Effect.Effect<{uid: string; email?: string; isAdmin: boolean}, AuthError | SessionError>;
 }
 
 // Service tag
-export const AuthService = Context.GenericTag<AuthService>("AuthService");
+export const AuthService = Context.GenericTag<AuthService>('AuthService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -50,19 +52,19 @@ const make = Effect.gen(function* () {
         try: () => auth.verifyIdToken(idToken),
         catch: (error) =>
           new AuthError({
-            code: "TOKEN_VERIFY_FAILED",
-            message: "Failed to verify ID token",
+            code: 'TOKEN_VERIFY_FAILED',
+            message: 'Failed to verify ID token',
             cause: error,
           }),
       }),
 
     createSessionCookie: (idToken, expiresIn) =>
       Effect.tryPromise({
-        try: () => auth.createSessionCookie(idToken, { expiresIn }),
+        try: () => auth.createSessionCookie(idToken, {expiresIn}),
         catch: (error) =>
           new AuthError({
-            code: "SESSION_CREATE_FAILED",
-            message: "Failed to create session cookie",
+            code: 'SESSION_CREATE_FAILED',
+            message: 'Failed to create session cookie',
             cause: error,
           }),
       }),
@@ -72,8 +74,8 @@ const make = Effect.gen(function* () {
         try: () => auth.verifySessionCookie(sessionCookie, true),
         catch: () =>
           new SessionError({
-            code: "SESSION_INVALID",
-            message: "Session is invalid or expired",
+            code: 'SESSION_INVALID',
+            message: 'Session is invalid or expired',
           }),
       }),
 
@@ -82,8 +84,8 @@ const make = Effect.gen(function* () {
         try: () => auth.revokeRefreshTokens(uid),
         catch: (error) =>
           new AuthError({
-            code: "REVOKE_FAILED",
-            message: "Failed to revoke refresh tokens",
+            code: 'REVOKE_FAILED',
+            message: 'Failed to revoke refresh tokens',
             cause: error,
           }),
       }),
@@ -100,7 +102,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new AuthError({
-            code: "GET_USER_FAILED",
+            code: 'GET_USER_FAILED',
             message: `Failed to get user ${uid}`,
             cause: error,
           }),
@@ -111,7 +113,7 @@ const make = Effect.gen(function* () {
         try: () => auth.setCustomUserClaims(uid, claims),
         catch: (error) =>
           new AuthError({
-            code: "SET_CLAIMS_FAILED",
+            code: 'SET_CLAIMS_FAILED',
             message: `Failed to set custom claims for ${uid}`,
             cause: error,
           }),
@@ -121,11 +123,11 @@ const make = Effect.gen(function* () {
       Effect.tryPromise({
         try: async () => {
           const user = await auth.getUser(uid);
-          return { admin: user.customClaims?.admin || false };
+          return {admin: user.customClaims?.admin || false};
         },
         catch: (error) =>
           new AuthError({
-            code: "GET_CLAIMS_FAILED",
+            code: 'GET_CLAIMS_FAILED',
             message: `Failed to get custom claims for ${uid}`,
             cause: error,
           }),
@@ -137,8 +139,8 @@ const make = Effect.gen(function* () {
           try: () => auth.verifySessionCookie(sessionCookie, true),
           catch: () =>
             new SessionError({
-              code: "SESSION_INVALID",
-              message: "Session is invalid or expired",
+              code: 'SESSION_INVALID',
+              message: 'Session is invalid or expired',
             }),
         });
 

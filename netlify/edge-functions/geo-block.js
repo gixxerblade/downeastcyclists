@@ -1,36 +1,36 @@
 export default async function geoBlock(req, context) {
   // Get geo information and client IP from the context
-  const { geo, ip } = context;
+  const {geo, ip} = context;
 
   // Check if the request is from outside the US
-  if (geo.country.code !== "US") {
+  if (geo.country.code !== 'US') {
     // For non-US traffic, implement stricter response handling
 
     // Get request headers for additional security checks
-    const userAgent = req.headers.get("user-agent") || "";
-    const referer = req.headers.get("referer") || "";
+    const userAgent = req.headers.get('user-agent') || '';
+    const referer = req.headers.get('referer') || '';
 
     // Simple heuristic for potential DDoS detection
     // This is a basic example - in production you would use more sophisticated detection
     const isFormSubmission =
-      req.method === "POST" && (req.url.endsWith("/") || req.url.includes("?form-name="));
+      req.method === 'POST' && (req.url.endsWith('/') || req.url.includes('?form-name='));
 
     const suspiciousRequest =
       !userAgent ||
       userAgent.length < 10 ||
-      (req.method !== "GET" && req.method !== "HEAD" && !isFormSubmission);
+      (req.method !== 'GET' && req.method !== 'HEAD' && !isFormSubmission);
 
     // If the request looks suspicious, return a minimal response with 429 status
     if (suspiciousRequest) {
-      return new Response("Too Many Requests", {
+      return new Response('Too Many Requests', {
         status: 429,
         headers: {
-          "Content-Type": "text/plain",
-          "Retry-After": "300",
-          "Cache-Control": "no-store",
-          "X-Content-Type-Options": "nosniff",
-          "X-Frame-Options": "DENY",
-          "X-XSS-Protection": "1; mode=block",
+          'Content-Type': 'text/plain',
+          'Retry-After': '300',
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'DENY',
+          'X-XSS-Protection': '1; mode=block',
         },
       });
     }
@@ -89,12 +89,12 @@ export default async function geoBlock(req, context) {
     // Return the HTML with appropriate headers including security headers
     return new Response(html, {
       headers: {
-        "Content-Type": "text/html",
-        "Cache-Control": "no-cache",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
       },
       status: 403, // Forbidden status code
     });

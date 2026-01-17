@@ -1,6 +1,7 @@
-import { Context, Effect, Layer } from "effect";
-import { Firestore, FieldValue } from "@google-cloud/firestore";
-import { FirestoreError } from "./errors";
+import {Firestore, FieldValue} from '@google-cloud/firestore';
+import {Context, Effect, Layer} from 'effect';
+
+import {FirestoreError} from './errors';
 import type {
   UserDocument,
   MembershipDocument,
@@ -8,12 +9,12 @@ import type {
   MembershipStats,
   MemberSearchParams,
   MemberWithMembership,
-} from "./schemas";
+} from './schemas';
 
 // Collection names
 export const COLLECTIONS = {
-  USERS: "users",
-  MEMBERSHIPS: "memberships",
+  USERS: 'users',
+  MEMBERSHIPS: 'memberships',
 } as const;
 
 // Service interface
@@ -44,7 +45,7 @@ export interface FirestoreService {
   readonly setMembership: (
     userId: string,
     membershipId: string,
-    data: Omit<MembershipDocument, "id">,
+    data: Omit<MembershipDocument, 'id'>,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly updateMembership: (
@@ -72,17 +73,17 @@ export interface FirestoreService {
 
   readonly setMembershipCard: (
     userId: string,
-    card: Omit<MembershipCard, "id">,
+    card: Omit<MembershipCard, 'id'>,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly getMembershipByNumber: (
     membershipNumber: string,
-  ) => Effect.Effect<{ userId: string; card: MembershipCard } | null, FirestoreError>;
+  ) => Effect.Effect<{userId: string; card: MembershipCard} | null, FirestoreError>;
 
   // Admin query methods
   readonly getAllMemberships: (
     params: MemberSearchParams,
-  ) => Effect.Effect<{ members: MemberWithMembership[]; total: number }, FirestoreError>;
+  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, FirestoreError>;
 
   readonly getStats: () => Effect.Effect<MembershipStats | null, FirestoreError>;
 
@@ -96,7 +97,7 @@ export interface FirestoreService {
 }
 
 // Service tag
-export const FirestoreService = Context.GenericTag<FirestoreService>("FirestoreService");
+export const FirestoreService = Context.GenericTag<FirestoreService>('FirestoreService');
 
 // Create Firestore instance
 const createFirestoreInstance = (): Firestore => {
@@ -104,7 +105,7 @@ const createFirestoreInstance = (): Firestore => {
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
     },
   });
 };
@@ -119,11 +120,11 @@ const make = Effect.sync(() => {
         try: async () => {
           const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_FAILED",
+            code: 'GET_USER_FAILED',
             message: `Failed to get user ${userId}`,
             cause: error,
           }),
@@ -134,16 +135,16 @@ const make = Effect.sync(() => {
         try: async () => {
           const snapshot = await db
             .collection(COLLECTIONS.USERS)
-            .where("email", "==", email)
+            .where('email', '==', email)
             .limit(1)
             .get();
           if (snapshot.empty) return null;
           const doc = snapshot.docs[0];
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_BY_EMAIL_FAILED",
+            code: 'GET_USER_BY_EMAIL_FAILED',
             message: `Failed to get user by email ${email}`,
             cause: error,
           }),
@@ -154,16 +155,16 @@ const make = Effect.sync(() => {
         try: async () => {
           const snapshot = await db
             .collection(COLLECTIONS.USERS)
-            .where("stripeCustomerId", "==", customerId)
+            .where('stripeCustomerId', '==', customerId)
             .limit(1)
             .get();
           if (snapshot.empty) return null;
           const doc = snapshot.docs[0];
-          return { id: doc.id, ...doc.data() } as UserDocument;
+          return {id: doc.id, ...doc.data()} as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_USER_BY_CUSTOMER_ID_FAILED",
+            code: 'GET_USER_BY_CUSTOMER_ID_FAILED',
             message: `Failed to get user by Stripe customer ID ${customerId}`,
             cause: error,
           }),
@@ -180,11 +181,11 @@ const make = Effect.sync(() => {
                 ...data,
                 updatedAt: FieldValue.serverTimestamp(),
               },
-              { merge },
+              {merge},
             ),
         catch: (error) =>
           new FirestoreError({
-            code: "SET_USER_FAILED",
+            code: 'SET_USER_FAILED',
             message: `Failed to set user ${userId}`,
             cause: error,
           }),
@@ -200,11 +201,11 @@ const make = Effect.sync(() => {
             .doc(membershipId)
             .get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as MembershipDocument;
+          return {id: doc.id, ...doc.data()} as MembershipDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_MEMBERSHIP_FAILED",
+            code: 'GET_MEMBERSHIP_FAILED',
             message: `Failed to get membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -220,19 +221,19 @@ const make = Effect.sync(() => {
               .collection(COLLECTIONS.USERS)
               .doc(userId)
               .collection(COLLECTIONS.MEMBERSHIPS)
-              .where("status", "in", ["active", "trialing", "past_due", "canceled"])
-              .orderBy("endDate", "desc")
+              .where('status', 'in', ['active', 'trialing', 'past_due', 'canceled'])
+              .orderBy('endDate', 'desc')
               .limit(1)
               .get();
 
             if (!snapshot.empty) {
               const doc = snapshot.docs[0];
-              return { id: doc.id, ...doc.data() } as MembershipDocument;
+              return {id: doc.id, ...doc.data()} as MembershipDocument;
             }
           } catch (indexError: any) {
             // If index error, log it and fall back to getting all memberships
             console.error(
-              "Firestore index error (expected if indexes not deployed):",
+              'Firestore index error (expected if indexes not deployed):',
               indexError.message,
             );
 
@@ -259,8 +260,8 @@ const make = Effect.sync(() => {
             // Filter and sort in memory
             // Note: Also including "canceled" temporarily for debugging
             const activeMemberships = allMemberships.docs
-              .map((doc) => ({ id: doc.id, ...doc.data() }) as MembershipDocument)
-              .filter((m) => ["active", "trialing", "past_due", "canceled"].includes(m.status))
+              .map((doc) => ({id: doc.id, ...doc.data()}) as MembershipDocument)
+              .filter((m) => ['active', 'trialing', 'past_due', 'canceled'].includes(m.status))
               .sort((a, b) => {
                 const aDate = a.endDate.toDate?.() || new Date(a.endDate as any);
                 const bDate = b.endDate.toDate?.() || new Date(b.endDate as any);
@@ -282,7 +283,7 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_ACTIVE_MEMBERSHIP_FAILED",
+            code: 'GET_ACTIVE_MEMBERSHIP_FAILED',
             message: `Failed to get active membership for user ${userId}`,
             cause: error,
           }),
@@ -303,7 +304,7 @@ const make = Effect.sync(() => {
             }),
         catch: (error) =>
           new FirestoreError({
-            code: "SET_MEMBERSHIP_FAILED",
+            code: 'SET_MEMBERSHIP_FAILED',
             message: `Failed to set membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -323,7 +324,7 @@ const make = Effect.sync(() => {
             }),
         catch: (error) =>
           new FirestoreError({
-            code: "UPDATE_MEMBERSHIP_FAILED",
+            code: 'UPDATE_MEMBERSHIP_FAILED',
             message: `Failed to update membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -335,7 +336,7 @@ const make = Effect.sync(() => {
           // First try to find by Stripe customer ID
           let snapshot = await db
             .collection(COLLECTIONS.USERS)
-            .where("stripeCustomerId", "==", stripeCustomerId)
+            .where('stripeCustomerId', '==', stripeCustomerId)
             .limit(1)
             .get();
 
@@ -343,16 +344,16 @@ const make = Effect.sync(() => {
             const doc = snapshot.docs[0];
             // Update email if changed
             if (email && doc.data().email !== email) {
-              await doc.ref.update({ email, updatedAt: FieldValue.serverTimestamp() });
+              await doc.ref.update({email, updatedAt: FieldValue.serverTimestamp()});
             }
-            return { id: doc.id, ...doc.data() } as UserDocument;
+            return {id: doc.id, ...doc.data()} as UserDocument;
           }
 
           // Try by email
           if (email) {
             snapshot = await db
               .collection(COLLECTIONS.USERS)
-              .where("email", "==", email)
+              .where('email', '==', email)
               .limit(1)
               .get();
 
@@ -363,7 +364,7 @@ const make = Effect.sync(() => {
                 stripeCustomerId,
                 updatedAt: FieldValue.serverTimestamp(),
               });
-              return { id: doc.id, ...doc.data(), stripeCustomerId } as UserDocument;
+              return {id: doc.id, ...doc.data(), stripeCustomerId} as UserDocument;
             }
           }
 
@@ -374,7 +375,7 @@ const make = Effect.sync(() => {
             .doc(userId)
             .set({
               id: userId,
-              email: email || "",
+              email: email || '',
               stripeCustomerId,
               ...defaultData,
               createdAt: FieldValue.serverTimestamp(),
@@ -383,14 +384,14 @@ const make = Effect.sync(() => {
 
           return {
             id: userId,
-            email: email || "",
+            email: email || '',
             stripeCustomerId,
             ...defaultData,
           } as UserDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "UPSERT_USER_BY_STRIPE_CUSTOMER_FAILED",
+            code: 'UPSERT_USER_BY_STRIPE_CUSTOMER_FAILED',
             message: `Failed to upsert user for Stripe customer ${stripeCustomerId}`,
             cause: error,
           }),
@@ -407,7 +408,7 @@ const make = Effect.sync(() => {
             .delete(),
         catch: (error) =>
           new FirestoreError({
-            code: "DELETE_MEMBERSHIP_FAILED",
+            code: 'DELETE_MEMBERSHIP_FAILED',
             message: `Failed to delete membership ${membershipId} for user ${userId}`,
             cause: error,
           }),
@@ -415,7 +416,7 @@ const make = Effect.sync(() => {
 
     getNextMembershipNumber: (year) =>
       Effect.gen(function* () {
-        const counterRef = db.collection("counters").doc(`membership_${year}`);
+        const counterRef = db.collection('counters').doc(`membership_${year}`);
 
         // Use transaction for atomic increment
         const newNumber = yield* Effect.tryPromise({
@@ -432,7 +433,10 @@ const make = Effect.sync(() => {
                   updatedAt: FieldValue.serverTimestamp(),
                 });
               } else {
-                const data = counterDoc.data()!;
+                const data = counterDoc.data();
+                if (!data) {
+                  throw new Error('Counter document exists but has no data');
+                }
                 nextNumber = (data.lastNumber || 0) + 1;
                 transaction.update(counterRef, {
                   lastNumber: nextNumber,
@@ -444,14 +448,14 @@ const make = Effect.sync(() => {
             }),
           catch: (error) =>
             new FirestoreError({
-              code: "COUNTER_INCREMENT_FAILED",
-              message: "Failed to get next membership number",
+              code: 'COUNTER_INCREMENT_FAILED',
+              message: 'Failed to get next membership number',
               cause: error,
             }),
         });
 
         // Format: DEC-2025-000001
-        return `DEC-${year}-${String(newNumber).padStart(6, "0")}`;
+        return `DEC-${year}-${String(newNumber).padStart(6, '0')}`;
       }),
 
     getMembershipCard: (userId) =>
@@ -460,15 +464,15 @@ const make = Effect.sync(() => {
           const doc = await db
             .collection(COLLECTIONS.USERS)
             .doc(userId)
-            .collection("cards")
-            .doc("current")
+            .collection('cards')
+            .doc('current')
             .get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as MembershipCard;
+          return {id: doc.id, ...doc.data()} as MembershipCard;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_CARD_FAILED",
+            code: 'GET_CARD_FAILED',
             message: `Failed to get membership card for user ${userId}`,
             cause: error,
           }),
@@ -480,8 +484,8 @@ const make = Effect.sync(() => {
           db
             .collection(COLLECTIONS.USERS)
             .doc(userId)
-            .collection("cards")
-            .doc("current")
+            .collection('cards')
+            .doc('current')
             .set({
               ...card,
               createdAt: FieldValue.serverTimestamp(),
@@ -489,7 +493,7 @@ const make = Effect.sync(() => {
             }),
         catch: (error) =>
           new FirestoreError({
-            code: "SET_CARD_FAILED",
+            code: 'SET_CARD_FAILED',
             message: `Failed to set membership card for user ${userId}`,
             cause: error,
           }),
@@ -500,24 +504,28 @@ const make = Effect.sync(() => {
         try: async () => {
           // Collection group query across all users' cards
           const snapshot = await db
-            .collectionGroup("cards")
-            .where("membershipNumber", "==", membershipNumber)
+            .collectionGroup('cards')
+            .where('membershipNumber', '==', membershipNumber)
             .limit(1)
             .get();
 
           if (snapshot.empty) return null;
 
           const doc = snapshot.docs[0];
-          const card = { id: doc.id, ...doc.data() } as MembershipCard;
+          const card = {id: doc.id, ...doc.data()} as MembershipCard;
 
           // Extract userId from path: users/{userId}/cards/current
-          const userId = doc.ref.parent.parent!.id;
+          const parentRef = doc.ref.parent.parent;
+          if (!parentRef) {
+            throw new Error('Invalid card document path structure');
+          }
+          const userId = parentRef.id;
 
-          return { userId, card };
+          return {userId, card};
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_BY_NUMBER_FAILED",
+            code: 'GET_BY_NUMBER_FAILED',
             message: `Failed to get membership by number ${membershipNumber}`,
             cause: error,
           }),
@@ -529,25 +537,25 @@ const make = Effect.sync(() => {
         try: async () => {
           // Use Firestore.Query as the base type (compatible with both CollectionGroup and Query)
           type FirestoreQuery = FirebaseFirestore.Query<FirebaseFirestore.DocumentData>;
-          let query: FirestoreQuery = db.collectionGroup("memberships");
+          let query: FirestoreQuery = db.collectionGroup('memberships');
 
           // Apply filters
           if (params.status) {
-            query = query.where("status", "==", params.status);
+            query = query.where('status', '==', params.status);
           }
 
           if (params.planType) {
-            query = query.where("planType", "==", params.planType);
+            query = query.where('planType', '==', params.planType);
           }
 
           if (params.expiringWithinDays) {
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + params.expiringWithinDays);
-            query = query.where("endDate", "<=", expiryDate);
+            query = query.where('endDate', '<=', expiryDate);
           }
 
           // Order and paginate
-          query = query.orderBy("endDate", "desc");
+          query = query.orderBy('endDate', 'desc');
 
           const pageSize = params.pageSize || 20;
           const page = params.page || 1;
@@ -563,27 +571,32 @@ const make = Effect.sync(() => {
           // Fetch user data for each membership
           const members: MemberWithMembership[] = await Promise.all(
             snapshot.docs.map(async (doc) => {
-              const membership = { id: doc.id, ...doc.data() } as MembershipDocument;
-              const userId = doc.ref.parent.parent!.id;
+              const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
+              // Extract userId from path: users/{userId}/memberships/{membershipId}
+              const parentRef = doc.ref.parent.parent;
+              if (!parentRef) {
+                throw new Error('Invalid membership document path structure');
+              }
+              const userId = parentRef.id;
 
               // Fetch user
               const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
               const user = userDoc.exists
-                ? ({ id: userDoc.id, ...userDoc.data() } as UserDocument)
+                ? ({id: userDoc.id, ...userDoc.data()} as UserDocument)
                 : null;
 
               // Fetch card
               const cardDoc = await db
                 .collection(COLLECTIONS.USERS)
                 .doc(userId)
-                .collection("cards")
-                .doc("current")
+                .collection('cards')
+                .doc('current')
                 .get();
               const card = cardDoc.exists
-                ? ({ id: cardDoc.id, ...cardDoc.data() } as MembershipCard)
+                ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
                 : null;
 
-              return { user, membership, card };
+              return {user, membership, card};
             }),
           );
 
@@ -599,12 +612,12 @@ const make = Effect.sync(() => {
             );
           }
 
-          return { members: filteredMembers, total };
+          return {members: filteredMembers, total};
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_ALL_MEMBERSHIPS_FAILED",
-            message: "Failed to get all memberships",
+            code: 'GET_ALL_MEMBERSHIPS_FAILED',
+            message: 'Failed to get all memberships',
             cause: error,
           }),
       }),
@@ -612,14 +625,14 @@ const make = Effect.sync(() => {
     getStats: () =>
       Effect.tryPromise({
         try: async () => {
-          const doc = await db.collection("stats").doc("memberships").get();
+          const doc = await db.collection('stats').doc('memberships').get();
           if (!doc.exists) return null;
           return doc.data() as MembershipStats;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "GET_STATS_FAILED",
-            message: "Failed to get membership stats",
+            code: 'GET_STATS_FAILED',
+            message: 'Failed to get membership stats',
             cause: error,
           }),
       }),
@@ -628,13 +641,13 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: () =>
           db
-            .collection("stats")
-            .doc("memberships")
-            .set({ ...stats, updatedAt: new Date().toISOString() }, { merge: true }),
+            .collection('stats')
+            .doc('memberships')
+            .set({...stats, updatedAt: new Date().toISOString()}, {merge: true}),
         catch: (error) =>
           new FirestoreError({
-            code: "UPDATE_STATS_FAILED",
-            message: "Failed to update membership stats",
+            code: 'UPDATE_STATS_FAILED',
+            message: 'Failed to update membership stats',
             cause: error,
           }),
       }),
@@ -642,14 +655,14 @@ const make = Effect.sync(() => {
     logAuditEntry: (userId, action, details) =>
       Effect.tryPromise({
         try: () =>
-          db.collection(COLLECTIONS.USERS).doc(userId).collection("audit").add({
+          db.collection(COLLECTIONS.USERS).doc(userId).collection('audit').add({
             action,
             details,
             timestamp: FieldValue.serverTimestamp(),
           }),
         catch: (error) =>
           new FirestoreError({
-            code: "AUDIT_LOG_FAILED",
+            code: 'AUDIT_LOG_FAILED',
             message: `Failed to log audit entry for ${userId}`,
             cause: error,
           }),

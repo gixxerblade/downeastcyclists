@@ -1,21 +1,22 @@
-import { redirect } from "next/navigation";
-import { verifySession } from "@/src/actions/auth";
+import {redirect} from 'next/navigation';
 
-export default async function MemberLayout({ children }: { children: React.ReactNode }) {
+import {verifySession} from '@/src/actions/auth';
+
+export default async function MemberLayout({children}: {children: React.ReactNode}) {
   const session = await verifySession();
 
   if (!session.authenticated) {
-    redirect("/login");
+    redirect('/login');
   }
 
   // Check if user is admin and redirect to dashboard
-  const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "info@downeastcyclists.com")
+  const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
     .toLowerCase()
     .trim();
-  const userEmail = (session.email || "").toLowerCase().trim();
+  const userEmail = (session.email || '').toLowerCase().trim();
 
   if (userEmail === adminEmail) {
-    redirect("/dashboard");
+    redirect('/dashboard');
   }
 
   return <>{children}</>;

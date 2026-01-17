@@ -1,17 +1,18 @@
-import { NextResponse } from "next/server";
-import { Effect, pipe, Exit } from "effect";
-import { cookies } from "next/headers";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {Effect, pipe, Exit} from 'effect';
+import {cookies} from 'next/headers';
+import {NextResponse} from 'next/server';
 
-export const dynamic = "force-dynamic";
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {PortalService} from '@/src/lib/effect/portal.service';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const program = Effect.gen(function* () {
@@ -28,20 +29,20 @@ export async function GET() {
 
   if (Exit.isFailure(exit)) {
     const cause = exit.cause;
-    const failure = cause._tag === "Fail" ? cause.error : null;
+    const failure = cause._tag === 'Fail' ? cause.error : null;
 
-    if (failure && typeof failure === "object" && "_tag" in failure) {
-      if (failure._tag === "SessionError") {
-        return NextResponse.json({ error: "Session invalid" }, { status: 401 });
+    if (failure && typeof failure === 'object' && '_tag' in failure) {
+      if (failure._tag === 'SessionError') {
+        return NextResponse.json({error: 'Session invalid'}, {status: 401});
       }
-      if (failure._tag === "NotFoundError" && "resource" in failure) {
-        return NextResponse.json({ error: `${failure.resource} not found` }, { status: 404 });
+      if (failure._tag === 'NotFoundError' && 'resource' in failure) {
+        return NextResponse.json({error: `${failure.resource} not found`}, {status: 404});
       }
-      if (failure._tag === "FirestoreError" && "message" in failure) {
-        return NextResponse.json({ error: failure.message as string }, { status: 500 });
+      if (failure._tag === 'FirestoreError' && 'message' in failure) {
+        return NextResponse.json({error: failure.message as string}, {status: 500});
       }
     }
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
+    return NextResponse.json({error: 'An unexpected error occurred'}, {status: 500});
   }
 
   return NextResponse.json(exit.value);

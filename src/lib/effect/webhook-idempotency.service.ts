@@ -1,9 +1,10 @@
-import { Context, Effect, Layer } from "effect";
-import { Firestore, FieldValue, Timestamp } from "@google-cloud/firestore";
-import { FirestoreError, DuplicateWebhookError } from "./errors";
-import type { WebhookEventDocument } from "./schemas";
+import {Firestore, FieldValue, Timestamp} from '@google-cloud/firestore';
+import {Context, Effect, Layer} from 'effect';
 
-export const WEBHOOK_EVENTS_COLLECTION = "webhookEvents";
+import {FirestoreError, DuplicateWebhookError} from './errors';
+import type {WebhookEventDocument} from './schemas';
+
+export const WEBHOOK_EVENTS_COLLECTION = 'webhookEvents';
 
 // Service interface
 export interface WebhookIdempotencyService {
@@ -44,7 +45,7 @@ export interface WebhookIdempotencyService {
 
 // Service tag
 export const WebhookIdempotencyService = Context.GenericTag<WebhookIdempotencyService>(
-  "WebhookIdempotencyService",
+  'WebhookIdempotencyService',
 );
 
 // Implementation
@@ -53,7 +54,7 @@ const make = Effect.sync(() => {
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
     },
   });
 
@@ -63,11 +64,11 @@ const make = Effect.sync(() => {
         try: async () => {
           const doc = await db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as WebhookEventDocument;
+          return {id: doc.id, ...doc.data()} as WebhookEventDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "CHECK_WEBHOOK_EVENT_FAILED",
+            code: 'CHECK_WEBHOOK_EVENT_FAILED',
             message: `Failed to check webhook event ${eventId}`,
             cause: error,
           }),
@@ -86,14 +87,14 @@ const make = Effect.sync(() => {
               const data = doc.data() as WebhookEventDocument;
 
               // Already completed? Reject as duplicate
-              if (data.status === "completed") {
-                throw { isDuplicate: true, processedAt: data.processedAt };
+              if (data.status === 'completed') {
+                throw {isDuplicate: true, processedAt: data.processedAt};
               }
 
               // Failed previously? Allow retry
-              if (data.status === "failed") {
+              if (data.status === 'failed') {
                 transaction.update(docRef, {
-                  status: "processing",
+                  status: 'processing',
                   retryCount: FieldValue.increment(1),
                   updatedAt: FieldValue.serverTimestamp(),
                 });
@@ -106,12 +107,12 @@ const make = Effect.sync(() => {
 
               if (processingTime > staleThreshold) {
                 // Recent processing, reject as duplicate
-                throw { isDuplicate: true, processedAt: data.processedAt };
+                throw {isDuplicate: true, processedAt: data.processedAt};
               }
 
               // Stale lock, reclaim
               transaction.update(docRef, {
-                status: "processing",
+                status: 'processing',
                 retryCount: FieldValue.increment(1),
                 processedAt: FieldValue.serverTimestamp(),
               });
@@ -120,7 +121,7 @@ const make = Effect.sync(() => {
               transaction.set(docRef, {
                 id: eventId,
                 type: eventType,
-                status: "processing",
+                status: 'processing',
                 processedAt: FieldValue.serverTimestamp(),
                 retryCount: 0,
               });
@@ -135,7 +136,7 @@ const make = Effect.sync(() => {
             });
           }
           return new FirestoreError({
-            code: "CLAIM_WEBHOOK_EVENT_FAILED",
+            code: 'CLAIM_WEBHOOK_EVENT_FAILED',
             message: `Failed to claim webhook event ${eventId}`,
             cause: error,
           });
@@ -146,12 +147,12 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: () =>
           db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: "completed",
+            status: 'completed',
             completedAt: FieldValue.serverTimestamp(),
           }),
         catch: (error) =>
           new FirestoreError({
-            code: "COMPLETE_WEBHOOK_EVENT_FAILED",
+            code: 'COMPLETE_WEBHOOK_EVENT_FAILED',
             message: `Failed to complete webhook event ${eventId}`,
             cause: error,
           }),
@@ -161,13 +162,13 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: () =>
           db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: "failed",
+            status: 'failed',
             errorMessage,
             failedAt: FieldValue.serverTimestamp(),
           }),
         catch: (error) =>
           new FirestoreError({
-            code: "FAIL_WEBHOOK_EVENT_FAILED",
+            code: 'FAIL_WEBHOOK_EVENT_FAILED',
             message: `Failed to mark webhook event ${eventId} as failed`,
             cause: error,
           }),
@@ -181,7 +182,7 @@ const make = Effect.sync(() => {
 
           const snapshot = await db
             .collection(WEBHOOK_EVENTS_COLLECTION)
-            .where("processedAt", "<", Timestamp.fromDate(cutoff))
+            .where('processedAt', '<', Timestamp.fromDate(cutoff))
             .limit(500)
             .get();
 
@@ -195,8 +196,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new FirestoreError({
-            code: "CLEANUP_WEBHOOK_EVENTS_FAILED",
-            message: "Failed to cleanup old webhook events",
+            code: 'CLEANUP_WEBHOOK_EVENTS_FAILED',
+            message: 'Failed to cleanup old webhook events',
             cause: error,
           }),
       }),

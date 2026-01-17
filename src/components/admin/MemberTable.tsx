@@ -1,5 +1,6 @@
-"use client";
+'use client';
 
+import {Edit, NavigateBefore, NavigateNext} from '@mui/icons-material';
 import {
   Table,
   TableBody,
@@ -16,9 +17,9 @@ import {
   MenuItem,
   FormControl,
   IconButton,
-} from "@mui/material";
-import { Edit, NavigateBefore, NavigateNext } from "@mui/icons-material";
-import type { MemberWithMembership } from "@/src/lib/effect/schemas";
+} from '@mui/material';
+
+import type {MemberWithMembership} from '@/src/lib/effect/schemas';
 
 interface MemberTableProps {
   members: MemberWithMembership[];
@@ -30,15 +31,15 @@ interface MemberTableProps {
   onEditMember: (member: MemberWithMembership) => void;
 }
 
-const statusColors: Record<string, "success" | "warning" | "error" | "default"> = {
-  active: "success",
-  trialing: "success",
-  past_due: "warning",
-  canceled: "error",
-  expired: "error",
-  incomplete: "default",
-  incomplete_expired: "default",
-  unpaid: "error",
+const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+  active: 'success',
+  trialing: 'success',
+  past_due: 'warning',
+  canceled: 'error',
+  expired: 'error',
+  incomplete: 'default',
+  incomplete_expired: 'default',
+  unpaid: 'error',
 };
 
 export function MemberTable({
@@ -75,36 +76,32 @@ export function MemberTable({
                     ? endDate.toDate()
                     : new Date(endDate as unknown as string)
                   ).toLocaleDateString()
-                : "-";
+                : '-';
 
               return (
                 <TableRow
                   key={member.user?.id || member.card?.membershipNumber}
                   hover
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                  sx={{'&:last-child td, &:last-child th': {border: 0}}}
                 >
-                  <TableCell sx={{ fontFamily: "monospace" }}>
-                    {member.card?.membershipNumber || "-"}
+                  <TableCell sx={{fontFamily: 'monospace'}}>
+                    {member.card?.membershipNumber || '-'}
                   </TableCell>
-                  <TableCell>{member.user?.name || "-"}</TableCell>
+                  <TableCell>{member.user?.name || '-'}</TableCell>
                   <TableCell>{member.user?.email}</TableCell>
                   <TableCell>
-                    {member.membership?.planType === "family" ? "Family" : "Individual"}
+                    {member.membership?.planType === 'family' ? 'Family' : 'Individual'}
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={member.membership?.status || "none"}
-                      color={statusColors[member.membership?.status || ""] || "default"}
+                      label={member.membership?.status || 'none'}
+                      color={statusColors[member.membership?.status || ''] || 'default'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>{formattedEndDate}</TableCell>
                   <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => onEditMember(member)}
-                    >
+                    <IconButton size="small" color="primary" onClick={() => onEditMember(member)}>
                       <Edit fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -118,22 +115,19 @@ export function MemberTable({
       {/* Pagination */}
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           px: 2,
           py: 2,
           borderTop: 1,
-          borderColor: "divider",
+          borderColor: 'divider',
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
           <Typography variant="body2">Rows per page:</Typography>
-          <FormControl size="small" sx={{ minWidth: 80 }}>
-            <Select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            >
+          <FormControl size="small" sx={{minWidth: 80}}>
+            <Select value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))}>
               <MenuItem value={10}>10</MenuItem>
               <MenuItem value={20}>20</MenuItem>
               <MenuItem value={50}>50</MenuItem>
@@ -142,11 +136,11 @@ export function MemberTable({
           </FormControl>
         </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
           <Typography variant="body2">
             {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
           </Typography>
-          <Box sx={{ display: "flex", gap: 0.5 }}>
+          <Box sx={{display: 'flex', gap: 0.5}}>
             <Button
               size="small"
               variant="outlined"

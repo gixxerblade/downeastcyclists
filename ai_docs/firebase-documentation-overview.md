@@ -7,6 +7,7 @@ This Firebase documentation homepage serves as the central hub for developers bu
 ### Core Product Categories
 
 **BUILD** - Products for rapid app development with global scalability, including:
+
 - "Store and sync app data at global scale without managing servers"
 - Authentication, Cloud Functions, Storage, Firestore, Realtime Database
 - App Hosting and Hosting services
@@ -14,12 +15,14 @@ This Firebase documentation homepage serves as the central hub for developers bu
 - Security Rules and App Check
 
 **RUN** - Products for monitoring and optimizing deployed applications:
+
 - "Run your app with confidence and deliver the best experience for your users"
 - Performance Monitoring, Crashlytics, Remote Config
 - A/B Testing, Cloud Messaging, In-App Messaging
 - Google Analytics and App Distribution
 
 **AI** - New AI-integrated development capabilities:
+
 - Firebase Studio for prototyping AI-infused apps
 - Gemini integration in Firebase tools
 - Firebase AI Logic for building AI-powered features

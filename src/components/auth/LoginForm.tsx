@@ -1,13 +1,14 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { Box, Button, TextField, Typography, Alert, Divider } from "@mui/material";
-import Link from "next/link";
-import { loginWithPassword, sendMagicLink } from "@/src/lib/effect/client-auth";
-import type { AuthError } from "@/src/lib/effect/errors";
+import {Box, Button, TextField, Typography, Alert, Divider} from '@mui/material';
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import Link from 'next/link';
+import {useRouter} from 'next/navigation';
+import {useState, useEffect} from 'react';
+
+import {loginWithPassword, sendMagicLink} from '@/src/lib/effect/client-auth';
+import type {AuthError} from '@/src/lib/effect/errors';
 
 interface LoginCredentials {
   email: string;
@@ -16,35 +17,35 @@ interface LoginCredentials {
 
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   // Check if user is already logged in and redirect
   useEffect(() => {
     const checkAuth = async () => {
-      const hasSession = document.cookie.includes("session=");
+      const hasSession = document.cookie.includes('session=');
       if (hasSession) {
         // Check session validity via server
         try {
-          const response = await fetch("/api/auth/session", { method: "GET" });
+          const response = await fetch('/api/auth/session', {method: 'GET'});
           if (response.ok) {
             const data = await response.json();
             if (data.authenticated) {
               const adminEmail = (
-                process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "info@downeastcyclists.com"
+                process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com'
               )
                 .toLowerCase()
                 .trim();
-              const userEmail = (data.email || "").toLowerCase().trim();
+              const userEmail = (data.email || '').toLowerCase().trim();
               const isAdmin = userEmail === adminEmail;
 
-              window.location.href = isAdmin ? "/dashboard" : "/member";
+              window.location.href = isAdmin ? '/dashboard' : '/member';
             }
           }
         } catch (error) {
           // Silently fail - user can login normally
-          console.error("Auth check error:", error);
+          console.error('Auth check error:', error);
         }
       }
     };
@@ -56,23 +57,23 @@ export function LoginForm() {
   const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
     onSuccess: (_, variables) => {
-      console.log("Login successful, redirecting...", variables.email);
+      console.log('Login successful, redirecting...', variables.email);
       // Check if user is admin - normalize email comparison
-      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "info@downeastcyclists.com")
+      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
         .toLowerCase()
         .trim();
       const userEmail = variables.email.toLowerCase().trim();
       const isAdmin = userEmail === adminEmail;
 
-      console.log("Admin check:", { adminEmail, userEmail, isAdmin });
+      console.log('Admin check:', {adminEmail, userEmail, isAdmin});
 
       // Use window.location for a hard redirect to ensure it works
-      const redirectUrl = isAdmin ? "/dashboard" : "/member";
-      console.log("Redirecting to:", redirectUrl);
+      const redirectUrl = isAdmin ? '/dashboard' : '/member';
+      console.log('Redirecting to:', redirectUrl);
       window.location.href = redirectUrl;
     },
     onError: (error) => {
-      console.error("Login error:", error);
+      console.error('Login error:', error);
     },
   });
 
@@ -87,7 +88,7 @@ export function LoginForm() {
 
   const handleEmailPasswordLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({email, password});
   };
 
   const handleMagicLink = () => {
@@ -122,7 +123,7 @@ export function LoginForm() {
   return (
     <Box component="form" onSubmit={handleEmailPasswordLogin}>
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{mb: 2}}>
           {getErrorMessage(error)}
         </Alert>
       )}
@@ -146,20 +147,20 @@ export function LoginForm() {
         margin="normal"
       />
 
-      <Button type="submit" fullWidth variant="contained" disabled={isLoading} sx={{ mt: 2 }}>
-        {loginMutation.isPending ? "Signing in..." : "Sign In"}
+      <Button type="submit" fullWidth variant="contained" disabled={isLoading} sx={{mt: 2}}>
+        {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
       </Button>
 
-      <Divider sx={{ my: 3 }}>or</Divider>
+      <Divider sx={{my: 3}}>or</Divider>
 
       <Button fullWidth variant="outlined" onClick={handleMagicLink} disabled={isLoading || !email}>
-        {magicLinkMutation.isPending ? "Sending..." : "Send Magic Link"}
+        {magicLinkMutation.isPending ? 'Sending...' : 'Send Magic Link'}
       </Button>
 
-      <Box sx={{ mt: 2, textAlign: "center" }}>
+      <Box sx={{mt: 2, textAlign: 'center'}}>
         <Typography variant="body2" color="text.secondary">
-          Don&apos;t have an account?{" "}
-          <Link href="/join" style={{ color: "#F20E02", textDecoration: "none" }}>
+          Don&apos;t have an account?{' '}
+          <Link href="/join" style={{color: '#F20E02', textDecoration: 'none'}}>
             Join Now
           </Link>
         </Typography>

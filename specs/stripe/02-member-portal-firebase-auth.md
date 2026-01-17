@@ -120,13 +120,13 @@ Update `src/lib/effect/errors.ts`:
 ```typescript
 // Add to existing errors file
 
-export class AuthError extends Data.TaggedError("AuthError")<{
+export class AuthError extends Data.TaggedError('AuthError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class SessionError extends Data.TaggedError("SessionError")<{
+export class SessionError extends Data.TaggedError('SessionError')<{
   readonly code: string;
   readonly message: string;
 }> {}
@@ -181,7 +181,7 @@ export const MemberDashboardResponse = S.Struct({
       endDate: S.String,
       autoRenew: S.Boolean,
       daysRemaining: S.Number,
-    })
+    }),
   ),
   canManageSubscription: S.Boolean,
 });
@@ -193,10 +193,10 @@ export type MemberDashboardResponse = S.Schema.Type<typeof MemberDashboardRespon
 Create `src/lib/firebase-admin.ts`:
 
 ```typescript
-import { Effect } from "effect";
-import { initializeApp, getApps, cert, App } from "firebase-admin/app";
-import { getAuth, Auth } from "firebase-admin/auth";
-import { AuthError } from "./effect/errors";
+import {Effect} from 'effect';
+import {initializeApp, getApps, cert, App} from 'firebase-admin/app';
+import {getAuth, Auth} from 'firebase-admin/auth';
+import {AuthError} from './effect/errors';
 
 let adminApp: App | null = null;
 let adminAuth: Auth | null = null;
@@ -206,13 +206,10 @@ const initializeFirebaseAdmin = (): Effect.Effect<Auth, AuthError> =>
     try: () => {
       if (adminAuth) return adminAuth;
 
-      const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(
-        /\\n/g,
-        "\n"
-      );
+      const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
       if (!privateKey) {
-        throw new Error("FIREBASE_ADMIN_PRIVATE_KEY not configured");
+        throw new Error('FIREBASE_ADMIN_PRIVATE_KEY not configured');
       }
 
       if (getApps().length === 0) {
@@ -232,13 +229,13 @@ const initializeFirebaseAdmin = (): Effect.Effect<Auth, AuthError> =>
     },
     catch: (error) =>
       new AuthError({
-        code: "ADMIN_INIT_FAILED",
-        message: "Failed to initialize Firebase Admin",
+        code: 'ADMIN_INIT_FAILED',
+        message: 'Failed to initialize Firebase Admin',
         cause: error,
       }),
   });
 
-export { initializeFirebaseAdmin };
+export {initializeFirebaseAdmin};
 ```
 
 ### 5. Create AuthService
@@ -246,38 +243,36 @@ export { initializeFirebaseAdmin };
 Create `src/lib/effect/auth.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import type { Auth, DecodedIdToken } from "firebase-admin/auth";
-import { initializeFirebaseAdmin } from "../firebase-admin";
-import { AuthError, SessionError } from "./errors";
+import {Context, Effect, Layer} from 'effect';
+import type {Auth, DecodedIdToken} from 'firebase-admin/auth';
+import {initializeFirebaseAdmin} from '../firebase-admin';
+import {AuthError, SessionError} from './errors';
 
 // Service interface
 export interface AuthService {
-  readonly verifyIdToken: (
-    idToken: string
-  ) => Effect.Effect<DecodedIdToken, AuthError>;
+  readonly verifyIdToken: (idToken: string) => Effect.Effect<DecodedIdToken, AuthError>;
 
   readonly createSessionCookie: (
     idToken: string,
-    expiresIn: number
+    expiresIn: number,
   ) => Effect.Effect<string, AuthError>;
 
   readonly verifySessionCookie: (
-    sessionCookie: string
+    sessionCookie: string,
   ) => Effect.Effect<DecodedIdToken, SessionError>;
 
   readonly revokeRefreshTokens: (uid: string) => Effect.Effect<void, AuthError>;
 
   readonly getUser: (
-    uid: string
+    uid: string,
   ) => Effect.Effect<
-    { uid: string; email: string | undefined; displayName: string | undefined },
+    {uid: string; email: string | undefined; displayName: string | undefined},
     AuthError
   >;
 }
 
 // Service tag
-export const AuthService = Context.GenericTag<AuthService>("AuthService");
+export const AuthService = Context.GenericTag<AuthService>('AuthService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -289,19 +284,19 @@ const make = Effect.gen(function* () {
         try: () => auth.verifyIdToken(idToken),
         catch: (error) =>
           new AuthError({
-            code: "TOKEN_VERIFY_FAILED",
-            message: "Failed to verify ID token",
+            code: 'TOKEN_VERIFY_FAILED',
+            message: 'Failed to verify ID token',
             cause: error,
           }),
       }),
 
     createSessionCookie: (idToken, expiresIn) =>
       Effect.tryPromise({
-        try: () => auth.createSessionCookie(idToken, { expiresIn }),
+        try: () => auth.createSessionCookie(idToken, {expiresIn}),
         catch: (error) =>
           new AuthError({
-            code: "SESSION_CREATE_FAILED",
-            message: "Failed to create session cookie",
+            code: 'SESSION_CREATE_FAILED',
+            message: 'Failed to create session cookie',
             cause: error,
           }),
       }),
@@ -311,8 +306,8 @@ const make = Effect.gen(function* () {
         try: () => auth.verifySessionCookie(sessionCookie, true),
         catch: (error) =>
           new SessionError({
-            code: "SESSION_INVALID",
-            message: "Session is invalid or expired",
+            code: 'SESSION_INVALID',
+            message: 'Session is invalid or expired',
           }),
       }),
 
@@ -321,8 +316,8 @@ const make = Effect.gen(function* () {
         try: () => auth.revokeRefreshTokens(uid),
         catch: (error) =>
           new AuthError({
-            code: "REVOKE_FAILED",
-            message: "Failed to revoke refresh tokens",
+            code: 'REVOKE_FAILED',
+            message: 'Failed to revoke refresh tokens',
             cause: error,
           }),
       }),
@@ -339,7 +334,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new AuthError({
-            code: "GET_USER_FAILED",
+            code: 'GET_USER_FAILED',
             message: `Failed to get user ${uid}`,
             cause: error,
           }),
@@ -384,45 +379,36 @@ createPortalSession: (customerId, returnUrl) =>
 Create `src/lib/effect/portal.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe } from "effect";
-import { AuthService } from "./auth.service";
-import { StripeService } from "./stripe.service";
-import { FirestoreService } from "./firestore.service";
-import {
-  AuthError,
-  SessionError,
-  StripeError,
-  FirestoreError,
-  NotFoundError,
-} from "./errors";
-import type { MemberDashboardResponse } from "./schemas";
+import {Context, Effect, Layer, pipe} from 'effect';
+import {AuthService} from './auth.service';
+import {StripeService} from './stripe.service';
+import {FirestoreService} from './firestore.service';
+import {AuthError, SessionError, StripeError, FirestoreError, NotFoundError} from './errors';
+import type {MemberDashboardResponse} from './schemas';
 
 // Service interface
 export interface PortalService {
   readonly verifySession: (
-    sessionCookie: string
-  ) => Effect.Effect<
-    { uid: string; email: string | undefined },
-    SessionError | AuthError
-  >;
+    sessionCookie: string,
+  ) => Effect.Effect<{uid: string; email: string | undefined}, SessionError | AuthError>;
 
   readonly getMemberDashboard: (
-    userId: string
+    userId: string,
   ) => Effect.Effect<MemberDashboardResponse, FirestoreError | NotFoundError>;
 
   readonly createPortalSession: (
     userId: string,
-    returnUrl: string
-  ) => Effect.Effect<{ url: string }, StripeError | FirestoreError | NotFoundError>;
+    returnUrl: string,
+  ) => Effect.Effect<{url: string}, StripeError | FirestoreError | NotFoundError>;
 
   readonly linkFirebaseToStripe: (
     firebaseUid: string,
-    stripeCustomerId: string
+    stripeCustomerId: string,
   ) => Effect.Effect<void, FirestoreError>;
 }
 
 // Service tag
-export const PortalService = Context.GenericTag<PortalService>("PortalService");
+export const PortalService = Context.GenericTag<PortalService>('PortalService');
 
 // Implementation using Effect.gen for complex orchestration
 const make = Effect.gen(function* () {
@@ -438,7 +424,7 @@ const make = Effect.gen(function* () {
         Effect.map((decoded) => ({
           uid: decoded.uid,
           email: decoded.email,
-        }))
+        })),
       ),
 
     // Dashboard - complex with multiple dependent calls, use Effect.gen
@@ -447,15 +433,13 @@ const make = Effect.gen(function* () {
         // Fetch user
         const user = yield* firestore.getUser(userId);
         if (!user) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "user", id: userId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         // Fetch membership
         const membership = yield* firestore.getActiveMembership(userId);
 
-        let membershipData: MemberDashboardResponse["membership"] = null;
+        let membershipData: MemberDashboardResponse['membership'] = null;
         let canManageSubscription = false;
 
         if (membership) {
@@ -464,17 +448,18 @@ const make = Effect.gen(function* () {
           const now = new Date();
           const daysRemaining = Math.max(
             0,
-            Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
           );
 
           const plan = yield* firestore.getPlan(membership.planType);
           const planName =
             plan?.name ||
-            (membership.planType === "family"
-              ? "Family Annual Membership"
-              : "Individual Annual Membership");
+            (membership.planType === 'family'
+              ? 'Family Annual Membership'
+              : 'Individual Annual Membership');
 
-          const startDate = membership.startDate.toDate?.() || new Date(membership.startDate as any);
+          const startDate =
+            membership.startDate.toDate?.() || new Date(membership.startDate as any);
 
           membershipData = {
             planType: membership.planType,
@@ -507,36 +492,29 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "user", id: userId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         if (!user.stripeCustomerId) {
           return yield* Effect.fail(
             new NotFoundError({
-              resource: "stripeCustomer",
+              resource: 'stripeCustomer',
               id: userId,
-            })
+            }),
           );
         }
 
         // Create portal session
-        const session = yield* stripe.createPortalSession(
-          user.stripeCustomerId,
-          returnUrl
-        );
+        const session = yield* stripe.createPortalSession(user.stripeCustomerId, returnUrl);
 
-        yield* Effect.log(
-          `Portal session created for user ${userId}: ${session.id}`
-        );
+        yield* Effect.log(`Portal session created for user ${userId}: ${session.id}`);
 
-        return { url: session.url };
+        return {url: session.url};
       }),
 
     // Simple delegation, use Effect.pipe
     linkFirebaseToStripe: (firebaseUid, stripeCustomerId) =>
-      firestore.setUser(firebaseUid, { stripeCustomerId }),
+      firestore.setUser(firebaseUid, {stripeCustomerId}),
   });
 });
 
@@ -549,42 +527,34 @@ export const PortalServiceLive = Layer.effect(PortalService, make);
 Update `src/lib/effect/layers.ts`:
 
 ```typescript
-import { Layer } from "effect";
-import { StripeService, StripeServiceLive } from "./stripe.service";
-import { FirestoreService, FirestoreServiceLive } from "./firestore.service";
-import { MembershipService, MembershipServiceLive } from "./membership.service";
-import { AuthService, AuthServiceLive } from "./auth.service";
-import { PortalService, PortalServiceLive } from "./portal.service";
+import {Layer} from 'effect';
+import {StripeService, StripeServiceLive} from './stripe.service';
+import {FirestoreService, FirestoreServiceLive} from './firestore.service';
+import {MembershipService, MembershipServiceLive} from './membership.service';
+import {AuthService, AuthServiceLive} from './auth.service';
+import {PortalService, PortalServiceLive} from './portal.service';
 
 // Base services layer (no dependencies)
-const BaseServicesLayer = Layer.mergeAll(
-  StripeServiceLive,
-  FirestoreServiceLive,
-  AuthServiceLive
-);
+const BaseServicesLayer = Layer.mergeAll(StripeServiceLive, FirestoreServiceLive, AuthServiceLive);
 
 // Membership service (depends on Stripe + Firestore)
 const MembershipLayer = MembershipServiceLive.pipe(
   Layer.provide(StripeServiceLive),
-  Layer.provide(FirestoreServiceLive)
+  Layer.provide(FirestoreServiceLive),
 );
 
 // Portal service (depends on Auth + Stripe + Firestore)
 const PortalLayer = PortalServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(StripeServiceLive),
-  Layer.provide(FirestoreServiceLive)
+  Layer.provide(FirestoreServiceLive),
 );
 
 // Complete live layer with all services
-export const LiveLayer = Layer.mergeAll(
-  BaseServicesLayer,
-  MembershipLayer,
-  PortalLayer
-);
+export const LiveLayer = Layer.mergeAll(BaseServicesLayer, MembershipLayer, PortalLayer);
 
 // Re-export individual layers for selective use
-export { BaseServicesLayer, MembershipLayer, PortalLayer };
+export {BaseServicesLayer, MembershipLayer, PortalLayer};
 ```
 
 ### 9. Create Session API Route
@@ -592,22 +562,19 @@ export { BaseServicesLayer, MembershipLayer, PortalLayer };
 Create `app/api/auth/session/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { AuthService, AuthServiceLive } from "@/src/lib/effect/auth.service";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {AuthService, AuthServiceLive} from '@/src/lib/effect/auth.service';
 
-const SESSION_COOKIE_NAME = "session";
+const SESSION_COOKIE_NAME = 'session';
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 5 * 1000; // 5 days
 
 export async function POST(request: NextRequest) {
-  const { idToken } = await request.json();
+  const {idToken} = await request.json();
 
   if (!idToken) {
-    return NextResponse.json(
-      { error: "ID token is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({error: 'ID token is required'}, {status: 400});
   }
 
   const program = pipe(
@@ -618,48 +585,43 @@ export async function POST(request: NextRequest) {
       yield* auth.verifyIdToken(idToken);
 
       // Create session cookie
-      const sessionCookie = yield* auth.createSessionCookie(
-        idToken,
-        SESSION_EXPIRES_IN
-      );
+      const sessionCookie = yield* auth.createSessionCookie(idToken, SESSION_EXPIRES_IN);
 
       return sessionCookie;
     }),
 
-    Effect.catchTag("AuthError", (error) =>
+    Effect.catchTag('AuthError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 401,
-      })
-    )
+      }),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(AuthServiceLive))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(AuthServiceLive)));
 
-  if (typeof result === "object" && "_tag" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if (typeof result === 'object' && '_tag' in result) {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   // Set the session cookie
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, result, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: SESSION_EXPIRES_IN / 1000,
-    path: "/",
+    path: '/',
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({success: true});
 }
 
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
-  return NextResponse.json({ success: true });
+  return NextResponse.json({success: true});
 }
 ```
 
@@ -668,26 +630,23 @@ export async function DELETE() {
 Create `app/api/portal/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {PortalService} from '@/src/lib/effect/portal.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 export async function POST(request: NextRequest) {
-  const { returnUrl } = await request.json();
+  const {returnUrl} = await request.json();
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   if (!returnUrl) {
-    return NextResponse.json(
-      { error: "Return URL is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({error: 'Return URL is required'}, {status: 400});
   }
 
   const program = pipe(
@@ -701,35 +660,33 @@ export async function POST(request: NextRequest) {
       return yield* portal.createPortalSession(session.uid, returnUrl);
     }),
 
-    Effect.catchTag("SessionError", () =>
+    Effect.catchTag('SessionError', () =>
       Effect.succeed({
-        error: "Session expired",
-        _tag: "error" as const,
+        error: 'Session expired',
+        _tag: 'error' as const,
         status: 401,
-      })
+      }),
     ),
-    Effect.catchTag("NotFoundError", (error) =>
+    Effect.catchTag('NotFoundError', (error) =>
       Effect.succeed({
         error: `No ${error.resource} found`,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 404,
-      })
+      }),
     ),
-    Effect.catchTag("StripeError", (error) =>
+    Effect.catchTag('StripeError', (error) =>
       Effect.succeed({
         error: error.message,
-        _tag: "error" as const,
+        _tag: 'error' as const,
         status: 500,
-      })
-    )
+      }),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -741,13 +698,13 @@ export async function POST(request: NextRequest) {
 Create `src/actions/auth.ts`:
 
 ```typescript
-"use server";
+'use server';
 
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { PortalService } from "@/lib/effect/portal.service";
-import { LiveLayer } from "@/lib/effect/layers";
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {redirect} from 'next/navigation';
+import {PortalService} from '@/lib/effect/portal.service';
+import {LiveLayer} from '@/lib/effect/layers';
 
 export type AuthState = {
   error?: string;
@@ -761,10 +718,10 @@ export async function verifySession(): Promise<{
   email?: string;
 }> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return { authenticated: false };
+    return {authenticated: false};
   }
 
   const program = pipe(
@@ -778,9 +735,7 @@ export async function verifySession(): Promise<{
       };
     }),
 
-    Effect.catchAll(() =>
-      Effect.succeed({ authenticated: false as const })
-    )
+    Effect.catchAll(() => Effect.succeed({authenticated: false as const})),
   );
 
   return Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
@@ -789,8 +744,8 @@ export async function verifySession(): Promise<{
 // Sign out action
 export async function signOut(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete("session");
-  redirect("/login");
+  cookieStore.delete('session');
+  redirect('/login');
 }
 
 // Get current user from session
@@ -813,24 +768,22 @@ export async function getCurrentUser() {
 Create `src/actions/portal.ts`:
 
 ```typescript
-"use server";
+'use server';
 
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { PortalService } from "@/lib/effect/portal.service";
-import { LiveLayer } from "@/lib/effect/layers";
-import type { MemberDashboardResponse } from "@/lib/effect/schemas";
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {redirect} from 'next/navigation';
+import {PortalService} from '@/lib/effect/portal.service';
+import {LiveLayer} from '@/lib/effect/layers';
+import type {MemberDashboardResponse} from '@/lib/effect/schemas';
 
 // Get member dashboard data - Effect.gen for complex flow
-export async function getMemberDashboard(): Promise<
-  MemberDashboardResponse | { error: string }
-> {
+export async function getMemberDashboard(): Promise<MemberDashboardResponse | {error: string}> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    redirect("/login");
+    redirect('/login');
   }
 
   const program = pipe(
@@ -844,19 +797,19 @@ export async function getMemberDashboard(): Promise<
       return yield* portal.getMemberDashboard(session.uid);
     }),
 
-    Effect.catchTag("SessionError", () => {
-      redirect("/login");
+    Effect.catchTag('SessionError', () => {
+      redirect('/login');
     }),
-    Effect.catchTag("NotFoundError", (error) =>
+    Effect.catchTag('NotFoundError', (error) =>
       Effect.succeed({
         error: `${error.resource} not found`,
-      })
+      }),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
+    Effect.catchTag('FirestoreError', (error) =>
       Effect.succeed({
         error: error.message,
-      })
-    )
+      }),
+    ),
   );
 
   return Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
@@ -865,10 +818,10 @@ export async function getMemberDashboard(): Promise<
 // Redirect to Stripe Customer Portal
 export async function redirectToPortal(returnUrl: string): Promise<void> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    redirect("/login");
+    redirect('/login');
   }
 
   const program = pipe(
@@ -883,20 +836,14 @@ export async function redirectToPortal(returnUrl: string): Promise<void> {
       return result.url;
     }),
 
-    Effect.catchTag("SessionError", () => {
-      redirect("/login");
+    Effect.catchTag('SessionError', () => {
+      redirect('/login');
     }),
-    Effect.catchTag("NotFoundError", () =>
-      Effect.succeed(null as string | null)
-    ),
-    Effect.catchTag("StripeError", () =>
-      Effect.succeed(null as string | null)
-    )
+    Effect.catchTag('NotFoundError', () => Effect.succeed(null as string | null)),
+    Effect.catchTag('StripeError', () => Effect.succeed(null as string | null)),
   );
 
-  const portalUrl = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const portalUrl = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
   if (portalUrl) {
     redirect(portalUrl);
@@ -1122,18 +1069,18 @@ export function LoginForm() {
 
 ### 15-20. UI Components and Pages
 
-*[See Phase 1 for detailed component implementations - MembershipCard, PortalButton, Member Dashboard Page, Protected Layout, Login Page, Middleware updates]*
+_[See Phase 1 for detailed component implementations - MembershipCard, PortalButton, Member Dashboard Page, Protected Layout, Login Page, Middleware updates]_
 
 ## Effect-TS Pattern Guide (Phase 2)
 
 ### When to Use Effect.pipe vs Effect.gen
 
-| Scenario | Pattern | Example |
-| --- | --- | --- |
-| Simple transform | `Effect.pipe` | `verifySession` - decode token then map |
-| Sequential dependent calls | `Effect.gen` | `getMemberDashboard` - fetch user, then membership |
-| Error handling chain | `Effect.pipe` + `catchTag` | API routes with multiple error types |
-| Parallel independent calls | `Effect.all` | Fetch user + plans simultaneously |
+| Scenario                   | Pattern                    | Example                                            |
+| -------------------------- | -------------------------- | -------------------------------------------------- |
+| Simple transform           | `Effect.pipe`              | `verifySession` - decode token then map            |
+| Sequential dependent calls | `Effect.gen`               | `getMemberDashboard` - fetch user, then membership |
+| Error handling chain       | `Effect.pipe` + `catchTag` | API routes with multiple error types               |
+| Parallel independent calls | `Effect.all`               | Fetch user + plans simultaneously                  |
 
 ### Server Actions Pattern
 
@@ -1146,8 +1093,8 @@ export async function getMemberDashboard() {
       const session = yield* portal.verifySession(cookie);
       return yield* portal.getMemberDashboard(session.uid);
     }),
-    Effect.catchTag("SessionError", () => redirect("/login")),
-    Effect.catchTag("NotFoundError", (e) => Effect.succeed({ error: e.message }))
+    Effect.catchTag('SessionError', () => redirect('/login')),
+    Effect.catchTag('NotFoundError', (e) => Effect.succeed({error: e.message})),
   );
 
   return Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
@@ -1159,7 +1106,7 @@ export async function getMemberDashboard() {
 ```typescript
 // Client components use Firebase client SDK directly
 // Session cookies are managed via API routes
-const { user, loading, signOut } = useAuth();
+const {user, loading, signOut} = useAuth();
 ```
 
 ### Protected Routes Pattern
@@ -1167,10 +1114,10 @@ const { user, loading, signOut } = useAuth();
 ```typescript
 // In layout.tsx - verify session server-side
 const session = await Effect.runPromise(
-  portal.verifySession(cookie).pipe(Effect.provide(LiveLayer))
+  portal.verifySession(cookie).pipe(Effect.provide(LiveLayer)),
 );
 
-if (!session) redirect("/login");
+if (!session) redirect('/login');
 ```
 
 ## Acceptance Criteria

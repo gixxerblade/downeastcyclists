@@ -4,7 +4,7 @@ import type {
   EntryFieldTypes,
   EntrySkeletonType,
   LocaleCode,
-} from "contentful";
+} from 'contentful';
 
 export interface TypePrivacyFields {
   id: EntryFieldTypes.Symbol;
@@ -13,7 +13,7 @@ export interface TypePrivacyFields {
   order: EntryFieldTypes.Integer;
 }
 
-export type TypePrivacySkeleton = EntrySkeletonType<TypePrivacyFields, "privacy">;
+export type TypePrivacySkeleton = EntrySkeletonType<TypePrivacyFields, 'privacy'>;
 export type TypePrivacy<Modifiers extends ChainModifiers, Locales extends LocaleCode> = Entry<
   TypePrivacySkeleton,
   Modifiers,

@@ -1,22 +1,23 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { Button, CircularProgress, Alert } from "@mui/material";
-import { createPortalSession } from "@/src/lib/effect/client-portal";
-import type { StripeError, NotFoundError } from "@/src/lib/effect/errors";
+import {Button, CircularProgress, Alert} from '@mui/material';
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {useRouter} from 'next/navigation';
+
+import {createPortalSession} from '@/src/lib/effect/client-portal';
+import type {StripeError, NotFoundError} from '@/src/lib/effect/errors';
 
 interface PortalButtonProps {
   returnUrl: string;
   disabled?: boolean;
 }
 
-export function PortalButton({ returnUrl, disabled }: PortalButtonProps) {
+export function PortalButton({returnUrl, disabled}: PortalButtonProps) {
   const router = useRouter();
 
   // Using Effect with TanStack Query for consistent error handling
-  const portalMutation = useMutation<{ url: string }, StripeError | NotFoundError, void>({
+  const portalMutation = useMutation<{url: string}, StripeError | NotFoundError, void>({
     mutationFn: () => Effect.runPromise(createPortalSession(returnUrl)),
     onSuccess: (data) => {
       // Redirect to Stripe portal
@@ -27,7 +28,7 @@ export function PortalButton({ returnUrl, disabled }: PortalButtonProps) {
   return (
     <>
       {portalMutation.error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{mb: 2}}>
           {portalMutation.error.message}
         </Alert>
       )}
@@ -37,7 +38,7 @@ export function PortalButton({ returnUrl, disabled }: PortalButtonProps) {
         disabled={portalMutation.isPending || disabled}
         startIcon={portalMutation.isPending ? <CircularProgress size={20} /> : null}
       >
-        {portalMutation.isPending ? "Loading..." : "Manage Subscription"}
+        {portalMutation.isPending ? 'Loading...' : 'Manage Subscription'}
       </Button>
     </>
   );

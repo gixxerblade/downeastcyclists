@@ -18,7 +18,7 @@ async function signIn(email: string, password: string) {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return result;
   } catch (error) {
-    throw new Error("Sign in failed");
+    throw new Error('Sign in failed');
   }
 }
 ```
@@ -26,22 +26,19 @@ async function signIn(email: string, password: string) {
 ### ✅ Prefer
 
 ```typescript
-import { Effect } from "effect";
-import { AuthError } from "./errors";
+import {Effect} from 'effect';
+import {AuthError} from './errors';
 
-export const signInWithPassword = (
-  credentials: { email: string; password: string }
-): Effect.Effect<UserCredential, AuthError> =>
+export const signInWithPassword = (credentials: {
+  email: string;
+  password: string;
+}): Effect.Effect<UserCredential, AuthError> =>
   Effect.tryPromise({
-    try: () => signInWithEmailAndPassword(
-      auth, 
-      credentials.email, 
-      credentials.password
-    ),
+    try: () => signInWithEmailAndPassword(auth, credentials.email, credentials.password),
     catch: (error) =>
       new AuthError({
-        code: "SIGN_IN_FAILED",
-        message: error instanceof Error ? error.message : "Failed to sign in",
+        code: 'SIGN_IN_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to sign in',
         cause: error,
       }),
   });
@@ -50,18 +47,20 @@ export const signInWithPassword = (
 ### For Multi-Step Operations
 
 ```typescript
-export const loginWithPassword = (
-  credentials: { email: string; password: string }
-): Effect.Effect<SessionResponse, AuthError> =>
+export const loginWithPassword = (credentials: {
+  email: string;
+  password: string;
+}): Effect.Effect<SessionResponse, AuthError> =>
   Effect.gen(function* () {
     const userCredential = yield* signInWithPassword(credentials);
     const idToken = yield* Effect.tryPromise({
       try: () => userCredential.user.getIdToken(),
-      catch: (error) => new AuthError({ 
-        code: "TOKEN_GET_FAILED", 
-        message: "Failed to get ID token",
-        cause: error,
-      }),
+      catch: (error) =>
+        new AuthError({
+          code: 'TOKEN_GET_FAILED',
+          message: 'Failed to get ID token',
+          cause: error,
+        }),
     });
     return yield* createSessionCookie(idToken);
   });

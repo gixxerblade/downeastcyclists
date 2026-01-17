@@ -1,6 +1,5 @@
-"use client";
+'use client';
 
-import { useState } from "react";
 import {
   Box,
   Typography,
@@ -12,8 +11,10 @@ import {
   Tabs,
   Tab,
   CircularProgress,
-} from "@mui/material";
-import type { VerificationResult } from "@/src/lib/effect/schemas";
+} from '@mui/material';
+import {useState} from 'react';
+
+import type {VerificationResult} from '@/src/lib/effect/schemas';
 
 interface VerificationScannerProps {
   onVerificationResult?: (result: VerificationResult) => void;
@@ -26,21 +27,21 @@ interface TabPanelProps {
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const {children, value, index, ...other} = props;
   return (
     <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+      {value === index && <Box sx={{pt: 2}}>{children}</Box>}
     </div>
   );
 }
 
-export function VerificationScanner({ onVerificationResult }: VerificationScannerProps) {
+export function VerificationScanner({onVerificationResult}: VerificationScannerProps) {
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const [membershipNumber, setMembershipNumber] = useState("");
-  const [qrData, setQrData] = useState("");
+  const [membershipNumber, setMembershipNumber] = useState('');
+  const [qrData, setQrData] = useState('');
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -49,7 +50,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
 
   const verifyByMembershipNumber = async () => {
     if (!membershipNumber.trim()) {
-      setError("Please enter a membership number");
+      setError('Please enter a membership number');
       return;
     }
 
@@ -69,7 +70,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
         onVerificationResult?.(verificationResult);
       }
     } catch {
-      setError("Failed to verify membership");
+      setError('Failed to verify membership');
     } finally {
       setLoading(false);
     }
@@ -77,7 +78,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
 
   const verifyByQRData = async () => {
     if (!qrData.trim()) {
-      setError("Please paste QR code data");
+      setError('Please paste QR code data');
       return;
     }
 
@@ -85,10 +86,10 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/verify/qr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrData: qrData.trim() }),
+      const response = await fetch('/api/admin/verify/qr', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({qrData: qrData.trim()}),
       });
       const verificationResult = await response.json();
 
@@ -99,7 +100,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
         onVerificationResult?.(verificationResult);
       }
     } catch {
-      setError("Failed to verify membership");
+      setError('Failed to verify membership');
     } finally {
       setLoading(false);
     }
@@ -108,15 +109,15 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
   const handleRescan = () => {
     setResult(null);
     setError(null);
-    setMembershipNumber("");
-    setQrData("");
+    setMembershipNumber('');
+    setQrData('');
   };
 
   if (result) {
     return (
       <Card>
         <CardContent>
-          <Alert severity={result.valid ? "success" : "error"} sx={{ mb: 2 }}>
+          <Alert severity={result.valid ? 'success' : 'error'} sx={{mb: 2}}>
             {result.message}
           </Alert>
 
@@ -129,7 +130,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            {result.planType === "family" ? "Family" : "Individual"} Plan
+            {result.planType === 'family' ? 'Family' : 'Individual'} Plan
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
@@ -148,7 +149,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
             </Typography>
           )}
 
-          <Button variant="outlined" fullWidth onClick={handleRescan} sx={{ mt: 2 }}>
+          <Button variant="outlined" fullWidth onClick={handleRescan} sx={{mt: 2}}>
             Verify Another
           </Button>
         </CardContent>
@@ -164,12 +165,12 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{mb: 2}}>
             {error}
           </Alert>
         )}
 
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Box sx={{borderBottom: 1, borderColor: 'divider'}}>
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="By Number" />
             <Tab label="By QR Data" />
@@ -184,7 +185,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
             value={membershipNumber}
             onChange={(e) => setMembershipNumber(e.target.value)}
             disabled={loading}
-            sx={{ mb: 2 }}
+            sx={{mb: 2}}
           />
           <Button
             variant="contained"
@@ -192,7 +193,7 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
             onClick={verifyByMembershipNumber}
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} /> : "Verify"}
+            {loading ? <CircularProgress size={24} /> : 'Verify'}
           </Button>
         </TabPanel>
 
@@ -206,10 +207,10 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
             disabled={loading}
             multiline
             rows={3}
-            sx={{ mb: 2 }}
+            sx={{mb: 2}}
           />
           <Button variant="contained" fullWidth onClick={verifyByQRData} disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : "Verify QR"}
+            {loading ? <CircularProgress size={24} /> : 'Verify QR'}
           </Button>
         </TabPanel>
 

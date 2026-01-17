@@ -1,29 +1,24 @@
-import React from "react";
-import {
-  Container,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { fetchBylaws } from "@/src/contentful/bylaws";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import {Container, Typography, Accordion, AccordionSummary, AccordionDetails} from '@mui/material';
+import React from 'react';
+
+import {fetchBylaws} from '@/src/contentful/bylaws';
 
 // Force static generation since bylaws rarely change
-export const dynamic = "force-static";
+export const dynamic = 'force-static';
 
 export default async function Bylaws() {
   const bylaws = await fetchBylaws();
 
   return (
-    <Container maxWidth="md" sx={{ paddingTop: 8, paddingBottom: 8 }}>
+    <Container maxWidth="md" sx={{paddingTop: 8, paddingBottom: 8}}>
       <Typography variant="h3" component="h1" gutterBottom align="center">
         Club Bylaws
       </Typography>
 
       {bylaws.length > 0 ? (
         bylaws.map((bylaw) => (
-          <Accordion key={bylaw.id} sx={{ marginBottom: 2 }}>
+          <Accordion key={bylaw.id} sx={{marginBottom: 2}}>
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
               aria-controls={`${bylaw.id}-content`}

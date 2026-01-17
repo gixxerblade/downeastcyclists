@@ -1,7 +1,8 @@
-import { Effect } from "effect";
-import { initializeApp, getApps, cert, App } from "firebase-admin/app";
-import { getAuth, Auth } from "firebase-admin/auth";
-import { AuthError } from "./effect/errors";
+import {Effect} from 'effect';
+import {initializeApp, getApps, cert, App} from 'firebase-admin/app';
+import {getAuth, Auth} from 'firebase-admin/auth';
+
+import {AuthError} from './effect/errors';
 
 let adminApp: App | null = null;
 let adminAuth: Auth | null = null;
@@ -11,10 +12,10 @@ const initializeFirebaseAdmin = (): Effect.Effect<Auth, AuthError> =>
     try: () => {
       if (adminAuth) return adminAuth;
 
-      const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+      const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
       if (!privateKey) {
-        throw new Error("GOOGLE_PRIVATE_KEY not configured");
+        throw new Error('GOOGLE_PRIVATE_KEY not configured');
       }
 
       if (getApps().length === 0) {
@@ -34,10 +35,10 @@ const initializeFirebaseAdmin = (): Effect.Effect<Auth, AuthError> =>
     },
     catch: (error) =>
       new AuthError({
-        code: "ADMIN_INIT_FAILED",
-        message: "Failed to initialize Firebase Admin",
+        code: 'ADMIN_INIT_FAILED',
+        message: 'Failed to initialize Firebase Admin',
         cause: error,
       }),
   });
 
-export { initializeFirebaseAdmin };
+export {initializeFirebaseAdmin};

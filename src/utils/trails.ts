@@ -1,4 +1,4 @@
-import { cache } from "react";
+import {cache} from 'react';
 
 export interface TrailData {
   id: string;
@@ -14,10 +14,10 @@ export interface TrailData {
 export const getTrails = cache(async (): Promise<TrailData[]> => {
   try {
     // Use relative URL in the browser, absolute URL in SSR
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
     const response = await fetch(`${baseUrl}/api/trails`, {
       // Ensure we get fresh data
-      next: { revalidate: 300 }, // Revalidate every 5 minutes
+      next: {revalidate: 300}, // Revalidate every 5 minutes
     });
 
     if (!response.ok) {
@@ -26,7 +26,7 @@ export const getTrails = cache(async (): Promise<TrailData[]> => {
 
     return response.json();
   } catch (error) {
-    console.error("Error fetching trails:", error);
+    console.error('Error fetching trails:', error);
     return [];
   }
 });

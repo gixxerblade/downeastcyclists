@@ -112,19 +112,19 @@ Update `src/lib/effect/errors.ts`:
 ```typescript
 // Add to existing errors file
 
-export class CardError extends Data.TaggedError("CardError")<{
+export class CardError extends Data.TaggedError('CardError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class StorageError extends Data.TaggedError("StorageError")<{
+export class StorageError extends Data.TaggedError('StorageError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class QRError extends Data.TaggedError("QRError")<{
+export class QRError extends Data.TaggedError('QRError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
@@ -205,11 +205,11 @@ export type MembershipCounter = S.Schema.Type<typeof MembershipCounter>;
 Create `src/lib/effect/qr.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import QRCode from "qrcode";
-import crypto from "crypto";
-import { QRError } from "./errors";
-import type { QRPayload } from "./schemas";
+import {Context, Effect, Layer} from 'effect';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
+import {QRError} from './errors';
+import type {QRPayload} from './schemas';
 
 // Service interface
 export interface QRService {
@@ -221,20 +221,17 @@ export interface QRService {
 
   readonly generateQRImage: (
     data: string,
-    options?: { width?: number; margin?: number }
+    options?: {width?: number; margin?: number},
   ) => Effect.Effect<string, QRError>; // Returns data URL
 
-  readonly verifyQRData: (
-    data: string
-  ) => Effect.Effect<QRPayload & { verified: boolean }, QRError>;
+  readonly verifyQRData: (data: string) => Effect.Effect<QRPayload & {verified: boolean}, QRError>;
 }
 
 // Service tag
-export const QRService = Context.GenericTag<QRService>("QRService");
+export const QRService = Context.GenericTag<QRService>('QRService');
 
 // Secret for signing (should be in env)
-const getSigningSecret = () =>
-  process.env.QR_SIGNING_SECRET || "dec-membership-secret-2025";
+const getSigningSecret = () => process.env.QR_SIGNING_SECRET || 'dec-membership-secret-2025';
 
 // Implementation
 const make = Effect.sync(() => {
@@ -242,18 +239,18 @@ const make = Effect.sync(() => {
 
   return QRService.of({
     // Generate compact QR payload with signature
-    generateQRData: ({ membershipNumber, userId, validUntil }) =>
+    generateQRData: ({membershipNumber, userId, validUntil}) =>
       Effect.try({
         try: () => {
           // Create compact date (YYYYMMDD)
-          const compactDate = validUntil.toISOString().slice(0, 10).replace(/-/g, "");
+          const compactDate = validUntil.toISOString().slice(0, 10).replace(/-/g, '');
 
           // Create signature
           const dataToSign = `${membershipNumber}:${userId.slice(0, 8)}:${compactDate}`;
           const signature = crypto
-            .createHmac("sha256", secret)
+            .createHmac('sha256', secret)
             .update(dataToSign)
-            .digest("hex")
+            .digest('hex')
             .slice(0, 8); // Truncate for compact QR
 
           const payload: QRPayload = {
@@ -267,8 +264,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new QRError({
-            code: "QR_DATA_GENERATION_FAILED",
-            message: "Failed to generate QR data",
+            code: 'QR_DATA_GENERATION_FAILED',
+            message: 'Failed to generate QR data',
             cause: error,
           }),
       }),
@@ -280,12 +277,12 @@ const make = Effect.sync(() => {
           QRCode.toDataURL(data, {
             width: options.width || 200,
             margin: options.margin || 2,
-            errorCorrectionLevel: "M",
+            errorCorrectionLevel: 'M',
           }),
         catch: (error) =>
           new QRError({
-            code: "QR_IMAGE_GENERATION_FAILED",
-            message: "Failed to generate QR code image",
+            code: 'QR_IMAGE_GENERATION_FAILED',
+            message: 'Failed to generate QR code image',
             cause: error,
           }),
       }),
@@ -299,9 +296,9 @@ const make = Effect.sync(() => {
           // Recreate signature to verify
           const dataToSign = `${payload.mn}:${payload.u}:${payload.v}`;
           const expectedSignature = crypto
-            .createHmac("sha256", secret)
+            .createHmac('sha256', secret)
             .update(dataToSign)
-            .digest("hex")
+            .digest('hex')
             .slice(0, 8);
 
           return {
@@ -311,8 +308,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new QRError({
-            code: "QR_VERIFICATION_FAILED",
-            message: "Failed to verify QR data",
+            code: 'QR_VERIFICATION_FAILED',
+            message: 'Failed to verify QR data',
             cause: error,
           }),
       }),
@@ -328,28 +325,28 @@ export const QRServiceLive = Layer.effect(QRService, make);
 Create `src/lib/effect/storage.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import { Storage, Bucket } from "@google-cloud/storage";
-import { StorageError } from "./errors";
+import {Context, Effect, Layer} from 'effect';
+import {Storage, Bucket} from '@google-cloud/storage';
+import {StorageError} from './errors';
 
 // Service interface
 export interface StorageService {
   readonly uploadBuffer: (
     path: string,
     buffer: Buffer,
-    contentType: string
+    contentType: string,
   ) => Effect.Effect<string, StorageError>; // Returns public URL
 
   readonly getSignedUrl: (
     path: string,
-    expiresInMinutes?: number
+    expiresInMinutes?: number,
   ) => Effect.Effect<string, StorageError>;
 
   readonly deleteFile: (path: string) => Effect.Effect<void, StorageError>;
 }
 
 // Service tag
-export const StorageService = Context.GenericTag<StorageService>("StorageService");
+export const StorageService = Context.GenericTag<StorageService>('StorageService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -358,9 +355,9 @@ const make = Effect.gen(function* () {
   if (!bucketName) {
     return yield* Effect.fail(
       new StorageError({
-        code: "MISSING_CONFIG",
-        message: "FIREBASE_STORAGE_BUCKET not configured",
-      })
+        code: 'MISSING_CONFIG',
+        message: 'FIREBASE_STORAGE_BUCKET not configured',
+      }),
     );
   }
 
@@ -368,7 +365,7 @@ const make = Effect.gen(function* () {
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
     },
   });
 
@@ -382,7 +379,7 @@ const make = Effect.gen(function* () {
           await file.save(buffer, {
             contentType,
             metadata: {
-              cacheControl: "public, max-age=31536000",
+              cacheControl: 'public, max-age=31536000',
             },
           });
 
@@ -393,7 +390,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new StorageError({
-            code: "UPLOAD_FAILED",
+            code: 'UPLOAD_FAILED',
             message: `Failed to upload file to ${path}`,
             cause: error,
           }),
@@ -404,14 +401,14 @@ const make = Effect.gen(function* () {
         try: async () => {
           const file = bucket.file(path);
           const [url] = await file.getSignedUrl({
-            action: "read",
+            action: 'read',
             expires: Date.now() + expiresInMinutes * 60 * 1000,
           });
           return url;
         },
         catch: (error) =>
           new StorageError({
-            code: "SIGNED_URL_FAILED",
+            code: 'SIGNED_URL_FAILED',
             message: `Failed to get signed URL for ${path}`,
             cause: error,
           }),
@@ -422,7 +419,7 @@ const make = Effect.gen(function* () {
         try: () => bucket.file(path).delete(),
         catch: (error) =>
           new StorageError({
-            code: "DELETE_FAILED",
+            code: 'DELETE_FAILED',
             message: `Failed to delete file ${path}`,
             cause: error,
           }),
@@ -574,18 +571,12 @@ getMembershipByNumber: (membershipNumber) =>
 Create `src/lib/effect/card.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe } from "effect";
-import { FirestoreService } from "./firestore.service";
-import { QRService } from "./qr.service";
-import { StorageService } from "./storage.service";
-import {
-  CardError,
-  FirestoreError,
-  NotFoundError,
-  QRError,
-  StorageError,
-} from "./errors";
-import type { MembershipCard, VerificationResult, MembershipDocument, UserDocument } from "./schemas";
+import {Context, Effect, Layer, pipe} from 'effect';
+import {FirestoreService} from './firestore.service';
+import {QRService} from './qr.service';
+import {StorageService} from './storage.service';
+import {CardError, FirestoreError, NotFoundError, QRError, StorageError} from './errors';
+import type {MembershipCard, VerificationResult, MembershipDocument, UserDocument} from './schemas';
 
 // Service interface
 export interface MembershipCardService {
@@ -593,31 +584,26 @@ export interface MembershipCardService {
     userId: string;
     user: UserDocument;
     membership: MembershipDocument;
-  }) => Effect.Effect<
-    MembershipCard,
-    CardError | FirestoreError | QRError
-  >;
+  }) => Effect.Effect<MembershipCard, CardError | FirestoreError | QRError>;
 
-  readonly getCard: (
-    userId: string
-  ) => Effect.Effect<MembershipCard | null, FirestoreError>;
+  readonly getCard: (userId: string) => Effect.Effect<MembershipCard | null, FirestoreError>;
 
   readonly generatePDF: (
-    userId: string
+    userId: string,
   ) => Effect.Effect<string, CardError | StorageError | NotFoundError>;
 
   readonly verifyMembership: (
-    membershipNumber: string
+    membershipNumber: string,
   ) => Effect.Effect<VerificationResult, FirestoreError | NotFoundError>;
 
   readonly verifyQRCode: (
-    qrData: string
+    qrData: string,
   ) => Effect.Effect<VerificationResult, QRError | FirestoreError | NotFoundError>;
 }
 
 // Service tag
 export const MembershipCardService =
-  Context.GenericTag<MembershipCardService>("MembershipCardService");
+  Context.GenericTag<MembershipCardService>('MembershipCardService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -627,7 +613,7 @@ const make = Effect.gen(function* () {
 
   return MembershipCardService.of({
     // Create a new membership card - Effect.gen for complex orchestration
-    createCard: ({ userId, user, membership }) =>
+    createCard: ({userId, user, membership}) =>
       Effect.gen(function* () {
         // Get current year
         const currentYear = new Date().getFullYear();
@@ -636,10 +622,10 @@ const make = Effect.gen(function* () {
         const membershipNumber = yield* firestore.getNextMembershipNumber(currentYear);
 
         // Calculate validity dates
-        const validFrom = membership.startDate.toDate?.()?.toISOString() ||
+        const validFrom =
+          membership.startDate.toDate?.()?.toISOString() ||
           new Date(membership.startDate as any).toISOString();
-        const validUntil = membership.endDate.toDate?.() ||
-          new Date(membership.endDate as any);
+        const validUntil = membership.endDate.toDate?.() || new Date(membership.endDate as any);
 
         // Generate QR code data
         const qrData = yield* qr.generateQRData({
@@ -652,7 +638,7 @@ const make = Effect.gen(function* () {
         const qrCodeImage = yield* qr.generateQRImage(qrData);
 
         // Create card document
-        const card: Omit<MembershipCard, "id"> = {
+        const card: Omit<MembershipCard, 'id'> = {
           userId,
           membershipNumber,
           memberName: user.name || user.email,
@@ -670,11 +656,9 @@ const make = Effect.gen(function* () {
         // Save to Firestore
         yield* firestore.setMembershipCard(userId, card);
 
-        yield* Effect.log(
-          `Membership card created: ${membershipNumber} for user ${userId}`
-        );
+        yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
-        return { ...card, id: "current" } as MembershipCard;
+        return {...card, id: 'current'} as MembershipCard;
       }),
 
     // Get existing card - simple delegation
@@ -687,9 +671,7 @@ const make = Effect.gen(function* () {
         const card = yield* firestore.getMembershipCard(userId);
 
         if (!card) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "membershipCard", id: userId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'membershipCard', id: userId}));
         }
 
         // Generate PDF buffer (simplified - in real impl use @react-pdf/renderer)
@@ -701,15 +683,15 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new CardError({
-              code: "PDF_GENERATION_FAILED",
-              message: "Failed to generate PDF",
+              code: 'PDF_GENERATION_FAILED',
+              message: 'Failed to generate PDF',
               cause: error,
             }),
         });
 
         // Upload to Cloud Storage
         const path = `membership-cards/${userId}/${card.membershipNumber}.pdf`;
-        const pdfUrl = yield* storage.uploadBuffer(pdfBuffer, path, "application/pdf");
+        const pdfUrl = yield* storage.uploadBuffer(pdfBuffer, path, 'application/pdf');
 
         // Update card with PDF URL
         yield* firestore.setMembershipCard(userId, {
@@ -728,31 +710,30 @@ const make = Effect.gen(function* () {
 
         if (!result) {
           return yield* Effect.fail(
-            new NotFoundError({ resource: "membership", id: membershipNumber })
+            new NotFoundError({resource: 'membership', id: membershipNumber}),
           );
         }
 
-        const { card } = result;
+        const {card} = result;
         const expiresAt = new Date(card.validUntil);
         const now = new Date();
         const daysRemaining = Math.max(
           0,
-          Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         );
 
-        const isActive =
-          card.status === "active" || card.status === "trialing";
+        const isActive = card.status === 'active' || card.status === 'trialing';
         const isExpired = expiresAt < now;
 
         let message: string;
         if (!isActive) {
           message = `Membership is ${card.status}`;
         } else if (isExpired) {
-          message = "Membership has expired";
+          message = 'Membership has expired';
         } else if (daysRemaining <= 30) {
           message = `Valid - expires in ${daysRemaining} days`;
         } else {
-          message = "Valid membership";
+          message = 'Valid membership';
         }
 
         return {
@@ -777,12 +758,12 @@ const make = Effect.gen(function* () {
           return {
             valid: false,
             membershipNumber: payload.mn,
-            memberName: "Unknown",
-            planType: "individual" as const,
-            status: "canceled" as const,
-            expiresAt: "",
+            memberName: 'Unknown',
+            planType: 'individual' as const,
+            status: 'canceled' as const,
+            expiresAt: '',
             daysRemaining: 0,
-            message: "Invalid QR code signature",
+            message: 'Invalid QR code signature',
           };
         }
 
@@ -793,25 +774,24 @@ const make = Effect.gen(function* () {
           return {
             valid: false,
             membershipNumber: payload.mn,
-            memberName: "Unknown",
-            planType: "individual" as const,
-            status: "canceled" as const,
-            expiresAt: "",
+            memberName: 'Unknown',
+            planType: 'individual' as const,
+            status: 'canceled' as const,
+            expiresAt: '',
             daysRemaining: 0,
-            message: "Membership not found",
+            message: 'Membership not found',
           };
         }
 
-        const { card } = result;
+        const {card} = result;
         const expiresAt = new Date(card.validUntil);
         const now = new Date();
         const daysRemaining = Math.max(
           0,
-          Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         );
 
-        const isActive =
-          card.status === "active" || card.status === "trialing";
+        const isActive = card.status === 'active' || card.status === 'trialing';
         const isExpired = expiresAt < now;
 
         return {
@@ -822,17 +802,14 @@ const make = Effect.gen(function* () {
           status: card.status,
           expiresAt: card.validUntil,
           daysRemaining,
-          message: isActive && !isExpired ? "Valid membership" : "Invalid or expired",
+          message: isActive && !isExpired ? 'Valid membership' : 'Invalid or expired',
         };
       }),
   });
 });
 
 // Live layer
-export const MembershipCardServiceLive = Layer.effect(
-  MembershipCardService,
-  make
-);
+export const MembershipCardServiceLive = Layer.effect(MembershipCardService, make);
 ```
 
 ### 8. Update Layer Composition
@@ -840,11 +817,11 @@ export const MembershipCardServiceLive = Layer.effect(
 Update `src/lib/effect/layers.ts`:
 
 ```typescript
-import { Layer } from "effect";
+import {Layer} from 'effect';
 // ... existing imports
-import { QRService, QRServiceLive } from "./qr.service";
-import { StorageService, StorageServiceLive } from "./storage.service";
-import { MembershipCardService, MembershipCardServiceLive } from "./card.service";
+import {QRService, QRServiceLive} from './qr.service';
+import {StorageService, StorageServiceLive} from './storage.service';
+import {MembershipCardService, MembershipCardServiceLive} from './card.service';
 
 // Base services layer (no dependencies)
 const BaseServicesLayer = Layer.mergeAll(
@@ -852,26 +829,21 @@ const BaseServicesLayer = Layer.mergeAll(
   FirestoreServiceLive,
   AuthServiceLive,
   QRServiceLive,
-  StorageServiceLive
+  StorageServiceLive,
 );
 
 // Card service (depends on Firestore + QR + Storage)
 const CardLayer = MembershipCardServiceLive.pipe(
   Layer.provide(FirestoreServiceLive),
   Layer.provide(QRServiceLive),
-  Layer.provide(StorageServiceLive)
+  Layer.provide(StorageServiceLive),
 );
 
 // Complete live layer with all services
-export const LiveLayer = Layer.mergeAll(
-  BaseServicesLayer,
-  MembershipLayer,
-  PortalLayer,
-  CardLayer
-);
+export const LiveLayer = Layer.mergeAll(BaseServicesLayer, MembershipLayer, PortalLayer, CardLayer);
 
 // Re-export for selective use
-export { CardLayer };
+export {CardLayer};
 ```
 
 ### 9. Create Card API Route
@@ -879,20 +851,20 @@ export { CardLayer };
 Create `app/api/membership/card/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { MembershipCardService } from "@/src/lib/effect/card.service";
-import { FirestoreService } from "@/src/lib/effect/firestore.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {PortalService} from '@/src/lib/effect/portal.service';
+import {MembershipCardService} from '@/src/lib/effect/card.service';
+import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const program = pipe(
@@ -907,26 +879,24 @@ export async function GET(request: NextRequest) {
       const card = yield* cardService.getCard(session.uid);
 
       if (!card) {
-        return { hasCard: false, card: null };
+        return {hasCard: false, card: null};
       }
 
-      return { hasCard: true, card };
+      return {hasCard: true, card};
     }),
 
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -938,24 +908,24 @@ export async function GET(request: NextRequest) {
 Create `app/api/admin/verify/[membershipNumber]/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { MembershipCardService } from "@/src/lib/effect/card.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {PortalService} from '@/src/lib/effect/portal.service';
+import {MembershipCardService} from '@/src/lib/effect/card.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 interface RouteParams {
-  params: Promise<{ membershipNumber: string }>;
+  params: Promise<{membershipNumber: string}>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { membershipNumber } = await params;
+export async function GET(request: NextRequest, {params}: RouteParams) {
+  const {membershipNumber} = await params;
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const program = pipe(
@@ -973,28 +943,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return yield* cardService.verifyMembership(membershipNumber);
     }),
 
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("NotFoundError", (error) =>
+    Effect.catchTag('NotFoundError', (error) =>
       Effect.succeed({
         valid: false,
         membershipNumber,
-        message: "Membership not found",
-        _tag: "result" as const,
-      })
+        message: 'Membership not found',
+        _tag: 'result' as const,
+      }),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1279,12 +1247,12 @@ export function VerificationScanner({ onVerificationResult }: VerificationScanne
 
 ### When to Use Effect.pipe vs Effect.gen
 
-| Scenario | Pattern | Example |
-| --- | --- | --- |
-| Simple QR generation | `Effect.pipe` | `generateQRImage` - single operation |
-| Card creation flow | `Effect.gen` | Multiple dependent steps (number, QR, save) |
-| Verification lookup | `Effect.gen` | Parse QR, lookup, calculate status |
-| Storage upload | `Effect.pipe` | Linear transform chain |
+| Scenario             | Pattern       | Example                                     |
+| -------------------- | ------------- | ------------------------------------------- |
+| Simple QR generation | `Effect.pipe` | `generateQRImage` - single operation        |
+| Card creation flow   | `Effect.gen`  | Multiple dependent steps (number, QR, save) |
+| Verification lookup  | `Effect.gen`  | Parse QR, lookup, calculate status          |
+| Storage upload       | `Effect.pipe` | Linear transform chain                      |
 
 ### Atomic Operations Pattern
 

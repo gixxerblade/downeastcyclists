@@ -16,11 +16,11 @@ When using TanStack Query (both queries and mutations), integrate Effect-TS util
 const loginMutation = useMutation({
   mutationFn: async (credentials) => {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
         body: JSON.stringify(credentials),
       });
-      if (!response.ok) throw new Error("Login failed");
+      if (!response.ok) throw new Error('Login failed');
       return response.json();
     } catch (err) {
       throw err;
@@ -29,30 +29,29 @@ const loginMutation = useMutation({
 });
 
 // Error is generic Error type
-loginMutation.error?.message // any string
+loginMutation.error?.message; // any string
 ```
 
 ### ✅ Prefer
 
 ```typescript
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { loginWithPassword } from "@/lib/effect/client-auth";
-import type { AuthError } from "@/lib/effect/errors";
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {loginWithPassword} from '@/lib/effect/client-auth';
+import type {AuthError} from '@/lib/effect/errors';
 
-const loginMutation = useMutation
-  SessionResponse,
+const loginMutation = useMutation;
+(SessionResponse,
   AuthError,
-  LoginCredentials
->({
-  mutationFn: (credentials) =>
-    Effect.runPromise(loginWithPassword(credentials)),
-  onSuccess: () => router.push("/member"),
-});
+  LoginCredentials >
+    {
+      mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
+      onSuccess: () => router.push('/member'),
+    });
 
 // TypeScript knows error is AuthError
-loginMutation.error?.code     // ✅ Type-safe: "SIGN_IN_FAILED" | "TOKEN_GET_FAILED"
-loginMutation.error?.message  // ✅ Type-safe error message
+loginMutation.error?.code; // ✅ Type-safe: "SIGN_IN_FAILED" | "TOKEN_GET_FAILED"
+loginMutation.error?.message; // ✅ Type-safe error message
 ```
 
 ### Mutation Usage in Components
@@ -67,7 +66,7 @@ loginMutation.error?.message  // ✅ Type-safe error message
       {loginMutation.error.message}
     </Alert>
   )}
-  
+
   <Button disabled={loginMutation.isPending}>
     {loginMutation.isPending ? "Signing in..." : "Sign In"}
   </Button>
@@ -79,12 +78,12 @@ loginMutation.error?.message  // ✅ Type-safe error message
 ### ❌ Avoid
 
 ```typescript
-const { data, error } = useQuery({
-  queryKey: ["member", userId],
+const {data, error} = useQuery({
+  queryKey: ['member', userId],
   queryFn: async () => {
     try {
       const response = await fetch(`/api/member/${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch");
+      if (!response.ok) throw new Error('Failed to fetch');
       return response.json();
     } catch (err) {
       throw err;
@@ -93,29 +92,29 @@ const { data, error } = useQuery({
 });
 
 // Error is generic Error type
-error?.message // any string
+error?.message; // any string
 ```
 
 ### ✅ Prefer
 
 ```typescript
-import { useQuery } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { getMemberDashboard } from "@/lib/effect/client-portal";
-import type { NotFoundError, DatabaseError } from "@/lib/effect/errors";
+import {useQuery} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {getMemberDashboard} from '@/lib/effect/client-portal';
+import type {NotFoundError, DatabaseError} from '@/lib/effect/errors';
 
-const { data, error, isLoading } = useQuery
-  MemberDashboard,
-  NotFoundError | DatabaseError
->({
-  queryKey: ["member-dashboard", userId],
-  queryFn: () =>
-    Effect.runPromise(getMemberDashboard(userId)),
-  staleTime: 5 * 60 * 1000, // 5 minutes
-});
+const {data, error, isLoading} = useQuery;
+(MemberDashboard,
+  NotFoundError |
+    (DatabaseError >
+      {
+        queryKey: ['member-dashboard', userId],
+        queryFn: () => Effect.runPromise(getMemberDashboard(userId)),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+      }));
 
 // TypeScript knows error types
-error?.code // ✅ Type-safe: "NOT_FOUND" | "DATABASE_ERROR"
+error?.code; // ✅ Type-safe: "NOT_FOUND" | "DATABASE_ERROR"
 ```
 
 ### Query Usage in Components
@@ -187,20 +186,22 @@ if (portalMutation.error?._tag === "NotFoundError") {
 ### In Queries
 
 ```typescript
-const { data, error } = useQuery
-  MemberData,
-  AuthError | NotFoundError | DatabaseError
->({
-  queryKey: ["member", memberId],
-  queryFn: () => Effect.runPromise(getMember(memberId)),
-});
+const {data, error} = useQuery;
+(MemberData,
+  AuthError |
+    NotFoundError |
+    (DatabaseError >
+      {
+        queryKey: ['member', memberId],
+        queryFn: () => Effect.runPromise(getMember(memberId)),
+      }));
 
 // Type-safe error handling
-if (error?._tag === "AuthError") {
+if (error?._tag === 'AuthError') {
   // Redirect to login
-} else if (error?._tag === "NotFoundError") {
+} else if (error?._tag === 'NotFoundError') {
   // Show 404
-} else if (error?._tag === "DatabaseError") {
+} else if (error?._tag === 'DatabaseError') {
   // Show error message
 }
 ```

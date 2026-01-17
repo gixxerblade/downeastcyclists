@@ -1,9 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { Schema as S } from "@effect/schema";
+import {Schema as S} from '@effect/schema';
+import {Visibility, VisibilityOff} from '@mui/icons-material';
 import {
   Box,
   Grid,
@@ -17,23 +15,27 @@ import {
   InputAdornment,
   FormControlLabel,
   Checkbox,
-} from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import Link from "next/link";
-import { PlanCard, type MembershipPlan } from "./PlanCard";
-import { joinAndCheckout, type JoinRequest } from "@/src/lib/effect/client-join";
-import type { AuthError } from "@/src/lib/effect/errors";
-import { JoinFormData } from "@/src/lib/effect/schemas";
+} from '@mui/material';
+import {useQuery, useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import Link from 'next/link';
+import {useState} from 'react';
+
+import {joinAndCheckout, type JoinRequest} from '@/src/lib/effect/client-join';
+import type {AuthError} from '@/src/lib/effect/errors';
+import {JoinFormData} from '@/src/lib/effect/schemas';
+
+import {PlanCard, type MembershipPlan} from './PlanCard';
 
 export function JoinForm() {
   // Form state
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
   const [selectedPlanPrice, setSelectedPlanPrice] = useState<number>(0);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,18 +50,18 @@ export function JoinForm() {
 
   // Fetch plans
   const plansQuery = useQuery<MembershipPlan[]>({
-    queryKey: ["membership-plans"],
+    queryKey: ['membership-plans'],
     queryFn: async () => {
-      const response = await fetch("/api/membership/plans");
+      const response = await fetch('/api/membership/plans');
       if (!response.ok) {
-        throw new Error("Failed to fetch membership plans");
+        throw new Error('Failed to fetch membership plans');
       }
       return response.json();
     },
   });
 
   // Join mutation
-  const joinMutation = useMutation<{ checkoutUrl: string }, AuthError, JoinRequest>({
+  const joinMutation = useMutation<{checkoutUrl: string}, AuthError, JoinRequest>({
     mutationFn: (request) => Effect.runPromise(joinAndCheckout(request)),
     onSuccess: (result) => {
       // Redirect to Stripe checkout
@@ -90,35 +92,41 @@ export function JoinForm() {
       password,
       confirmPassword,
       name: name || undefined,
-      selectedPlanId: selectedPlanId || "",
-      selectedPriceId: selectedPriceId || "",
+      selectedPlanId: selectedPlanId || '',
+      selectedPriceId: selectedPriceId || '',
     };
 
     const parseResult = S.decodeUnknownEither(JoinFormData)(formData);
 
-    if (parseResult._tag === "Left") {
+    if (parseResult._tag === 'Left') {
       // Extract first validation error message
       const error = parseResult.left;
-      const message = error.message || "Please check your form inputs";
+      const message = error.message || 'Please check your form inputs';
       setValidationError(message);
       return;
     }
 
     // Validate passwords match (custom validation after schema)
     if (password !== confirmPassword) {
-      setValidationError("Passwords do not match");
+      setValidationError('Passwords do not match');
       return;
     }
 
     // Get site URL for redirects
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
+    // Validate that a plan is selected
+    if (!selectedPriceId) {
+      setValidationError('Please select a membership plan');
+      return;
+    }
+
     // Submit join request
     joinMutation.mutate({
       email,
       password,
       name: name || undefined,
-      priceId: selectedPriceId!,
+      priceId: selectedPriceId,
       successUrl: `${siteUrl}/member?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${siteUrl}/join?canceled=true`,
       coverFees,
@@ -128,7 +136,7 @@ export function JoinForm() {
 
   // Determine error message
   const errorMessage = validationError || (joinMutation.error?.message ?? null);
-  const isEmailInUse = joinMutation.error?.code === "EMAIL_IN_USE";
+  const isEmailInUse = joinMutation.error?.code === 'EMAIL_IN_USE';
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
@@ -136,7 +144,7 @@ export function JoinForm() {
       {errorMessage && (
         <Alert
           severity="error"
-          sx={{ mb: 3 }}
+          sx={{mb: 3}}
           action={
             isEmailInUse ? (
               <Button color="inherit" size="small" component={Link} href="/login">
@@ -146,7 +154,7 @@ export function JoinForm() {
           }
         >
           {errorMessage}
-          {isEmailInUse && " Already have an account?"}
+          {isEmailInUse && ' Already have an account?'}
         </Alert>
       )}
 
@@ -156,19 +164,19 @@ export function JoinForm() {
       </Typography>
 
       {plansQuery.isLoading && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <Box sx={{display: 'flex', justifyContent: 'center', py: 4}}>
           <CircularProgress />
         </Box>
       )}
 
       {plansQuery.error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{mb: 2}}>
           Failed to load membership plans. Please try again later.
         </Alert>
       )}
 
       {plansQuery.data && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3} sx={{mb: 4}}>
           {plansQuery.data.map((plan) => (
             <Grid item xs={12} sm={6} key={plan.id}>
               <PlanCard
@@ -182,14 +190,14 @@ export function JoinForm() {
         </Grid>
       )}
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{my: 4}} />
 
       {/* Step 2: Create Account */}
       <Typography variant="h5" component="h2" gutterBottom>
         2. Create Your Account
       </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
         Your account lets you manage your membership and access member benefits.
       </Typography>
 
@@ -221,7 +229,7 @@ export function JoinForm() {
           <TextField
             fullWidth
             label="Password"
-            type={showPassword ? "text" : "password"}
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -249,13 +257,13 @@ export function JoinForm() {
           <TextField
             fullWidth
             label="Confirm Password"
-            type={showConfirmPassword ? "text" : "password"}
+            type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             disabled={joinMutation.isPending}
             error={showPasswordMatchError}
-            helperText={showPasswordMatchError ? "Passwords do not match" : " "}
+            helperText={showPasswordMatchError ? 'Passwords do not match' : ' '}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -275,11 +283,11 @@ export function JoinForm() {
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{my: 4}} />
 
       {/* Processing Fee Option */}
       {selectedPlanId && processingFee > 0 && (
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{mb: 3}}>
           <FormControlLabel
             control={
               <Checkbox
@@ -302,36 +310,36 @@ export function JoinForm() {
       )}
 
       {/* Step 3: Submit */}
-      <Box sx={{ textAlign: "center" }}>
+      <Box sx={{textAlign: 'center'}}>
         <Button
           type="submit"
           variant="contained"
           size="large"
           disabled={joinMutation.isPending || !selectedPlanId}
-          sx={{ minWidth: 200 }}
+          sx={{minWidth: 200}}
         >
           {joinMutation.isPending ? (
             <>
-              <CircularProgress size={20} sx={{ mr: 1 }} color="inherit" />
+              <CircularProgress size={20} sx={{mr: 1}} color="inherit" />
               Processing...
             </>
           ) : (
-            "Continue to Payment"
+            'Continue to Payment'
           )}
         </Button>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{mt: 2}}>
           You&apos;ll be redirected to our secure payment provider to complete your membership.
         </Typography>
       </Box>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{my: 4}} />
 
       {/* Already a member link */}
-      <Box sx={{ textAlign: "center" }}>
+      <Box sx={{textAlign: 'center'}}>
         <Typography variant="body2" color="text.secondary">
-          Already a member?{" "}
-          <Link href="/login" style={{ color: "#F20E02", textDecoration: "none" }}>
+          Already a member?{' '}
+          <Link href="/login" style={{color: '#F20E02', textDecoration: 'none'}}>
             Sign In
           </Link>
         </Typography>

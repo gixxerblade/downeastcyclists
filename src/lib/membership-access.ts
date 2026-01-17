@@ -1,4 +1,4 @@
-import type { MembershipStatus } from "./effect/schemas";
+import type {MembershipStatus} from './effect/schemas';
 
 /**
  * Membership access configuration for Down East Cyclists
@@ -10,7 +10,7 @@ import type { MembershipStatus } from "./effect/schemas";
  * - Stripe handles all payment retries automatically
  */
 
-export type AccessLevel = "full" | "none";
+export type AccessLevel = 'full' | 'none';
 
 export interface MembershipAccessConfig {
   status: MembershipStatus;
@@ -35,15 +35,15 @@ export interface MembershipAccessConfig {
  */
 export const MEMBERSHIP_ACCESS_RULES: Record<MembershipStatus, MembershipAccessConfig> = {
   active: {
-    status: "active",
-    accessLevel: "full",
+    status: 'active',
+    accessLevel: 'full',
     canAccessMemberContent: true,
     canAccessMemberDiscounts: true,
     showPaymentWarning: false,
   },
   past_due: {
-    status: "past_due",
-    accessLevel: "full", // Keep access - they paid for the year, Stripe is retrying
+    status: 'past_due',
+    accessLevel: 'full', // Keep access - they paid for the year, Stripe is retrying
     canAccessMemberContent: true,
     canAccessMemberDiscounts: true,
     showPaymentWarning: true,
@@ -51,45 +51,45 @@ export const MEMBERSHIP_ACCESS_RULES: Record<MembershipStatus, MembershipAccessC
       "Your renewal payment failed. We're retrying automatically. Please check your payment method.",
   },
   canceled: {
-    status: "canceled",
-    accessLevel: "none",
+    status: 'canceled',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Your membership has been canceled.",
+    message: 'Your membership has been canceled.',
   },
   incomplete: {
-    status: "incomplete",
-    accessLevel: "none",
+    status: 'incomplete',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: true,
-    message: "Payment could not be processed. Please try again.",
+    message: 'Payment could not be processed. Please try again.',
   },
   incomplete_expired: {
-    status: "incomplete_expired",
-    accessLevel: "none",
+    status: 'incomplete_expired',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Checkout session expired. Please start a new membership.",
+    message: 'Checkout session expired. Please start a new membership.',
   },
   unpaid: {
-    status: "unpaid",
-    accessLevel: "none",
+    status: 'unpaid',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: true,
-    message: "Payment failed after multiple attempts. Please update your payment method.",
+    message: 'Payment failed after multiple attempts. Please update your payment method.',
   },
   trialing: {
     // Not used by DEC - treat as no access if somehow encountered
-    status: "trialing",
-    accessLevel: "none",
+    status: 'trialing',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Invalid membership status.",
+    message: 'Invalid membership status.',
   },
 };
 
@@ -105,7 +105,7 @@ export function hasActiveMembershipAccess(status: MembershipStatus | null): bool
 
   // Active members have access
   // Past due members RETAIN access - they already paid for the current period
-  return status === "active" || status === "past_due";
+  return status === 'active' || status === 'past_due';
 }
 
 /**
@@ -121,12 +121,12 @@ export function getMembershipAccessConfig(status: MembershipStatus): MembershipA
  */
 export function isPaymentCompleted(status: string): boolean {
   // Only create membership records for these statuses
-  return status === "active" || status === "past_due";
+  return status === 'active' || status === 'past_due';
 }
 
 /**
  * Check if subscription status indicates payment is pending/failed
  */
 export function isPaymentPending(status: string): boolean {
-  return status === "incomplete" || status === "incomplete_expired";
+  return status === 'incomplete' || status === 'incomplete_expired';
 }

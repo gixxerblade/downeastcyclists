@@ -1,7 +1,6 @@
-import { Context, Effect, Layer, pipe } from "effect";
-import { AuthService } from "./auth.service";
-import { FirestoreService } from "./firestore.service";
-import { StatsService } from "./stats.service";
+import {Context, Effect, Layer, pipe} from 'effect';
+
+import {AuthService} from './auth.service';
 import {
   AdminError,
   FirestoreError,
@@ -9,14 +8,16 @@ import {
   UnauthorizedError,
   SessionError,
   AuthError,
-} from "./errors";
-import type { MembershipAdjustment, MemberWithMembership, MemberSearchParams } from "./schemas";
+} from './errors';
+import {FirestoreService} from './firestore.service';
+import type {MembershipAdjustment, MemberWithMembership, MemberSearchParams} from './schemas';
+import {StatsService} from './stats.service';
 
 // Service interface
 export interface AdminService {
   readonly verifyAdmin: (
     sessionCookie: string,
-  ) => Effect.Effect<{ uid: string; email?: string }, UnauthorizedError | SessionError | AuthError>;
+  ) => Effect.Effect<{uid: string; email?: string}, UnauthorizedError | SessionError | AuthError>;
 
   readonly setAdminRole: (
     adminSessionCookie: string,
@@ -29,7 +30,7 @@ export interface AdminService {
 
   readonly searchMembers: (
     params: MemberSearchParams,
-  ) => Effect.Effect<{ members: MemberWithMembership[]; total: number }, FirestoreError>;
+  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, FirestoreError>;
 
   readonly getMember: (
     userId: string,
@@ -42,7 +43,7 @@ export interface AdminService {
 }
 
 // Service tag
-export const AdminService = Context.GenericTag<AdminService>("AdminService");
+export const AdminService = Context.GenericTag<AdminService>('AdminService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -57,10 +58,10 @@ const make = Effect.gen(function* () {
         auth.verifyAdminClaim(sessionCookie),
         Effect.flatMap((session) =>
           session.isAdmin
-            ? Effect.succeed({ uid: session.uid, email: session.email })
+            ? Effect.succeed({uid: session.uid, email: session.email})
             : Effect.fail(
                 new UnauthorizedError({
-                  message: "Admin access required",
+                  message: 'Admin access required',
                 }),
               ),
         ),
@@ -75,22 +76,22 @@ const make = Effect.gen(function* () {
           Effect.flatMap((session) =>
             session.isAdmin
               ? Effect.succeed(session)
-              : Effect.fail(new UnauthorizedError({ message: "Admin access required" })),
+              : Effect.fail(new UnauthorizedError({message: 'Admin access required'})),
           ),
         );
 
         // Set custom claim
-        yield* auth.setCustomClaims(targetUid, { admin: isAdmin });
+        yield* auth.setCustomClaims(targetUid, {admin: isAdmin});
 
         // Log the action
-        yield* firestore.logAuditEntry(targetUid, "ADMIN_ROLE_CHANGE", {
+        yield* firestore.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
           changedBy: admin.uid,
           newValue: isAdmin,
           timestamp: new Date().toISOString(),
         });
 
         yield* Effect.log(
-          `Admin role ${isAdmin ? "granted to" : "revoked from"} ${targetUid} by ${admin.uid}`,
+          `Admin role ${isAdmin ? 'granted to' : 'revoked from'} ${targetUid} by ${admin.uid}`,
         );
       }),
 
@@ -103,27 +104,25 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({ resource: "user", id: userId }));
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         const membership = yield* firestore.getActiveMembership(userId);
         const card = yield* firestore.getMembershipCard(userId);
 
-        return { user, membership, card };
+        return {user, membership, card};
       }),
 
     // Adjust membership (admin override)
     adjustMembership: (adminUid, adjustment) =>
       Effect.gen(function* () {
-        const { userId, membershipId, newEndDate, newStatus, reason } = adjustment;
+        const {userId, membershipId, newEndDate, newStatus, reason} = adjustment;
 
         // Verify membership exists
         const membership = yield* firestore.getMembership(userId, membershipId);
 
         if (!membership) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "membership", id: membershipId }),
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'membership', id: membershipId}));
         }
 
         // Prepare update
@@ -138,15 +137,15 @@ const make = Effect.gen(function* () {
 
           // Update stats if status changed
           if (membership.status !== newStatus) {
-            if (newStatus === "active") {
-              yield* stats.incrementStat("activeMembers");
-              if (membership.status === "canceled") {
-                yield* stats.decrementStat("canceledMembers");
+            if (newStatus === 'active') {
+              yield* stats.incrementStat('activeMembers');
+              if (membership.status === 'canceled') {
+                yield* stats.decrementStat('canceledMembers');
               }
-            } else if (newStatus === "canceled") {
-              yield* stats.incrementStat("canceledMembers");
-              if (membership.status === "active") {
-                yield* stats.decrementStat("activeMembers");
+            } else if (newStatus === 'canceled') {
+              yield* stats.incrementStat('canceledMembers');
+              if (membership.status === 'active') {
+                yield* stats.decrementStat('activeMembers');
               }
             }
           }
@@ -155,8 +154,8 @@ const make = Effect.gen(function* () {
         if (Object.keys(updateData).length === 0) {
           return yield* Effect.fail(
             new AdminError({
-              code: "NO_CHANGES",
-              message: "No changes specified",
+              code: 'NO_CHANGES',
+              message: 'No changes specified',
             }),
           );
         }
@@ -165,7 +164,7 @@ const make = Effect.gen(function* () {
         yield* firestore.updateMembership(userId, membershipId, updateData);
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, "MEMBERSHIP_ADJUSTMENT", {
+        yield* firestore.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
           adjustedBy: adminUid,
           membershipId,
           changes: updateData,

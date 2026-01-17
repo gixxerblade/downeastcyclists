@@ -1,10 +1,12 @@
-import { TypeBlogPostSkeleton } from "@/src/contentful/types";
-import { Entry } from "contentful";
-import { client, getEntriesCached } from "./contentfulClient";
-import { ContentImage, parseContentfulContentImage } from "./contentImage";
-import { PaginatedData } from "./types/PaginatedData";
-import { Config } from "@/constants/Config";
-import { Container } from "postcss";
+import {Entry} from 'contentful';
+import {Container} from 'postcss';
+
+import {Config} from '@/constants/Config';
+import {TypeBlogPostSkeleton} from '@/src/contentful/types';
+
+import {client, getEntriesCached} from './contentfulClient';
+import {ContentImage, parseContentfulContentImage} from './contentImage';
+import {PaginatedData} from './types/PaginatedData';
 
 type BlogPostEntry = Entry<TypeBlogPostSkeleton, undefined, string>;
 
@@ -25,9 +27,9 @@ export interface BlogPost {
 
 export const parseContentfulBlogPost = (blogPostEntry?: BlogPostEntry): BlogPost => {
   return {
-    title: blogPostEntry?.fields.postTitle || "",
-    slug: blogPostEntry?.fields.slug || "",
-    body: blogPostEntry?.fields.content || "",
+    title: blogPostEntry?.fields.postTitle || '',
+    slug: blogPostEntry?.fields.slug || '',
+    body: blogPostEntry?.fields.content || '',
     image: parseContentfulContentImage(blogPostEntry?.fields.featuredImage),
     publishDate: blogPostEntry?.fields.publishDate || null,
     author: blogPostEntry?.fields.author || null,
@@ -36,9 +38,9 @@ export const parseContentfulBlogPost = (blogPostEntry?: BlogPostEntry): BlogPost
 
 export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<BlogPost>> => {
   const blogPostsResult = await getEntriesCached<TypeBlogPostSkeleton>({
-    content_type: "blogPost",
+    content_type: 'blogPost',
     limit: Config.LIMIT,
-    order: ["-fields.publishDate"], // Sort by publishDate in descending order (newest first)
+    order: ['-fields.publishDate'], // Sort by publishDate in descending order (newest first)
     skip: (page - 1) * Config.LIMIT,
   });
   if (!!blogPostsResult.items.length) {
@@ -58,8 +60,8 @@ export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<Bl
 
 export const fetchBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
   const blogPostResult = await getEntriesCached<TypeBlogPostSkeleton>({
-    content_type: "blogPost",
-    "fields.slug": slug,
+    content_type: 'blogPost',
+    'fields.slug': slug,
     limit: 1,
   });
 

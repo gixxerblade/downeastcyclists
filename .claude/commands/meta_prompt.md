@@ -59,12 +59,14 @@ model: <requested model or default to 'opus' if not specified>
 <NAME_OF_STATIC_VARIABLE>: <SOMETHING STATIC>
 
 ## Instructions
+
 <detailed bullet point list of instructions for the prompt. These bullet points aid the workflow but are not part of the workflow itself.>
 
 ## Workflow
+
 <step by step numbered list of tasks to complete to accomplish the prompt>
 
 ## Report
-<details of how the prompt should respond back to the user based on the prompt>
 
+<details of how the prompt should respond back to the user based on the prompt>
 ```

@@ -1,34 +1,34 @@
-import { Facebook, Instagram } from "@mui/icons-material";
-import Link from "next/link";
-import { styled } from "@mui/material/styles";
+import {Facebook, Instagram} from '@mui/icons-material';
+import {styled} from '@mui/material/styles';
+import Link from 'next/link';
 
 // Import icons individually
-import BicycleGallery from "../icons/BicycleGallery";
-import BicycleShop from "../icons/BicycleShop";
-import CapeFearCyclists from "../icons/CapeFearCyclists";
-import CapeFearSorba from "../icons/CapeFearSorba";
-import Icons from "../icons/Icons";
+import BicycleGallery from '../icons/BicycleGallery';
+import BicycleShop from '../icons/BicycleShop';
+import CapeFearCyclists from '../icons/CapeFearCyclists';
+import CapeFearSorba from '../icons/CapeFearSorba';
+import Icons from '../icons/Icons';
 
 const friends = [
   {
-    title: "Bicycle Gallery",
+    title: 'Bicycle Gallery',
     icon: <BicycleGallery />,
-    link: "https://www.bicycle-gallery.com/",
+    link: 'https://www.bicycle-gallery.com/',
   },
   {
-    title: "Bicycle Shop",
+    title: 'Bicycle Shop',
     icon: <BicycleShop />,
-    link: "https://www.thebicycle.com",
+    link: 'https://www.thebicycle.com',
   },
   {
-    title: "Cape Fear Cyclists",
+    title: 'Cape Fear Cyclists',
     icon: <CapeFearCyclists />,
-    link: "https://www.capefearcyclists.org/",
+    link: 'https://www.capefearcyclists.org/',
   },
   {
-    title: "Cape Fear Sorba",
+    title: 'Cape Fear Sorba',
     icon: <CapeFearSorba />,
-    link: "https://capefearsorba.org/",
+    link: 'https://capefearsorba.org/',
   },
 ];
 
@@ -47,7 +47,7 @@ const Footer = () => {
                 rel="noreferrer noopener"
                 className="flex items-center justify-center"
               >
-                <Facebook sx={{ fontSize: 48 }} className="fb-circle" />
+                <Facebook sx={{fontSize: 48}} className="fb-circle" />
               </a>
               <a
                 aria-label="down east cyclists instagram"
@@ -56,7 +56,7 @@ const Footer = () => {
                 rel="noreferrer noopener"
                 className="flex items-center justify-center"
               >
-                <Instagram sx={{ fontSize: 48 }} className="instagram" />
+                <Instagram sx={{fontSize: 48}} className="instagram" />
               </a>
             </div>
           </div>
@@ -105,12 +105,12 @@ const Footer = () => {
 };
 export default Footer;
 
-const StyledIcon = styled(Icons)(({ theme }) => ({
-  "& svg": {
-    fill: "#000000",
-    "&:hover": {
-      transition: "0.2s linear",
-      fill: "#ef1a25",
+const StyledIcon = styled(Icons)(({theme}) => ({
+  '& svg': {
+    fill: '#000000',
+    '&:hover': {
+      transition: '0.2s linear',
+      fill: '#ef1a25',
     },
   },
 }));

@@ -130,7 +130,6 @@
 - [Equal](https://effect.website/docs/trait/equal/): Implement value-based equality checks for improved data integrity and predictable behavior in TypeScript.
 - [Hash](https://effect.website/docs/trait/hash/): Optimize equality checks with efficient hashing for faster comparisons in collections like hash sets and maps.
 
-
 ## API
 
 - [API List](https://tim-smart.github.io/effect-io-ai/): A succint list of all functions and methods in Effect.

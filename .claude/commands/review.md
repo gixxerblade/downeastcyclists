@@ -88,7 +88,7 @@ REVIEW_OUTPUT_DIRECTORY: `app_review/`
 
 Your report must follow this exact structure:
 
-```markdown
+````markdown
 # Code Review Report
 
 **Generated**: [ISO timestamp]
@@ -125,13 +125,16 @@ Your report must follow this exact structure:
 **Description**: [Clear explanation of what's wrong and why it's a blocker]
 
 **Location**:
+
 - File: `[absolute/path/to/file.ext]`
 - Lines: `[XX-YY]`
 
 **Offending Code**:
+
 ```[language]
 [exact code snippet showing the issue]
 ```
+````
 
 **Recommended Solutions**:
 
@@ -204,3 +207,4 @@ Your report must follow this exact structure:
 ```
 
 Remember: Your role is to provide clear, actionable insights that help engineers ship quality code. Be thorough, precise, and constructive in your analysis.
+```

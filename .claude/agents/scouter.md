@@ -127,4 +127,5 @@ Present your findings in the following structured format:
 **Priority Level:** [Critical/High/Medium/Low]
 
 ---
+
 End of Scout Report

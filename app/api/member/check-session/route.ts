@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, Exit } from "effect";
-import { cookies } from "next/headers";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { FirestoreService } from "@/src/lib/effect/firestore.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {Effect, Exit} from 'effect';
+import {cookies} from 'next/headers';
+import {NextRequest, NextResponse} from 'next/server';
+
+import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {PortalService} from '@/src/lib/effect/portal.service';
 
 /**
  * Check if a user's membership has been created after checkout
@@ -11,10 +12,10 @@ import { LiveLayer } from "@/src/lib/effect/layers";
  */
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({error: 'Unauthorized'}, {status: 401});
   }
 
   const program = Effect.gen(function* () {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   if (Exit.isFailure(exit)) {
     // If membership doesn't exist yet, that's okay - return not ready
-    return NextResponse.json({ ready: false, hasMembership: false });
+    return NextResponse.json({ready: false, hasMembership: false});
   }
 
   return NextResponse.json(exit.value);

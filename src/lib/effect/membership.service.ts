@@ -1,27 +1,29 @@
-import { Context, Effect, Layer, pipe } from "effect";
-import type { Schema as S } from "@effect/schema";
-import type Stripe from "stripe";
-import { Timestamp } from "@google-cloud/firestore";
-import { StripeService } from "./stripe.service";
-import { FirestoreService } from "./firestore.service";
-import { StripeError, FirestoreError, ValidationError, NotFoundError } from "./errors";
+import type {Schema as S} from '@effect/schema';
+import {Timestamp} from '@google-cloud/firestore';
+import {Context, Effect, Layer, pipe} from 'effect';
+import type Stripe from 'stripe';
+
+import {hasActiveMembershipAccess} from '../membership-access';
+import {
+  getBenefitsForPriceId,
+  getConfiguredPriceIds,
+  getPlanNameForType,
+} from '../membership-plans-config';
+
+import {StripeError, FirestoreError, ValidationError, NotFoundError} from './errors';
+import {FirestoreService} from './firestore.service';
 import type {
   CheckoutSessionRequest,
   CheckoutSessionResponse,
   MembershipStatusResponse,
   MembershipStatus,
-} from "./schemas";
-import {
-  getBenefitsForPriceId,
-  getConfiguredPriceIds,
-  getPlanNameForType,
-} from "../membership-plans-config";
-import { hasActiveMembershipAccess } from "../membership-access";
+} from './schemas';
+import {StripeService} from './stripe.service';
 
 // Price ID to plan type mapping - loaded from environment variables
-const PRICE_TO_PLAN: Record<string, "individual" | "family"> = {
-  [process.env.STRIPE_PRICE_INDIVIDUAL || ""]: "individual",
-  [process.env.STRIPE_PRICE_FAMILY || ""]: "family",
+const PRICE_TO_PLAN: Record<string, 'individual' | 'family'> = {
+  [process.env.STRIPE_PRICE_INDIVIDUAL || '']: 'individual',
+  [process.env.STRIPE_PRICE_FAMILY || '']: 'family',
 };
 
 // Service interface
@@ -53,13 +55,13 @@ export interface MembershipService {
   >;
 
   readonly getPlans: () => Effect.Effect<
-    Array<{ id: string; name: string; price: number; benefits: string[]; stripePriceId: string }>,
+    Array<{id: string; name: string; price: number; benefits: string[]; stripePriceId: string}>,
     StripeError
   >;
 }
 
 // Service tag
-export const MembershipService = Context.GenericTag<MembershipService>("MembershipService");
+export const MembershipService = Context.GenericTag<MembershipService>('MembershipService');
 
 // Implementation - depends on StripeService and FirestoreService
 const make = Effect.gen(function* () {
@@ -108,10 +110,20 @@ const make = Effect.gen(function* () {
         ),
 
         // Step 4: Transform to response
-        Effect.map((session) => ({
-          sessionId: session.id,
-          url: session.url!,
-        })),
+        Effect.flatMap((session) => {
+          if (!session.url) {
+            return Effect.fail(
+              new StripeError({
+                code: 'CHECKOUT_SESSION_NO_URL',
+                message: 'Checkout session was created but has no URL',
+              }),
+            );
+          }
+          return Effect.succeed({
+            sessionId: session.id,
+            url: session.url,
+          });
+        }),
 
         Effect.tap((response) => Effect.log(`Checkout session created: ${response.sessionId}`)),
       ),
@@ -137,7 +149,7 @@ const make = Effect.gen(function* () {
           yield* stripe.addInvoiceItem(
             customerId,
             parseInt(processingFee),
-            "Credit Card Processing Fee (Optional)",
+            'Credit Card Processing Fee (Optional)',
           );
         }
 
@@ -146,7 +158,7 @@ const make = Effect.gen(function* () {
 
         // IMPORTANT: Only create membership for active subscriptions
         // If status is 'incomplete', payment failed - don't create membership
-        if (subscription.status === "incomplete" || subscription.status === "incomplete_expired") {
+        if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
           yield* Effect.log(
             `Skipping membership creation - subscription ${subscriptionId} has status: ${subscription.status}`,
           );
@@ -154,7 +166,7 @@ const make = Effect.gen(function* () {
         }
 
         const priceId = subscription.items.data[0]?.price.id;
-        const planType = PRICE_TO_PLAN[priceId] || "individual";
+        const planType = PRICE_TO_PLAN[priceId] || 'individual';
 
         // Extract period dates from the subscription items
         const subscriptionItem = subscription.items.data[0];
@@ -168,8 +180,8 @@ const make = Effect.gen(function* () {
         if (!currentPeriodStart || !currentPeriodEnd) {
           return yield* Effect.fail(
             new StripeError({
-              code: "INVALID_SUBSCRIPTION_DATA",
-              message: "Missing subscription period dates",
+              code: 'INVALID_SUBSCRIPTION_DATA',
+              message: 'Missing subscription period dates',
             }),
           );
         }
@@ -186,7 +198,7 @@ const make = Effect.gen(function* () {
         // Update user document
         yield* firestore.setUser(userDocId, {
           id: userDocId,
-          email: customerEmail || "",
+          email: customerEmail || '',
           stripeCustomerId: customerId,
           createdAt: Timestamp.now(),
         } as any);
@@ -251,7 +263,7 @@ const make = Effect.gen(function* () {
         }
 
         yield* firestore.updateMembership(user.id, subscriptionId, {
-          status: "canceled",
+          status: 'canceled',
           autoRenew: false,
         });
 
@@ -264,12 +276,12 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({ resource: "user", id: userId }));
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         const membership = yield* firestore.getActiveMembership(userId);
 
-        let membershipData: S.Schema.Type<typeof MembershipStatusResponse>["membership"] = null;
+        let membershipData: S.Schema.Type<typeof MembershipStatusResponse>['membership'] = null;
 
         if (membership) {
           const planName = getPlanNameForType(membership.planType);
@@ -304,7 +316,7 @@ const make = Effect.gen(function* () {
 
         // Map to plan format with benefits from config
         Effect.map((pricesWithProducts) =>
-          pricesWithProducts.map(({ price, product }) => ({
+          pricesWithProducts.map(({price, product}) => ({
             id: price.id,
             name: product.name,
             price: price.unit_amount ? price.unit_amount / 100 : 0, // Convert cents to dollars

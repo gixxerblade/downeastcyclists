@@ -111,13 +111,13 @@ Update `src/lib/effect/errors.ts`:
 ```typescript
 // Add to existing errors file
 
-export class AdminError extends Data.TaggedError("AdminError")<{
+export class AdminError extends Data.TaggedError('AdminError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class ExportError extends Data.TaggedError("ExportError")<{
+export class ExportError extends Data.TaggedError('ExportError')<{
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
@@ -202,7 +202,7 @@ export const ExportOptions = S.Struct({
   includePhone: S.Boolean,
   includeAddress: S.Boolean,
   statusFilter: S.optional(MembershipStatus),
-  format: S.Literal("csv", "json"),
+  format: S.Literal('csv', 'json'),
 });
 export type ExportOptions = S.Schema.Type<typeof ExportOptions>;
 ```
@@ -441,10 +441,10 @@ logAuditEntry: (userId, action, details) =>
 Create `src/lib/effect/stats.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe } from "effect";
-import { FirestoreService } from "./firestore.service";
-import { FirestoreError } from "./errors";
-import type { MembershipStats } from "./schemas";
+import {Context, Effect, Layer, pipe} from 'effect';
+import {FirestoreService} from './firestore.service';
+import {FirestoreError} from './errors';
+import type {MembershipStats} from './schemas';
 
 // Service interface
 export interface StatsService {
@@ -453,18 +453,18 @@ export interface StatsService {
   readonly refreshStats: () => Effect.Effect<MembershipStats, FirestoreError>;
 
   readonly incrementStat: (
-    stat: keyof Omit<MembershipStats, "updatedAt">,
-    amount?: number
+    stat: keyof Omit<MembershipStats, 'updatedAt'>,
+    amount?: number,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly decrementStat: (
-    stat: keyof Omit<MembershipStats, "updatedAt">,
-    amount?: number
+    stat: keyof Omit<MembershipStats, 'updatedAt'>,
+    amount?: number,
   ) => Effect.Effect<void, FirestoreError>;
 }
 
 // Service tag
-export const StatsService = Context.GenericTag<StatsService>("StatsService");
+export const StatsService = Context.GenericTag<StatsService>('StatsService');
 
 // Default stats
 const defaultStats: MembershipStats = {
@@ -488,41 +488,33 @@ const make = Effect.gen(function* () {
     getStats: () =>
       pipe(
         firestore.getStats(),
-        Effect.flatMap((stats) =>
-          stats
-            ? Effect.succeed(stats)
-            : Effect.succeed(defaultStats) // Return defaults if not initialized
-        )
+        Effect.flatMap(
+          (stats) => (stats ? Effect.succeed(stats) : Effect.succeed(defaultStats)), // Return defaults if not initialized
+        ),
       ),
 
     // Force recalculation from all memberships
     refreshStats: () =>
       Effect.gen(function* () {
-        const { members, total } = yield* firestore.getAllMemberships({});
+        const {members, total} = yield* firestore.getAllMemberships({});
 
         const stats: MembershipStats = {
           totalMembers: total,
           activeMembers: members.filter(
-            (m) => m.membership?.status === "active" || m.membership?.status === "trialing"
+            (m) => m.membership?.status === 'active' || m.membership?.status === 'trialing',
           ).length,
           expiredMembers: members.filter((m) => {
             if (!m.membership) return false;
             const endDate = new Date(m.membership.endDate as any);
-            return endDate < new Date() && m.membership.status !== "canceled";
+            return endDate < new Date() && m.membership.status !== 'canceled';
           }).length,
-          canceledMembers: members.filter(
-            (m) => m.membership?.status === "canceled"
-          ).length,
-          individualCount: members.filter(
-            (m) => m.membership?.planType === "individual"
-          ).length,
-          familyCount: members.filter(
-            (m) => m.membership?.planType === "family"
-          ).length,
+          canceledMembers: members.filter((m) => m.membership?.status === 'canceled').length,
+          individualCount: members.filter((m) => m.membership?.planType === 'individual').length,
+          familyCount: members.filter((m) => m.membership?.planType === 'family').length,
           monthlyRevenue: 0, // Would need to fetch from Stripe
           yearlyRevenue: members.reduce((sum, m) => {
-            if (m.membership?.status !== "active") return sum;
-            return sum + (m.membership.planType === "family" ? 50 : 30);
+            if (m.membership?.status !== 'active') return sum;
+            return sum + (m.membership.planType === 'family' ? 50 : 30);
           }, 0),
           updatedAt: new Date().toISOString(),
         };
@@ -538,8 +530,8 @@ const make = Effect.gen(function* () {
         Effect.flatMap((current) =>
           firestore.updateStats({
             [stat]: (current?.[stat] || 0) + amount,
-          })
-        )
+          }),
+        ),
       ),
 
     decrementStat: (stat, amount = 1) =>
@@ -548,8 +540,8 @@ const make = Effect.gen(function* () {
         Effect.flatMap((current) =>
           firestore.updateStats({
             [stat]: Math.max(0, (current?.[stat] || 0) - amount),
-          })
-        )
+          }),
+        ),
       ),
   });
 });
@@ -563,30 +555,30 @@ export const StatsServiceLive = Layer.effect(StatsService, make);
 Create `src/lib/effect/export.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe, Stream } from "effect";
-import { FirestoreService } from "./firestore.service";
-import { ExportError, FirestoreError } from "./errors";
-import type { ExportOptions, MemberWithMembership } from "./schemas";
+import {Context, Effect, Layer, pipe, Stream} from 'effect';
+import {FirestoreService} from './firestore.service';
+import {ExportError, FirestoreError} from './errors';
+import type {ExportOptions, MemberWithMembership} from './schemas';
 
 // Service interface
 export interface ExportService {
   readonly generateCSV: (
-    options: ExportOptions
+    options: ExportOptions,
   ) => Effect.Effect<string, ExportError | FirestoreError>;
 
   readonly generateJSON: (
-    options: ExportOptions
+    options: ExportOptions,
   ) => Effect.Effect<string, ExportError | FirestoreError>;
 }
 
 // Service tag
-export const ExportService = Context.GenericTag<ExportService>("ExportService");
+export const ExportService = Context.GenericTag<ExportService>('ExportService');
 
 // CSV helper
 const escapeCSV = (value: string | null | undefined): string => {
-  if (!value) return "";
+  if (!value) return '';
   const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
@@ -602,46 +594,40 @@ const make = Effect.gen(function* () {
         status: options.statusFilter,
         pageSize: 1000, // Large batch for export
       }),
-      Effect.map(({ members }) => members)
+      Effect.map(({members}) => members),
     );
 
-  const memberToRow = (
-    member: MemberWithMembership,
-    options: ExportOptions
-  ): string[] => {
-    const row: string[] = [
-      member.card?.membershipNumber || "",
-      member.user?.name || "",
-    ];
+  const memberToRow = (member: MemberWithMembership, options: ExportOptions): string[] => {
+    const row: string[] = [member.card?.membershipNumber || '', member.user?.name || ''];
 
     if (options.includeEmail) {
-      row.push(member.user?.email || "");
+      row.push(member.user?.email || '');
     }
 
     if (options.includePhone) {
-      row.push(member.user?.phone || "");
+      row.push(member.user?.phone || '');
     }
 
     if (options.includeAddress) {
-      row.push(member.user?.address?.street || "");
-      row.push(member.user?.address?.city || "");
-      row.push(member.user?.address?.state || "");
-      row.push(member.user?.address?.zip || "");
+      row.push(member.user?.address?.street || '');
+      row.push(member.user?.address?.city || '');
+      row.push(member.user?.address?.state || '');
+      row.push(member.user?.address?.zip || '');
     }
 
-    row.push(member.membership?.planType || "");
-    row.push(member.membership?.status || "");
+    row.push(member.membership?.planType || '');
+    row.push(member.membership?.status || '');
     row.push(
       member.membership?.startDate
-        ? new Date(member.membership.startDate as any).toISOString().split("T")[0]
-        : ""
+        ? new Date(member.membership.startDate as any).toISOString().split('T')[0]
+        : '',
     );
     row.push(
       member.membership?.endDate
-        ? new Date(member.membership.endDate as any).toISOString().split("T")[0]
-        : ""
+        ? new Date(member.membership.endDate as any).toISOString().split('T')[0]
+        : '',
     );
-    row.push(member.membership?.autoRenew ? "Yes" : "No");
+    row.push(member.membership?.autoRenew ? 'Yes' : 'No');
 
     return row;
   };
@@ -652,21 +638,19 @@ const make = Effect.gen(function* () {
         const members = yield* fetchMembers(options);
 
         // Build header
-        const headers: string[] = ["Membership Number", "Name"];
-        if (options.includeEmail) headers.push("Email");
-        if (options.includePhone) headers.push("Phone");
+        const headers: string[] = ['Membership Number', 'Name'];
+        if (options.includeEmail) headers.push('Email');
+        if (options.includePhone) headers.push('Phone');
         if (options.includeAddress) {
-          headers.push("Street", "City", "State", "ZIP");
+          headers.push('Street', 'City', 'State', 'ZIP');
         }
-        headers.push("Plan Type", "Status", "Start Date", "End Date", "Auto-Renew");
+        headers.push('Plan Type', 'Status', 'Start Date', 'End Date', 'Auto-Renew');
 
         // Build rows
-        const rows = members.map((m) =>
-          memberToRow(m, options).map(escapeCSV).join(",")
-        );
+        const rows = members.map((m) => memberToRow(m, options).map(escapeCSV).join(','));
 
         // Combine
-        const csv = [headers.join(","), ...rows].join("\n");
+        const csv = [headers.join(','), ...rows].join('\n');
 
         yield* Effect.log(`Generated CSV export with ${members.length} members`);
 
@@ -719,51 +703,41 @@ export const ExportServiceLive = Layer.effect(ExportService, make);
 Create `src/lib/effect/admin.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer, pipe } from "effect";
-import { AuthService } from "./auth.service";
-import { FirestoreService } from "./firestore.service";
-import { StatsService } from "./stats.service";
-import {
-  AdminError,
-  FirestoreError,
-  NotFoundError,
-  UnauthorizedError,
-  SessionError,
-} from "./errors";
-import type {
-  MembershipAdjustment,
-  MemberWithMembership,
-  MemberSearchParams,
-} from "./schemas";
+import {Context, Effect, Layer, pipe} from 'effect';
+import {AuthService} from './auth.service';
+import {FirestoreService} from './firestore.service';
+import {StatsService} from './stats.service';
+import {AdminError, FirestoreError, NotFoundError, UnauthorizedError, SessionError} from './errors';
+import type {MembershipAdjustment, MemberWithMembership, MemberSearchParams} from './schemas';
 
 // Service interface
 export interface AdminService {
   readonly verifyAdmin: (
-    sessionCookie: string
-  ) => Effect.Effect<{ uid: string; email?: string }, UnauthorizedError | SessionError>;
+    sessionCookie: string,
+  ) => Effect.Effect<{uid: string; email?: string}, UnauthorizedError | SessionError>;
 
   readonly setAdminRole: (
     adminSessionCookie: string,
     targetUid: string,
-    isAdmin: boolean
+    isAdmin: boolean,
   ) => Effect.Effect<void, UnauthorizedError | AdminError>;
 
   readonly searchMembers: (
-    params: MemberSearchParams
-  ) => Effect.Effect<{ members: MemberWithMembership[]; total: number }, FirestoreError>;
+    params: MemberSearchParams,
+  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, FirestoreError>;
 
   readonly getMember: (
-    userId: string
+    userId: string,
   ) => Effect.Effect<MemberWithMembership, FirestoreError | NotFoundError>;
 
   readonly adjustMembership: (
     adminUid: string,
-    adjustment: MembershipAdjustment
+    adjustment: MembershipAdjustment,
   ) => Effect.Effect<void, FirestoreError | NotFoundError | AdminError>;
 }
 
 // Service tag
-export const AdminService = Context.GenericTag<AdminService>("AdminService");
+export const AdminService = Context.GenericTag<AdminService>('AdminService');
 
 // Implementation
 const make = Effect.gen(function* () {
@@ -778,13 +752,13 @@ const make = Effect.gen(function* () {
         auth.verifyAdminClaim(sessionCookie),
         Effect.flatMap((session) =>
           session.isAdmin
-            ? Effect.succeed({ uid: session.uid, email: session.email })
+            ? Effect.succeed({uid: session.uid, email: session.email})
             : Effect.fail(
                 new UnauthorizedError({
-                  message: "Admin access required",
-                })
-              )
-        )
+                  message: 'Admin access required',
+                }),
+              ),
+        ),
       ),
 
     // Set admin role for a user
@@ -796,24 +770,22 @@ const make = Effect.gen(function* () {
           Effect.flatMap((session) =>
             session.isAdmin
               ? Effect.succeed(session)
-              : Effect.fail(
-                  new UnauthorizedError({ message: "Admin access required" })
-                )
-          )
+              : Effect.fail(new UnauthorizedError({message: 'Admin access required'})),
+          ),
         );
 
         // Set custom claim
-        yield* auth.setCustomClaims(targetUid, { admin: isAdmin });
+        yield* auth.setCustomClaims(targetUid, {admin: isAdmin});
 
         // Log the action
-        yield* firestore.logAuditEntry(targetUid, "ADMIN_ROLE_CHANGE", {
+        yield* firestore.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
           changedBy: admin.uid,
           newValue: isAdmin,
           timestamp: new Date().toISOString(),
         });
 
         yield* Effect.log(
-          `Admin role ${isAdmin ? "granted to" : "revoked from"} ${targetUid} by ${admin.uid}`
+          `Admin role ${isAdmin ? 'granted to' : 'revoked from'} ${targetUid} by ${admin.uid}`,
         );
       }),
 
@@ -826,29 +798,25 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "user", id: userId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         const membership = yield* firestore.getActiveMembership(userId);
         const card = yield* firestore.getMembershipCard(userId);
 
-        return { user, membership, card };
+        return {user, membership, card};
       }),
 
     // Adjust membership (admin override)
     adjustMembership: (adminUid, adjustment) =>
       Effect.gen(function* () {
-        const { userId, membershipId, newEndDate, newStatus, reason } = adjustment;
+        const {userId, membershipId, newEndDate, newStatus, reason} = adjustment;
 
         // Verify membership exists
         const membership = yield* firestore.getMembership(userId, membershipId);
 
         if (!membership) {
-          return yield* Effect.fail(
-            new NotFoundError({ resource: "membership", id: membershipId })
-          );
+          return yield* Effect.fail(new NotFoundError({resource: 'membership', id: membershipId}));
         }
 
         // Prepare update
@@ -863,15 +831,15 @@ const make = Effect.gen(function* () {
 
           // Update stats if status changed
           if (membership.status !== newStatus) {
-            if (newStatus === "active") {
-              yield* stats.incrementStat("activeMembers");
-              if (membership.status === "canceled") {
-                yield* stats.decrementStat("canceledMembers");
+            if (newStatus === 'active') {
+              yield* stats.incrementStat('activeMembers');
+              if (membership.status === 'canceled') {
+                yield* stats.decrementStat('canceledMembers');
               }
-            } else if (newStatus === "canceled") {
-              yield* stats.incrementStat("canceledMembers");
-              if (membership.status === "active") {
-                yield* stats.decrementStat("activeMembers");
+            } else if (newStatus === 'canceled') {
+              yield* stats.incrementStat('canceledMembers');
+              if (membership.status === 'active') {
+                yield* stats.decrementStat('activeMembers');
               }
             }
           }
@@ -880,9 +848,9 @@ const make = Effect.gen(function* () {
         if (Object.keys(updateData).length === 0) {
           return yield* Effect.fail(
             new AdminError({
-              code: "NO_CHANGES",
-              message: "No changes specified",
-            })
+              code: 'NO_CHANGES',
+              message: 'No changes specified',
+            }),
           );
         }
 
@@ -890,7 +858,7 @@ const make = Effect.gen(function* () {
         yield* firestore.updateMembership(userId, membershipId, updateData);
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, "MEMBERSHIP_ADJUSTMENT", {
+        yield* firestore.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
           adjustedBy: adminUid,
           membershipId,
           changes: updateData,
@@ -902,9 +870,7 @@ const make = Effect.gen(function* () {
           timestamp: new Date().toISOString(),
         });
 
-        yield* Effect.log(
-          `Membership ${membershipId} adjusted by admin ${adminUid}: ${reason}`
-        );
+        yield* Effect.log(`Membership ${membershipId} adjusted by admin ${adminUid}: ${reason}`);
       }),
   });
 });
@@ -918,11 +884,11 @@ export const AdminServiceLive = Layer.effect(AdminService, make);
 Update `src/lib/effect/layers.ts`:
 
 ```typescript
-import { Layer } from "effect";
+import {Layer} from 'effect';
 // ... existing imports
-import { StatsService, StatsServiceLive } from "./stats.service";
-import { ExportService, ExportServiceLive } from "./export.service";
-import { AdminService, AdminServiceLive } from "./admin.service";
+import {StatsService, StatsServiceLive} from './stats.service';
+import {ExportService, ExportServiceLive} from './export.service';
+import {AdminService, AdminServiceLive} from './admin.service';
 
 // Stats service (depends on Firestore)
 const StatsLayer = StatsServiceLive.pipe(Layer.provide(FirestoreServiceLive));
@@ -934,7 +900,7 @@ const ExportLayer = ExportServiceLive.pipe(Layer.provide(FirestoreServiceLive));
 const AdminLayer = AdminServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(FirestoreServiceLive),
-  Layer.provide(StatsServiceLive)
+  Layer.provide(StatsServiceLive),
 );
 
 // Complete live layer with all services
@@ -945,11 +911,11 @@ export const LiveLayer = Layer.mergeAll(
   CardLayer,
   StatsLayer,
   ExportLayer,
-  AdminLayer
+  AdminLayer,
 );
 
 // Re-export for selective use
-export { StatsLayer, ExportLayer, AdminLayer };
+export {StatsLayer, ExportLayer, AdminLayer};
 ```
 
 ### 9. Create Admin Stats API Route
@@ -957,19 +923,19 @@ export { StatsLayer, ExportLayer, AdminLayer };
 Create `app/api/admin/stats/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { AdminService } from "@/src/lib/effect/admin.service";
-import { StatsService } from "@/src/lib/effect/stats.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {AdminService} from '@/src/lib/effect/admin.service';
+import {StatsService} from '@/src/lib/effect/stats.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const program = pipe(
@@ -984,23 +950,21 @@ export async function GET(request: NextRequest) {
       return yield* stats.getStats();
     }),
 
-    Effect.catchTag("UnauthorizedError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 403 })
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
     ),
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1009,10 +973,10 @@ export async function GET(request: NextRequest) {
 // Refresh stats
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const program = pipe(
@@ -1024,23 +988,21 @@ export async function POST(request: NextRequest) {
       return yield* stats.refreshStats();
     }),
 
-    Effect.catchTag("UnauthorizedError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 403 })
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
     ),
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1052,35 +1014,33 @@ export async function POST(request: NextRequest) {
 Create `app/api/admin/members/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { Schema as S } from "@effect/schema";
-import { cookies } from "next/headers";
-import { AdminService } from "@/src/lib/effect/admin.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
-import { MemberSearchParams } from "@/src/lib/effect/schemas";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {Schema as S} from '@effect/schema';
+import {cookies} from 'next/headers';
+import {AdminService} from '@/src/lib/effect/admin.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {MemberSearchParams} from '@/src/lib/effect/schemas';
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   // Parse query params
-  const { searchParams } = new URL(request.url);
+  const {searchParams} = new URL(request.url);
   const params: S.Schema.Type<typeof MemberSearchParams> = {
-    query: searchParams.get("query") || undefined,
-    status: searchParams.get("status") as any || undefined,
-    planType: searchParams.get("planType") as any || undefined,
-    expiringWithinDays: searchParams.get("expiringWithinDays")
-      ? parseInt(searchParams.get("expiringWithinDays")!)
+    query: searchParams.get('query') || undefined,
+    status: (searchParams.get('status') as any) || undefined,
+    planType: (searchParams.get('planType') as any) || undefined,
+    expiringWithinDays: searchParams.get('expiringWithinDays')
+      ? parseInt(searchParams.get('expiringWithinDays')!)
       : undefined,
-    page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
-    pageSize: searchParams.get("pageSize")
-      ? parseInt(searchParams.get("pageSize")!)
-      : 20,
+    page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
+    pageSize: searchParams.get('pageSize') ? parseInt(searchParams.get('pageSize')!) : 20,
   };
 
   const program = pipe(
@@ -1094,23 +1054,21 @@ export async function GET(request: NextRequest) {
       return yield* admin.searchMembers(params);
     }),
 
-    Effect.catchTag("UnauthorizedError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 403 })
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
     ),
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -1122,21 +1080,21 @@ export async function GET(request: NextRequest) {
 Create `app/api/admin/export/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { Schema as S } from "@effect/schema";
-import { cookies } from "next/headers";
-import { AdminService } from "@/src/lib/effect/admin.service";
-import { ExportService } from "@/src/lib/effect/export.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
-import { ExportOptions } from "@/src/lib/effect/schemas";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {Schema as S} from '@effect/schema';
+import {cookies} from 'next/headers';
+import {AdminService} from '@/src/lib/effect/admin.service';
+import {ExportService} from '@/src/lib/effect/export.service';
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {ExportOptions} from '@/src/lib/effect/schemas';
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
   }
 
   const body = await request.json();
@@ -1145,8 +1103,8 @@ export async function POST(request: NextRequest) {
     // Validate options
     S.decodeUnknown(ExportOptions)(body),
     Effect.mapError(() => ({
-      error: "Invalid export options",
-      _tag: "error" as const,
+      error: 'Invalid export options',
+      _tag: 'error' as const,
       status: 400,
     })),
 
@@ -1159,49 +1117,47 @@ export async function POST(request: NextRequest) {
         yield* admin.verifyAdmin(sessionCookie);
 
         // Generate export
-        if (options.format === "csv") {
+        if (options.format === 'csv') {
           return {
             data: yield* exportService.generateCSV(options),
-            contentType: "text/csv",
+            contentType: 'text/csv',
             filename: `members-export-${Date.now()}.csv`,
           };
         } else {
           return {
             data: yield* exportService.generateJSON(options),
-            contentType: "application/json",
+            contentType: 'application/json',
             filename: `members-export-${Date.now()}.json`,
           };
         }
-      })
+      }),
     ),
 
-    Effect.catchTag("UnauthorizedError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 403 })
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
     ),
-    Effect.catchTag("SessionError", () =>
-      Effect.succeed({ error: "Session expired", _tag: "error" as const, status: 401 })
+    Effect.catchTag('SessionError', () =>
+      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag("FirestoreError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
+    Effect.catchTag('FirestoreError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
     ),
-    Effect.catchTag("ExportError", (error) =>
-      Effect.succeed({ error: error.message, _tag: "error" as const, status: 500 })
-    )
+    Effect.catchTag('ExportError', (error) =>
+      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+    ),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayer))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   // Return file download
   return new NextResponse(result.data, {
     headers: {
-      "Content-Type": result.contentType,
-      "Content-Disposition": `attachment; filename="${result.filename}"`,
+      'Content-Type': result.contentType,
+      'Content-Disposition': `attachment; filename="${result.filename}"`,
     },
   });
 }
@@ -1438,7 +1394,7 @@ const program = pipe(
     yield* admin.verifyAdmin(sessionCookie); // Throws if not admin
     // ... admin operations
   }),
-  Effect.catchTag("UnauthorizedError", (e) => Effect.succeed({ error: e.message, status: 403 }))
+  Effect.catchTag('UnauthorizedError', (e) => Effect.succeed({error: e.message, status: 403})),
 );
 ```
 
@@ -1446,20 +1402,21 @@ const program = pipe(
 
 ```typescript
 // Use atomic increments for counters
-yield* stats.incrementStat("activeMembers");
-yield* stats.decrementStat("canceledMembers");
+yield * stats.incrementStat('activeMembers');
+yield * stats.decrementStat('canceledMembers');
 
 // Refresh full stats when needed
-const freshStats = yield* stats.refreshStats();
+const freshStats = yield * stats.refreshStats();
 ```
 
 ### Export Pattern
 
 ```typescript
 // Generate export based on format
-const result = options.format === "csv"
-  ? yield* exportService.generateCSV(options)
-  : yield* exportService.generateJSON(options);
+const result =
+  options.format === 'csv'
+    ? yield * exportService.generateCSV(options)
+    : yield * exportService.generateJSON(options);
 ```
 
 ## Acceptance Criteria

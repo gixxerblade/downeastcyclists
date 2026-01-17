@@ -68,20 +68,19 @@ export const loginWithPassword = (
 Use `Effect.runPromise` in TanStack Query mutations:
 
 ```typescript
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { loginWithPassword } from "@/lib/effect/client-auth";
-import type { AuthError } from "@/lib/effect/errors";
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {loginWithPassword} from '@/lib/effect/client-auth';
+import type {AuthError} from '@/lib/effect/errors';
 
 const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
-  mutationFn: (credentials) =>
-    Effect.runPromise(loginWithPassword(credentials)),
-  onSuccess: () => router.push("/member"),
+  mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
+  onSuccess: () => router.push('/member'),
 });
 
 // TypeScript knows error is AuthError!
-loginMutation.error?.message  // ✅ Type-safe
-loginMutation.error?.code     // ✅ Type-safe
+loginMutation.error?.message; // ✅ Type-safe
+loginMutation.error?.code; // ✅ Type-safe
 ```
 
 ## Benefits
@@ -114,9 +113,9 @@ Same error types used everywhere:
 ```typescript
 // Chain multiple operations with automatic error propagation
 const loginFlow = Effect.gen(function* () {
-  const user = yield* signIn(credentials);      // AuthError
-  const token = yield* getToken(user);          // AuthError
-  const session = yield* createSession(token);  // AuthError
+  const user = yield* signIn(credentials); // AuthError
+  const token = yield* getToken(user); // AuthError
+  const session = yield* createSession(token); // AuthError
   return session;
 });
 // If any step fails, the entire chain short-circuits with the error
@@ -198,23 +197,19 @@ const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
 **File:** `src/components/member/PortalButton.tsx`
 
 ```typescript
-import { useMutation } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { createPortalSession } from "@/lib/effect/client-portal";
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {createPortalSession} from '@/lib/effect/client-portal';
 
-const portalMutation = useMutation<
-  { url: string },
-  StripeError | NotFoundError,
-  void
->({
+const portalMutation = useMutation<{url: string}, StripeError | NotFoundError, void>({
   mutationFn: () => Effect.runPromise(createPortalSession(returnUrl)),
   onSuccess: (data) => router.push(data.url),
 });
 
 // TypeScript knows error could be StripeError or NotFoundError
-if (portalMutation.error?._tag === "NotFoundError") {
+if (portalMutation.error?._tag === 'NotFoundError') {
   // Handle no customer found
-} else if (portalMutation.error?._tag === "StripeError") {
+} else if (portalMutation.error?._tag === 'StripeError') {
   // Handle Stripe error
 }
 ```
@@ -225,9 +220,8 @@ if (portalMutation.error?._tag === "NotFoundError") {
 
 ```typescript
 const verifyMutation = useMutation<unknown, AuthError, string>({
-  mutationFn: (email) =>
-    Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
-  onSuccess: () => router.replace("/member"),
+  mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
+  onSuccess: () => router.replace('/member'),
 });
 
 // Effect composition for multi-step verification
@@ -248,15 +242,18 @@ Effect-TS makes testing easier:
 // Test the Effect without running it
 const mockAuth = {
   signInWithPassword: () => Effect.succeed(mockUserCredential),
-  createSessionCookie: () => Effect.succeed({ success: true }),
+  createSessionCookie: () => Effect.succeed({success: true}),
 };
 
 // Test error cases
 const failingAuth = {
-  signInWithPassword: () => Effect.fail(new AuthError({
-    code: "SIGN_IN_FAILED",
-    message: "Invalid credentials",
-  })),
+  signInWithPassword: () =>
+    Effect.fail(
+      new AuthError({
+        code: 'SIGN_IN_FAILED',
+        message: 'Invalid credentials',
+      }),
+    ),
 };
 ```
 
@@ -269,12 +266,12 @@ const failingAuth = {
 ```typescript
 const handleLogin = async () => {
   try {
-    const response = await fetch("/api/auth/session", {
-      method: "POST",
-      body: JSON.stringify({ idToken }),
+    const response = await fetch('/api/auth/session', {
+      method: 'POST',
+      body: JSON.stringify({idToken}),
     });
-    if (!response.ok) throw new Error("Failed");
-    router.push("/member");
+    if (!response.ok) throw new Error('Failed');
+    router.push('/member');
   } catch (err) {
     setError(err.message);
   }
@@ -284,13 +281,12 @@ const handleLogin = async () => {
 **After:**
 
 ```typescript
-import { useMutation } from "@tanstack/react-query";
-import { createSessionCookie } from "@/lib/effect/client-auth";
+import {useMutation} from '@tanstack/react-query';
+import {createSessionCookie} from '@/lib/effect/client-auth';
 
 const sessionMutation = useMutation({
-  mutationFn: (idToken: string) =>
-    Effect.runPromise(createSessionCookie(idToken)),
-  onSuccess: () => router.push("/member"),
+  mutationFn: (idToken: string) => Effect.runPromise(createSessionCookie(idToken)),
+  onSuccess: () => router.push('/member'),
 });
 
 sessionMutation.mutate(idToken);

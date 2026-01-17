@@ -1,27 +1,28 @@
-"use client";
+'use client';
 
-import { Box, Card, CardContent, Typography, Chip, Skeleton, Button } from "@mui/material";
-import { QRCodeSVG } from "qrcode.react";
-import type { MembershipCard } from "@/src/lib/effect/schemas";
-import { useRef } from "react";
-import { downloadStringAsFile } from "@/src/utils/download";
+import {Box, Card, CardContent, Typography, Chip, Skeleton, Button} from '@mui/material';
+import {QRCodeSVG} from 'qrcode.react';
+import {useRef} from 'react';
+
+import type {MembershipCard} from '@/src/lib/effect/schemas';
+import {downloadStringAsFile} from '@/src/utils/download';
 
 interface DigitalCardProps {
   card: MembershipCard;
   loading?: boolean;
 }
 
-const statusColors: Record<string, "success" | "warning" | "error" | "default"> = {
-  active: "success",
-  trialing: "success",
-  past_due: "warning",
-  canceled: "error",
-  incomplete: "error",
-  incomplete_expired: "error",
-  unpaid: "error",
+const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+  active: 'success',
+  trialing: 'success',
+  past_due: 'warning',
+  canceled: 'error',
+  incomplete: 'error',
+  incomplete_expired: 'error',
+  unpaid: 'error',
 };
 
-export function DigitalCard({ card, loading }: DigitalCardProps) {
+export function DigitalCard({card, loading}: DigitalCardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   function onSVGButtonClick() {
@@ -37,22 +38,22 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
     // need to stuff into href).
     const serializer = new XMLSerializer();
     const fileURI =
-      "data:image/svg+xml;charset=utf-8," +
+      'data:image/svg+xml;charset=utf-8,' +
       encodeURIComponent(
         '<?xml version="1.0" standalone="no"?>' + serializer.serializeToString(node),
       );
 
-    downloadStringAsFile(fileURI, `${card.memberName.split(" ").join("-")}-membership-card`);
+    downloadStringAsFile(fileURI, `${card.memberName.split(' ').join('-')}-membership-card`);
   }
 
   if (loading) {
     return (
       <Card
         sx={{
-          background: "linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)",
-          color: "white",
+          background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)',
+          color: 'white',
           maxWidth: 400,
-          mx: "auto",
+          mx: 'auto',
         }}
       >
         <CardContent>
@@ -61,35 +62,35 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
               variant="text"
               width={180}
               height={32}
-              sx={{ bgcolor: "rgba(255,255,255,0.2)" }}
+              sx={{bgcolor: 'rgba(255,255,255,0.2)'}}
             />
             <Skeleton
               variant="rounded"
               width={60}
               height={24}
-              sx={{ bgcolor: "rgba(255,255,255,0.2)" }}
+              sx={{bgcolor: 'rgba(255,255,255,0.2)'}}
             />
           </Box>
-          <Skeleton variant="text" width={80} sx={{ bgcolor: "rgba(255,255,255,0.2)" }} />
+          <Skeleton variant="text" width={80} sx={{bgcolor: 'rgba(255,255,255,0.2)'}} />
           <Skeleton
             variant="text"
             width={200}
             height={36}
-            sx={{ bgcolor: "rgba(255,255,255,0.2)" }}
+            sx={{bgcolor: 'rgba(255,255,255,0.2)'}}
           />
-          <Skeleton variant="text" width={120} sx={{ bgcolor: "rgba(255,255,255,0.2)" }} />
+          <Skeleton variant="text" width={120} sx={{bgcolor: 'rgba(255,255,255,0.2)'}} />
           <Skeleton
             variant="text"
             width={180}
             height={28}
-            sx={{ bgcolor: "rgba(255,255,255,0.2)" }}
+            sx={{bgcolor: 'rgba(255,255,255,0.2)'}}
           />
           <Box display="flex" justifyContent="center" my={2}>
             <Skeleton
               variant="rounded"
               width={150}
               height={150}
-              sx={{ bgcolor: "rgba(255,255,255,0.2)" }}
+              sx={{bgcolor: 'rgba(255,255,255,0.2)'}}
             />
           </Box>
         </CardContent>
@@ -100,10 +101,10 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
   return (
     <Card
       sx={{
-        background: "linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)",
-        color: "white",
+        background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)',
+        color: 'white',
         maxWidth: 400,
-        mx: "auto",
+        mx: 'auto',
       }}
     >
       <CardContent>
@@ -112,11 +113,11 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
           <Typography variant="h6" fontWeight="bold">
             Down East Cyclists
           </Typography>
-          <Chip label={card.status} color={statusColors[card.status] || "default"} size="small" />
+          <Chip label={card.status} color={statusColors[card.status] || 'default'} size="small" />
         </Box>
 
         {/* Member Info */}
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        <Typography variant="body2" sx={{opacity: 0.8}}>
           Member
         </Typography>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -124,7 +125,7 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
         </Typography>
 
         {/* Membership Number */}
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        <Typography variant="body2" sx={{opacity: 0.8}}>
           Membership #
         </Typography>
         <Typography variant="h6" fontFamily="monospace" gutterBottom>
@@ -134,15 +135,15 @@ export function DigitalCard({ card, loading }: DigitalCardProps) {
         {/* Plan & Validity */}
         <Box display="flex" justifyContent="space-between" mb={2}>
           <Box>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            <Typography variant="body2" sx={{opacity: 0.8}}>
               Plan
             </Typography>
             <Typography variant="body1">
-              {card.planType === "family" ? "Family" : "Individual"}
+              {card.planType === 'family' ? 'Family' : 'Individual'}
             </Typography>
           </Box>
           <Box textAlign="right">
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            <Typography variant="body2" sx={{opacity: 0.8}}>
               Valid Until
             </Typography>
             <Typography variant="body1">

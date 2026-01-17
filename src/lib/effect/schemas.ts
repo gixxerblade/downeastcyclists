@@ -1,20 +1,20 @@
-import { Schema as S } from "@effect/schema";
+import {Schema as S} from '@effect/schema';
 
 // Membership status enum - matches Stripe subscription statuses
 // Note: "trialing" is kept for Stripe API compatibility but DEC doesn't offer trials
 export const MembershipStatus = S.Literal(
-  "active",
-  "past_due",
-  "canceled",
-  "incomplete",
-  "incomplete_expired",
-  "trialing", // Kept for Stripe compatibility, not used by DEC
-  "unpaid",
+  'active',
+  'past_due',
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'trialing', // Kept for Stripe compatibility, not used by DEC
+  'unpaid',
 );
 export type MembershipStatus = S.Schema.Type<typeof MembershipStatus>;
 
 // Plan type enum
-export const PlanType = S.Literal("individual", "family");
+export const PlanType = S.Literal('individual', 'family');
 export type PlanType = S.Schema.Type<typeof PlanType>;
 
 // Address schema
@@ -59,7 +59,7 @@ export const MembershipPlanDocument = S.Struct({
   description: S.String,
   stripePriceId: S.String,
   price: S.Number,
-  interval: S.Literal("year", "month"),
+  interval: S.Literal('year', 'month'),
   benefits: S.Array(S.String),
   isActive: S.Boolean,
   sortOrder: S.Number,
@@ -153,24 +153,24 @@ export type MemberDashboardResponse = S.Schema.Type<typeof MemberDashboardRespon
 export const JoinFormData = S.Struct({
   email: S.String.pipe(
     S.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
-      message: () => "Please enter a valid email address",
+      message: () => 'Please enter a valid email address',
     }),
   ),
   password: S.String.pipe(
     S.minLength(6, {
-      message: () => "Password must be at least 6 characters",
+      message: () => 'Password must be at least 6 characters',
     }),
   ),
   confirmPassword: S.String,
   name: S.optional(S.String),
   selectedPlanId: S.String.pipe(
     S.minLength(1, {
-      message: () => "Please select a membership plan",
+      message: () => 'Please select a membership plan',
     }),
   ),
   selectedPriceId: S.String.pipe(
     S.minLength(1, {
-      message: () => "Invalid plan selected",
+      message: () => 'Invalid plan selected',
     }),
   ),
 });
@@ -181,7 +181,7 @@ export const WebhookEventDocument = S.Struct({
   id: S.String, // Stripe event ID (evt_xxx)
   type: S.String, // Event type (checkout.session.completed, etc.)
   processedAt: S.Any, // Firestore Timestamp
-  status: S.Literal("processing", "completed", "failed"),
+  status: S.Literal('processing', 'completed', 'failed'),
   errorMessage: S.optional(S.String),
   retryCount: S.optional(S.Number),
 });
@@ -291,6 +291,6 @@ export const ExportOptions = S.Struct({
   includePhone: S.Boolean,
   includeAddress: S.Boolean,
   statusFilter: S.optional(MembershipStatus),
-  format: S.Literal("csv", "json"),
+  format: S.Literal('csv', 'json'),
 });
 export type ExportOptions = S.Schema.Type<typeof ExportOptions>;

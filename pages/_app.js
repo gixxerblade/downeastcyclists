@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
+import {useRouter} from 'next/router';
+import {useEffect} from 'react';
 
 // Import global styles if needed
 // import '../app/globals.css';
@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 // Create a simple in-memory cache for page data
 const pageCache = new Map();
 
-function MyApp({ Component, pageProps }) {
+function MyApp({Component, pageProps}) {
   const router = useRouter();
 
   useEffect(() => {
@@ -26,10 +26,10 @@ function MyApp({ Component, pageProps }) {
       }
     };
 
-    router.events.on("routeChangeStart", handleRouteChangeStart);
+    router.events.on('routeChangeStart', handleRouteChangeStart);
 
     return () => {
-      router.events.off("routeChangeStart", handleRouteChangeStart);
+      router.events.off('routeChangeStart', handleRouteChangeStart);
     };
   }, [pageProps, router]);
 
@@ -41,8 +41,8 @@ function MyApp({ Component, pageProps }) {
 
       // Prefetch each internal link
       links.forEach((link) => {
-        const href = link.getAttribute("href");
-        if (href && !href.startsWith("/_next") && !href.includes("#")) {
+        const href = link.getAttribute('href');
+        if (href && !href.startsWith('/_next') && !href.includes('#')) {
           router.prefetch(href);
         }
       });

@@ -8,20 +8,22 @@
  *   pnpm tsx scripts/set-admin-claim.ts admin@example.com
  */
 
+import {resolve} from 'path';
+
 // Load environment variables from .env.local
-import { config } from "dotenv";
-import { resolve } from "path";
+import {config} from 'dotenv';
 
-config({ path: resolve(__dirname, "../.env.local") });
+config({path: resolve(__dirname, '../.env.local')});
 
-import { initializeFirebaseAdmin } from "../src/lib/firebase-admin";
-import { Effect } from "effect";
+import {Effect} from 'effect';
+
+import {initializeFirebaseAdmin} from '../src/lib/firebase-admin';
 
 const email = process.argv[2];
 
 if (!email) {
-  console.error("❌ Error: Please provide an email address");
-  console.log("Usage: pnpm tsx scripts/set-admin-claim.ts <email>");
+  console.error('❌ Error: Please provide an email address');
+  console.log('Usage: pnpm tsx scripts/set-admin-claim.ts <email>');
   process.exit(1);
 }
 
@@ -44,7 +46,7 @@ const program = Effect.gen(function* () {
 
   // Set admin custom claim
   yield* Effect.tryPromise({
-    try: () => auth.setCustomUserClaims(user.uid, { admin: true }),
+    try: () => auth.setCustomUserClaims(user.uid, {admin: true}),
     catch: (error) => {
       console.error(`❌ Failed to set custom claims`);
       return new Error(`Failed to set claims: ${error}`);
@@ -59,6 +61,6 @@ const program = Effect.gen(function* () {
 });
 
 Effect.runPromise(program).catch((error) => {
-  console.error("❌ Script failed:", error);
+  console.error('❌ Script failed:', error);
   process.exit(1);
 });

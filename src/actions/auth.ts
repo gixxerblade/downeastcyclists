@@ -1,10 +1,11 @@
-"use server";
+'use server';
 
-import { Effect, pipe } from "effect";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { PortalService } from "@/src/lib/effect/portal.service";
-import { LiveLayer } from "@/src/lib/effect/layers";
+import {Effect, pipe} from 'effect';
+import {cookies} from 'next/headers';
+import {redirect} from 'next/navigation';
+
+import {LiveLayer} from '@/src/lib/effect/layers';
+import {PortalService} from '@/src/lib/effect/portal.service';
 
 export type AuthState = {
   error?: string;
@@ -18,10 +19,10 @@ export async function verifySession(): Promise<{
   email?: string;
 }> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
-    return { authenticated: false };
+    return {authenticated: false};
   }
 
   const program = pipe(
@@ -35,7 +36,7 @@ export async function verifySession(): Promise<{
       };
     }),
 
-    Effect.catchAll(() => Effect.succeed({ authenticated: false as const })),
+    Effect.catchAll(() => Effect.succeed({authenticated: false as const})),
   );
 
   return Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
@@ -44,8 +45,8 @@ export async function verifySession(): Promise<{
 // Sign out action
 export async function signOut(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete("session");
-  redirect("/");
+  cookieStore.delete('session');
+  redirect('/');
 }
 
 // Get current user from session

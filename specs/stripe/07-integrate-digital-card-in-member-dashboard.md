@@ -11,6 +11,7 @@ Enable members to view their digital membership card with QR code directly in th
 ## Problem Statement
 
 The digital membership proof system (Phase 3) created the necessary components and API:
+
 - `DigitalCard` component at `src/components/member/DigitalCard.tsx:22-127`
 - API endpoint at `app/api/membership/card/route.ts:8-51`
 - `MembershipCardService` for card data retrieval at `src/lib/effect/card.service.ts:13-34`
@@ -26,6 +27,7 @@ Following the established Effect-TS + TanStack Query architecture documented in 
 3. **Display the `DigitalCard` component** when data is available, using existing loading skeleton support
 
 This follows the same pattern used in:
+
 - `src/lib/effect/client-portal.ts:14-61` - Effect wrapper for portal API
 - `src/components/member/PortalButton.tsx:19-29` - TanStack Query mutation consuming Effect
 
@@ -56,9 +58,9 @@ This follows the same pattern used in:
 Create `src/lib/effect/client-card.ts` following the pattern in `client-portal.ts`:
 
 ```typescript
-import { Effect } from "effect";
-import { CardError, NotFoundError, SessionError } from "./errors";
-import type { MembershipCard } from "./schemas";
+import {Effect} from 'effect';
+import {CardError, NotFoundError, SessionError} from './errors';
+import type {MembershipCard} from './schemas';
 
 /**
  * Client-side card operations using Effect-TS
@@ -77,28 +79,28 @@ export const getDigitalCard = (): Effect.Effect<
 > =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/membership/card");
+      const response = await fetch('/api/membership/card');
 
       if (!response.ok) {
         const data = await response.json();
 
         if (response.status === 401) {
           throw new SessionError({
-            code: "SESSION_EXPIRED",
-            message: data.error || "Session expired",
+            code: 'SESSION_EXPIRED',
+            message: data.error || 'Session expired',
           });
         }
 
         if (response.status === 404) {
           throw new NotFoundError({
-            resource: "membershipCard",
-            id: "current_user",
+            resource: 'membershipCard',
+            id: 'current_user',
           });
         }
 
         throw new CardError({
-          code: "CARD_FETCH_FAILED",
-          message: data.error || "Failed to fetch membership card",
+          code: 'CARD_FETCH_FAILED',
+          message: data.error || 'Failed to fetch membership card',
         });
       }
 
@@ -108,20 +110,19 @@ export const getDigitalCard = (): Effect.Effect<
       // If it's already a tagged error, re-throw it
       if (
         error &&
-        typeof error === "object" &&
-        "_tag" in error &&
-        (error._tag === "NotFoundError" ||
-          error._tag === "CardError" ||
-          error._tag === "SessionError")
+        typeof error === 'object' &&
+        '_tag' in error &&
+        (error._tag === 'NotFoundError' ||
+          error._tag === 'CardError' ||
+          error._tag === 'SessionError')
       ) {
         return error as CardError | NotFoundError | SessionError;
       }
 
       // Otherwise wrap in CardError
       return new CardError({
-        code: "CARD_REQUEST_FAILED",
-        message:
-          error instanceof Error ? error.message : "Failed to request card",
+        code: 'CARD_REQUEST_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to request card',
         cause: error,
       });
     },
@@ -134,11 +135,11 @@ Add required imports at the top of `src/components/member/MemberDashboardClient.
 
 ```typescript
 // Add to existing imports
-import { useQuery } from "@tanstack/react-query";
-import { Effect } from "effect";
-import { DigitalCard } from "./DigitalCard";
-import { getDigitalCard } from "@/src/lib/effect/client-card";
-import type { CardError, NotFoundError, SessionError } from "@/src/lib/effect/errors";
+import {useQuery} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {DigitalCard} from './DigitalCard';
+import {getDigitalCard} from '@/src/lib/effect/client-card';
+import type {CardError, NotFoundError, SessionError} from '@/src/lib/effect/errors';
 ```
 
 ### 3. Add useQuery for Digital Card Data
@@ -149,18 +150,18 @@ Inside `MemberDashboardClient` component, add the useQuery hook after existing s
 // Fetch digital card using Effect + TanStack Query
 // Only enabled when user has an active membership
 const cardQuery = useQuery<
-  { hasCard: boolean; card: MembershipCard | null },
+  {hasCard: boolean; card: MembershipCard | null},
   CardError | NotFoundError | SessionError
 >({
-  queryKey: ["digitalCard"],
+  queryKey: ['digitalCard'],
   queryFn: () => Effect.runPromise(getDigitalCard()),
   // Only fetch when membership exists and not in error state
-  enabled: !("error" in data) && !!data.membership,
+  enabled: !('error' in data) && !!data.membership,
   // Refetch when window regains focus (e.g., returning from Stripe)
   refetchOnWindowFocus: true,
   // Don't retry on 401/404 errors
   retry: (failureCount, error) => {
-    if (error._tag === "SessionError" || error._tag === "NotFoundError") {
+    if (error._tag === 'SessionError' || error._tag === 'NotFoundError') {
       return false;
     }
     return failureCount < 2;
@@ -253,7 +254,7 @@ Update the membership section render (around line 134-144) to include the digita
 Ensure the `MembershipCard` schema type is imported (note: different from the component):
 
 ```typescript
-import type { MembershipCard as MembershipCardSchema } from "@/src/lib/effect/schemas";
+import type {MembershipCard as MembershipCardSchema} from '@/src/lib/effect/schemas';
 ```
 
 Then update the useQuery generic type to use `MembershipCardSchema`.

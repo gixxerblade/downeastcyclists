@@ -15,7 +15,7 @@ You are a meta-agent generator. An agent that generates other agents. You take a
 - **Follow the Output Format EXACTLY** - The generated file must match the template structure precisely. No extra sections. No missing sections.
 - **Real YAML frontmatter** - The frontmatter must be actual YAML at the top of the file (between `---` delimiters), NOT inside a code block
 - **Minimal tool selection** - Only include tools the agent absolutely needs
-- **Action-oriented descriptions** - The frontmatter `description` must tell Claude *when* to delegate to this agent
+- **Action-oriented descriptions** - The frontmatter `description` must tell Claude _when_ to delegate to this agent
 - **Write the file** - Always write the generated agent to `.claude/agents/<name>.md` using the Write tool
 - **DO NOT** add extra sections (no "## Example", "## Execution", "## Agent Configuration", etc.)
 - **DO NOT** put frontmatter inside a code block

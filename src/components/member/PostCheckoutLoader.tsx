@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Container, Box, Paper, Typography, CircularProgress, Alert, Button } from "@mui/material";
-import { CheckCircle } from "@mui/icons-material";
+import {CheckCircle} from '@mui/icons-material';
+import {Container, Box, Paper, Typography, CircularProgress, Alert, Button} from '@mui/material';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {useEffect, useState} from 'react';
 
 interface PostCheckoutLoaderProps {
   sessionId: string;
 }
 
-export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
+export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "ready" | "error" | "timeout">("loading");
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'timeout'>('loading');
   const [attempts, setAttempts] = useState(0);
   const maxAttempts = 30; // 30 seconds max (polling every 1 second)
 
@@ -22,13 +22,13 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
 
     const checkMembershipReady = async () => {
       try {
-        const response = await fetch("/api/member/check-session");
+        const response = await fetch('/api/member/check-session');
 
         if (response.ok) {
           const data = await response.json();
 
           if (data.ready && data.hasMembership) {
-            setStatus("ready");
+            setStatus('ready');
 
             // Wait a moment to show success, then redirect
             setTimeout(() => {
@@ -49,7 +49,7 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
           const newAttempts = prev + 1;
 
           if (newAttempts >= maxAttempts) {
-            setStatus("timeout");
+            setStatus('timeout');
             clearInterval(pollInterval);
             clearTimeout(timeoutTimer);
           }
@@ -57,7 +57,7 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
           return newAttempts;
         });
       } catch (error) {
-        console.error("Error checking membership status:", error);
+        console.error('Error checking membership status:', error);
         setAttempts((prev) => prev + 1);
       }
     };
@@ -70,8 +70,8 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
 
     // Set overall timeout
     timeoutTimer = setTimeout(() => {
-      if (status === "loading") {
-        setStatus("timeout");
+      if (status === 'loading') {
+        setStatus('timeout');
         clearInterval(pollInterval);
       }
     }, maxAttempts * 1000);
@@ -89,12 +89,12 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Box sx={{ textAlign: "center" }}>
-          {status === "loading" && (
+    <Container maxWidth="md" sx={{py: 6}}>
+      <Paper elevation={3} sx={{p: 4}}>
+        <Box sx={{textAlign: 'center'}}>
+          {status === 'loading' && (
             <>
-              <CircularProgress size={60} sx={{ mb: 3 }} />
+              <CircularProgress size={60} sx={{mb: 3}} />
               <Typography variant="h5" gutterBottom>
                 Processing Your Membership
               </Typography>
@@ -107,9 +107,9 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
             </>
           )}
 
-          {status === "ready" && (
+          {status === 'ready' && (
             <>
-              <CheckCircle sx={{ fontSize: 60, color: "success.main", mb: 2 }} />
+              <CheckCircle sx={{fontSize: 60, color: 'success.main', mb: 2}} />
               <Typography variant="h5" gutterBottom color="success.main">
                 Membership Activated!
               </Typography>
@@ -119,9 +119,9 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
             </>
           )}
 
-          {status === "timeout" && (
+          {status === 'timeout' && (
             <>
-              <Alert severity="warning" sx={{ mb: 3, textAlign: "left" }}>
+              <Alert severity="warning" sx={{mb: 3, textAlign: 'left'}}>
                 <Typography variant="subtitle1" gutterBottom>
                   Taking longer than expected
                 </Typography>
@@ -130,7 +130,7 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
                   can take up to a minute. You can wait or try refreshing the page.
                 </Typography>
               </Alert>
-              <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
+              <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
                 <Button variant="contained" onClick={handleManualRefresh}>
                   Refresh Now
                 </Button>
@@ -141,9 +141,9 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
             </>
           )}
 
-          {status === "error" && (
+          {status === 'error' && (
             <>
-              <Alert severity="error" sx={{ mb: 3, textAlign: "left" }}>
+              <Alert severity="error" sx={{mb: 3, textAlign: 'left'}}>
                 <Typography variant="subtitle1" gutterBottom>
                   Unable to verify membership
                 </Typography>
@@ -152,7 +152,7 @@ export function PostCheckoutLoader({ sessionId }: PostCheckoutLoaderProps) {
                   been successful. Please try refreshing the page or contact support.
                 </Typography>
               </Alert>
-              <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
+              <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
                 <Button variant="contained" onClick={handleManualRefresh}>
                   Try Again
                 </Button>

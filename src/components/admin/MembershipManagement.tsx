@@ -1,9 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
-import { Effect } from "effect";
+import {Refresh} from '@mui/icons-material';
 import {
   Box,
   Typography,
@@ -15,35 +12,43 @@ import {
   InputLabel,
   Paper,
   Alert,
-} from "@mui/material";
-import Grid from "@mui/material/Grid2";
-import { Refresh } from "@mui/icons-material";
-import { StatsCards } from "./StatsCards";
-import { MemberTable } from "./MemberTable";
-import { refreshStats, getStats, getMembers } from "@/src/lib/effect/client-admin";
-import type { FirestoreError, UnauthorizedError } from "@/src/lib/effect/errors";
-import { MembershipStats } from '@/src/lib/effect/schemas';
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import {useDebouncedCallback} from '@tanstack/react-pacer';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {useState} from 'react';
+
+import {refreshStats, getStats, getMembers} from '@/src/lib/effect/client-admin';
+import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
+import {MembershipStats} from '@/src/lib/effect/schemas';
+
+import {MemberTable} from './MemberTable';
+import {StatsCards} from './StatsCards';
 
 export function MembershipManagement() {
   const queryClient = useQueryClient();
   const [exporting, setExporting] = useState(false);
 
   // Search/filter state
-  const [searchQuery, setSearchQuery] = useState(""); // For input display
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(""); // For actual query
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [planTypeFilter, setPlanTypeFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState(''); // For input display
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // For actual query
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [planTypeFilter, setPlanTypeFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // Debounce search input using TanStack Pacer React hook
-  const debouncedSetSearch = useDebouncedCallback((value: string) => setDebouncedSearchQuery(value), {
-    wait: 300, // Wait 300ms after last keystroke
-  });
+  const debouncedSetSearch = useDebouncedCallback(
+    (value: string) => setDebouncedSearchQuery(value),
+    {
+      wait: 300, // Wait 300ms after last keystroke
+    },
+  );
 
   // Query for stats (cached)
   const statsQuery = useQuery({
-    queryKey: ["admin", "stats"],
+    queryKey: ['admin', 'stats'],
     queryFn: () => Effect.runPromise(getStats()),
     staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
   });
@@ -51,8 +56,8 @@ export function MembershipManagement() {
   // Query for members (cached and debounced via TanStack Pacer)
   const membersQuery = useQuery({
     queryKey: [
-      "admin",
-      "members",
+      'admin',
+      'members',
       page,
       pageSize,
       debouncedSearchQuery,
@@ -67,7 +72,7 @@ export function MembershipManagement() {
           query: debouncedSearchQuery || undefined,
           status: statusFilter || undefined,
           planType: planTypeFilter || undefined,
-        })
+        }),
       ),
     staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
   });
@@ -81,18 +86,18 @@ export function MembershipManagement() {
     mutationFn: () => Effect.runPromise(refreshStats()),
     onSuccess: () => {
       // Invalidate both queries to refetch with fresh data
-      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+      queryClient.invalidateQueries({queryKey: ['admin', 'stats']});
+      queryClient.invalidateQueries({queryKey: ['admin', 'members']});
     },
   });
 
   // Export members
-  const handleExport = async (format: "csv" | "json") => {
+  const handleExport = async (format: 'csv' | 'json') => {
     setExporting(true);
     try {
-      const response = await fetch("/api/admin/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/admin/export', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           includeEmail: true,
           includePhone: true,
@@ -105,7 +110,7 @@ export function MembershipManagement() {
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
         a.download = `members-export-${Date.now()}.${format}`;
         document.body.appendChild(a);
@@ -114,17 +119,17 @@ export function MembershipManagement() {
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error("Failed to export:", error);
+      console.error('Failed to export:', error);
     } finally {
       setExporting(false);
     }
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{display: 'flex', flexDirection: 'column', gap: 3}}>
       {/* Stats Section */}
       <Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
           <Typography variant="h5" component="h2">
             Membership Statistics
           </Typography>
@@ -134,12 +139,12 @@ export function MembershipManagement() {
             disabled={refreshStatsMutation.isPending}
             startIcon={<Refresh />}
           >
-            {refreshStatsMutation.isPending ? "Refreshing..." : "Refresh Stats"}
+            {refreshStatsMutation.isPending ? 'Refreshing...' : 'Refresh Stats'}
           </Button>
         </Box>
         {/* Error display for stats refresh */}
         {refreshStatsMutation.error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{mb: 2}}>
             {refreshStatsMutation.error.message}
           </Alert>
         )}
@@ -148,34 +153,34 @@ export function MembershipManagement() {
 
       {/* Members Section */}
       <Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
           <Typography variant="h5" component="h2">
             Members
           </Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Box sx={{display: 'flex', gap: 1}}>
             <Button
               variant="contained"
               color="success"
-              onClick={() => handleExport("csv")}
+              onClick={() => handleExport('csv')}
               disabled={exporting}
             >
-              {exporting ? "Exporting..." : "Export CSV"}
+              {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
             <Button
               variant="contained"
               color="success"
-              onClick={() => handleExport("json")}
+              onClick={() => handleExport('json')}
               disabled={exporting}
             >
-              {exporting ? "Exporting..." : "Export JSON"}
+              {exporting ? 'Exporting...' : 'Export JSON'}
             </Button>
           </Box>
         </Box>
 
         {/* Search and Filters */}
-        <Paper sx={{ p: 3, mb: 2 }}>
+        <Paper sx={{p: 3, mb: 2}}>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{xs: 12, md: 3}}>
               <TextField
                 fullWidth
                 label="Search"
@@ -191,7 +196,7 @@ export function MembershipManagement() {
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{xs: 12, md: 3}}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -212,7 +217,7 @@ export function MembershipManagement() {
               </FormControl>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{xs: 12, md: 3}}>
               <FormControl fullWidth size="small">
                 <InputLabel>Plan Type</InputLabel>
                 <Select
@@ -232,17 +237,17 @@ export function MembershipManagement() {
 
             <Grid
               component="div"
-              size={{ xs: 12, md: 3 }}
-              sx={{ display: "flex", alignItems: "center" }}
+              size={{xs: 12, md: 3}}
+              sx={{display: 'flex', alignItems: 'center'}}
             >
               <Button
                 fullWidth
                 variant="outlined"
                 onClick={() => {
-                  setSearchQuery("");
-                  setDebouncedSearchQuery("");
-                  setStatusFilter("");
-                  setPlanTypeFilter("");
+                  setSearchQuery('');
+                  setDebouncedSearchQuery('');
+                  setStatusFilter('');
+                  setPlanTypeFilter('');
                   setPage(1);
                 }}
               >
@@ -254,13 +259,11 @@ export function MembershipManagement() {
 
         {/* Member Table */}
         {membersQuery.isLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <Box sx={{display: 'flex', justifyContent: 'center', py: 6}}>
             <Typography color="text.secondary">Loading members...</Typography>
           </Box>
         ) : membersQuery.error ? (
-          <Alert severity="error">
-            {membersQuery.error.message || "Failed to load members"}
-          </Alert>
+          <Alert severity="error">{membersQuery.error.message || 'Failed to load members'}</Alert>
         ) : (
           <MemberTable
             members={membersQuery.data?.members || []}
@@ -274,8 +277,8 @@ export function MembershipManagement() {
             }}
             onEditMember={(member) => {
               // TODO: Open edit dialog
-              console.log("Edit member:", member);
-              alert("Edit functionality coming soon!");
+              console.log('Edit member:', member);
+              alert('Edit functionality coming soon!');
             }}
           />
         )}

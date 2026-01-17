@@ -1,16 +1,18 @@
-import { Context, Effect, Layer, pipe } from "effect";
-import { AuthService } from "./auth.service";
-import { StripeService } from "./stripe.service";
-import { FirestoreService } from "./firestore.service";
-import { AuthError, SessionError, StripeError, FirestoreError, NotFoundError } from "./errors";
-import type { MemberDashboardResponse } from "./schemas";
-import { getPlanNameForType } from "../membership-plans-config";
+import {Context, Effect, Layer, pipe} from 'effect';
+
+import {getPlanNameForType} from '../membership-plans-config';
+
+import {AuthService} from './auth.service';
+import {AuthError, SessionError, StripeError, FirestoreError, NotFoundError} from './errors';
+import {FirestoreService} from './firestore.service';
+import type {MemberDashboardResponse} from './schemas';
+import {StripeService} from './stripe.service';
 
 // Service interface
 export interface PortalService {
   readonly verifySession: (
     sessionCookie: string,
-  ) => Effect.Effect<{ uid: string; email: string | undefined }, SessionError | AuthError>;
+  ) => Effect.Effect<{uid: string; email: string | undefined}, SessionError | AuthError>;
 
   readonly getMemberDashboard: (
     userId: string,
@@ -19,7 +21,7 @@ export interface PortalService {
   readonly createPortalSession: (
     userId: string,
     returnUrl: string,
-  ) => Effect.Effect<{ url: string }, StripeError | FirestoreError | NotFoundError>;
+  ) => Effect.Effect<{url: string}, StripeError | FirestoreError | NotFoundError>;
 
   readonly linkFirebaseToStripe: (
     firebaseUid: string,
@@ -28,7 +30,7 @@ export interface PortalService {
 }
 
 // Service tag
-export const PortalService = Context.GenericTag<PortalService>("PortalService");
+export const PortalService = Context.GenericTag<PortalService>('PortalService');
 
 // Implementation using Effect.gen for complex orchestration
 const make = Effect.gen(function* () {
@@ -53,13 +55,13 @@ const make = Effect.gen(function* () {
         // Fetch user
         const user = yield* firestore.getUser(userId);
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({ resource: "user", id: userId }));
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         // Fetch membership
         const membership = yield* firestore.getActiveMembership(userId);
 
-        let membershipData: MemberDashboardResponse["membership"] = null;
+        let membershipData: MemberDashboardResponse['membership'] = null;
         let canManageSubscription = false;
 
         if (membership) {
@@ -108,13 +110,13 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({ resource: "user", id: userId }));
+          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
         }
 
         if (!user.stripeCustomerId) {
           return yield* Effect.fail(
             new NotFoundError({
-              resource: "stripeCustomer",
+              resource: 'stripeCustomer',
               id: userId,
             }),
           );
@@ -125,12 +127,12 @@ const make = Effect.gen(function* () {
 
         yield* Effect.log(`Portal session created for user ${userId}: ${session.id}`);
 
-        return { url: session.url };
+        return {url: session.url};
       }),
 
     // Simple delegation, use Effect.pipe
     linkFirebaseToStripe: (firebaseUid, stripeCustomerId) =>
-      firestore.setUser(firebaseUid, { stripeCustomerId }),
+      firestore.setUser(firebaseUid, {stripeCustomerId}),
   });
 });
 

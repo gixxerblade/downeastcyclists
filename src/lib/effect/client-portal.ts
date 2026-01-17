@@ -1,5 +1,6 @@
-import { Effect } from "effect";
-import { StripeError, NotFoundError } from "./errors";
+import {Effect} from 'effect';
+
+import {StripeError, NotFoundError} from './errors';
 
 /**
  * Client-side portal operations using Effect-TS
@@ -16,10 +17,10 @@ export const createPortalSession = (
 ): Effect.Effect<PortalSessionResponse, StripeError | NotFoundError> =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ returnUrl }),
+      const response = await fetch('/api/portal', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({returnUrl}),
       });
 
       if (!response.ok) {
@@ -27,14 +28,14 @@ export const createPortalSession = (
 
         if (response.status === 404) {
           throw new NotFoundError({
-            resource: "stripeCustomer",
-            id: "current_user",
+            resource: 'stripeCustomer',
+            id: 'current_user',
           });
         }
 
         throw new StripeError({
-          code: "PORTAL_CREATE_FAILED",
-          message: data.error || "Failed to create portal session",
+          code: 'PORTAL_CREATE_FAILED',
+          message: data.error || 'Failed to create portal session',
         });
       }
 
@@ -44,17 +45,17 @@ export const createPortalSession = (
       // If it's already a tagged error, re-throw it
       if (
         error &&
-        typeof error === "object" &&
-        "_tag" in error &&
-        (error._tag === "NotFoundError" || error._tag === "StripeError")
+        typeof error === 'object' &&
+        '_tag' in error &&
+        (error._tag === 'NotFoundError' || error._tag === 'StripeError')
       ) {
         return error as StripeError | NotFoundError;
       }
 
       // Otherwise wrap in StripeError
       return new StripeError({
-        code: "PORTAL_REQUEST_FAILED",
-        message: error instanceof Error ? error.message : "Failed to request portal session",
+        code: 'PORTAL_REQUEST_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to request portal session',
         cause: error,
       });
     },
@@ -64,21 +65,21 @@ export const createPortalSession = (
 export const getMembershipDashboard = (): Effect.Effect<unknown, StripeError | NotFoundError> =>
   Effect.tryPromise({
     try: async () => {
-      const response = await fetch("/api/member/dashboard");
+      const response = await fetch('/api/member/dashboard');
 
       if (!response.ok) {
         const data = await response.json();
 
         if (response.status === 404) {
           throw new NotFoundError({
-            resource: "membership",
-            id: "current_user",
+            resource: 'membership',
+            id: 'current_user',
           });
         }
 
         throw new StripeError({
-          code: "DASHBOARD_FETCH_FAILED",
-          message: data.error || "Failed to fetch dashboard",
+          code: 'DASHBOARD_FETCH_FAILED',
+          message: data.error || 'Failed to fetch dashboard',
         });
       }
 
@@ -87,16 +88,16 @@ export const getMembershipDashboard = (): Effect.Effect<unknown, StripeError | N
     catch: (error) => {
       if (
         error &&
-        typeof error === "object" &&
-        "_tag" in error &&
-        (error._tag === "NotFoundError" || error._tag === "StripeError")
+        typeof error === 'object' &&
+        '_tag' in error &&
+        (error._tag === 'NotFoundError' || error._tag === 'StripeError')
       ) {
         return error as StripeError | NotFoundError;
       }
 
       return new StripeError({
-        code: "DASHBOARD_REQUEST_FAILED",
-        message: error instanceof Error ? error.message : "Failed to request dashboard",
+        code: 'DASHBOARD_REQUEST_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to request dashboard',
         cause: error,
       });
     },

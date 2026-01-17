@@ -7,6 +7,7 @@ Implement comprehensive edge case handling for the Stripe membership system to e
 ## Objective
 
 Create a resilient membership system that:
+
 - Handles webhook delivery issues (duplicates, out-of-order, missing)
 - Correctly handles payment failures (both initial and renewal)
 - Maintains data consistency between Stripe and Firestore
@@ -16,6 +17,7 @@ Create a resilient membership system that:
 ## Problem Statement
 
 The current implementation handles the happy path well but lacks resilience for edge cases:
+
 1. No idempotency protection for duplicate webhooks
 2. No handling for payment failures (`incomplete`, `past_due`, `unpaid` states)
 3. Missing user documents can cause webhook processing failures
@@ -25,6 +27,7 @@ The current implementation handles the happy path well but lacks resilience for 
 ## Business Rules (Down East Cyclists Specific)
 
 ### Membership Types
+
 - **Individual Annual**: $30/year - Single person
 - **Family Annual**: $50/year - Household coverage
 - **No trial periods** - Payment required upfront
@@ -32,7 +35,9 @@ The current implementation handles the happy path well but lacks resilience for 
 ### Payment Failure Behavior
 
 #### Initial Checkout Payment Failure
+
 When a user attempts to join and their **initial payment fails**:
+
 1. Stripe marks subscription as `incomplete`
 2. User is **NOT** granted membership access
 3. Stripe automatically expires after 23 hours → `incomplete_expired`
@@ -40,7 +45,9 @@ When a user attempts to join and their **initial payment fails**:
 5. **No Firestore membership record** should be created for `incomplete` subscriptions
 
 #### Renewal Payment Failure (Existing Member)
+
 When an **existing member's renewal payment fails**:
+
 1. Stripe marks subscription as `past_due`
 2. **Stripe handles retries automatically** (Smart Retries: up to 8 attempts over 2 weeks)
 3. During retry period: Member **retains access** (they paid for a full year)
@@ -48,7 +55,9 @@ When an **existing member's renewal payment fails**:
 5. After final failure: Member loses access
 
 #### Stripe Dashboard Configuration
+
 Configure at **Billing > Revenue Recovery > Retries**:
+
 - Use **Smart Retries** (recommended: 8 attempts over 2 weeks)
 - After all retries fail: **Cancel the subscription**
 - This triggers `customer.subscription.deleted` webhook
@@ -56,6 +65,7 @@ Configure at **Billing > Revenue Recovery > Retries**:
 ## Solution Approach
 
 Implement a layered defense strategy:
+
 1. **Idempotency Layer**: Track processed webhook events to prevent duplicates
 2. **Graceful Degradation**: Handle missing data scenarios without failing
 3. **Status-Based Access**: Define clear rules for what each status grants
@@ -65,6 +75,7 @@ Implement a layered defense strategy:
 ## Relevant Files
 
 ### Existing Files to Modify
+
 - `src/lib/effect/firestore.service.ts:1-282` - Add webhook event tracking, upsert methods
 - `src/lib/effect/membership.service.ts:1-315` - Add idempotency, incomplete handling
 - `src/lib/effect/errors.ts:1-51` - Add new error types for edge cases
@@ -74,6 +85,7 @@ Implement a layered defense strategy:
 - `firestore.indexes.json:1-13` - Add indexes for new queries
 
 ### New Files to Create
+
 - `src/lib/effect/webhook-idempotency.service.ts` - Webhook deduplication service
 - `src/lib/membership-access.ts` - Membership access rules and utilities
 - `app/api/admin/reconcile/route.ts` - Manual reconciliation trigger endpoint (optional)
@@ -81,21 +93,25 @@ Implement a layered defense strategy:
 ## Implementation Phases
 
 ### Phase 1: Webhook Idempotency & Error Handling
+
 - Add webhook event tracking to Firestore
 - Implement idempotent webhook processing
 - Add graceful handling for missing user documents
 
 ### Phase 2: Status-Based Access & Incomplete Handling
+
 - Handle `checkout.session.completed` only for successful payments
 - Skip creating memberships for `incomplete` subscriptions
 - Define membership access rules for Individual/Family only
 
 ### Phase 3: Extended Event Coverage
+
 - Handle `invoice.payment_failed` for logging/alerting
 - Handle `customer.subscription.deleted` for cancellations
 - Let Stripe handle all payment retry logic
 
 ### Phase 4: Reconciliation (Optional)
+
 - Build reconciliation service for data drift
 - Create admin endpoint for manual sync
 
@@ -111,7 +127,7 @@ export const WebhookEventDocument = S.Struct({
   id: S.String, // Stripe event ID (evt_xxx)
   type: S.String, // Event type (checkout.session.completed, etc.)
   processedAt: S.Any, // Firestore Timestamp
-  status: S.Literal("processing", "completed", "failed"),
+  status: S.Literal('processing', 'completed', 'failed'),
   errorMessage: S.optional(S.String),
   retryCount: S.optional(S.Number),
 });
@@ -124,13 +140,13 @@ Also update `MembershipStatus` to remove `trialing` from common use (keep in typ
 // Membership status enum - matches Stripe subscription statuses
 // Note: "trialing" is kept for Stripe API compatibility but DEC doesn't offer trials
 export const MembershipStatus = S.Literal(
-  "active",
-  "past_due",
-  "canceled",
-  "incomplete",
-  "incomplete_expired",
-  "trialing", // Kept for Stripe compatibility, not used by DEC
-  "unpaid"
+  'active',
+  'past_due',
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'trialing', // Kept for Stripe compatibility, not used by DEC
+  'unpaid',
 );
 ```
 
@@ -139,19 +155,19 @@ export const MembershipStatus = S.Literal(
 Update `src/lib/effect/errors.ts` to add:
 
 ```typescript
-export class DuplicateWebhookError extends Data.TaggedError("DuplicateWebhookError")<{
+export class DuplicateWebhookError extends Data.TaggedError('DuplicateWebhookError')<{
   readonly eventId: string;
   readonly processedAt: Date;
 }> {}
 
-export class WebhookProcessingError extends Data.TaggedError("WebhookProcessingError")<{
+export class WebhookProcessingError extends Data.TaggedError('WebhookProcessingError')<{
   readonly eventId: string;
   readonly eventType: string;
   readonly message: string;
   readonly cause?: unknown;
 }> {}
 
-export class IncompletePaymentError extends Data.TaggedError("IncompletePaymentError")<{
+export class IncompletePaymentError extends Data.TaggedError('IncompletePaymentError')<{
   readonly subscriptionId: string;
   readonly status: string;
   readonly message: string;
@@ -176,7 +192,7 @@ export type AppError =
 Create `src/lib/membership-access.ts`:
 
 ```typescript
-import type { MembershipStatus } from "./effect/schemas";
+import type {MembershipStatus} from './effect/schemas';
 
 /**
  * Membership access configuration for Down East Cyclists
@@ -188,7 +204,7 @@ import type { MembershipStatus } from "./effect/schemas";
  * - Stripe handles all payment retries automatically
  */
 
-export type AccessLevel = "full" | "none";
+export type AccessLevel = 'full' | 'none';
 
 export interface MembershipAccessConfig {
   status: MembershipStatus;
@@ -213,60 +229,61 @@ export interface MembershipAccessConfig {
  */
 export const MEMBERSHIP_ACCESS_RULES: Record<MembershipStatus, MembershipAccessConfig> = {
   active: {
-    status: "active",
-    accessLevel: "full",
+    status: 'active',
+    accessLevel: 'full',
     canAccessMemberContent: true,
     canAccessMemberDiscounts: true,
     showPaymentWarning: false,
   },
   past_due: {
-    status: "past_due",
-    accessLevel: "full", // Keep access - they paid for the year, Stripe is retrying
+    status: 'past_due',
+    accessLevel: 'full', // Keep access - they paid for the year, Stripe is retrying
     canAccessMemberContent: true,
     canAccessMemberDiscounts: true,
     showPaymentWarning: true,
-    message: "Your renewal payment failed. We're retrying automatically. Please check your payment method.",
+    message:
+      "Your renewal payment failed. We're retrying automatically. Please check your payment method.",
   },
   canceled: {
-    status: "canceled",
-    accessLevel: "none",
+    status: 'canceled',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Your membership has been canceled.",
+    message: 'Your membership has been canceled.',
   },
   incomplete: {
-    status: "incomplete",
-    accessLevel: "none",
+    status: 'incomplete',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: true,
-    message: "Payment could not be processed. Please try again.",
+    message: 'Payment could not be processed. Please try again.',
   },
   incomplete_expired: {
-    status: "incomplete_expired",
-    accessLevel: "none",
+    status: 'incomplete_expired',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Checkout session expired. Please start a new membership.",
+    message: 'Checkout session expired. Please start a new membership.',
   },
   unpaid: {
-    status: "unpaid",
-    accessLevel: "none",
+    status: 'unpaid',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: true,
-    message: "Payment failed after multiple attempts. Please update your payment method.",
+    message: 'Payment failed after multiple attempts. Please update your payment method.',
   },
   trialing: {
     // Not used by DEC - treat as no access if somehow encountered
-    status: "trialing",
-    accessLevel: "none",
+    status: 'trialing',
+    accessLevel: 'none',
     canAccessMemberContent: false,
     canAccessMemberDiscounts: false,
     showPaymentWarning: false,
-    message: "Invalid membership status.",
+    message: 'Invalid membership status.',
   },
 };
 
@@ -282,7 +299,7 @@ export function hasActiveMembershipAccess(status: MembershipStatus | null): bool
 
   // Active members have access
   // Past due members RETAIN access - they already paid for the current period
-  return status === "active" || status === "past_due";
+  return status === 'active' || status === 'past_due';
 }
 
 /**
@@ -298,14 +315,14 @@ export function getMembershipAccessConfig(status: MembershipStatus): MembershipA
  */
 export function isPaymentCompleted(status: string): boolean {
   // Only create membership records for these statuses
-  return status === "active" || status === "past_due";
+  return status === 'active' || status === 'past_due';
 }
 
 /**
  * Check if subscription status indicates payment is pending/failed
  */
 export function isPaymentPending(status: string): boolean {
-  return status === "incomplete" || status === "incomplete_expired";
+  return status === 'incomplete' || status === 'incomplete_expired';
 }
 ```
 
@@ -314,12 +331,12 @@ export function isPaymentPending(status: string): boolean {
 Create `src/lib/effect/webhook-idempotency.service.ts`:
 
 ```typescript
-import { Context, Effect, Layer } from "effect";
-import { Firestore, FieldValue, Timestamp } from "@google-cloud/firestore";
-import { FirestoreError, DuplicateWebhookError } from "./errors";
-import type { WebhookEventDocument } from "./schemas";
+import {Context, Effect, Layer} from 'effect';
+import {Firestore, FieldValue, Timestamp} from '@google-cloud/firestore';
+import {FirestoreError, DuplicateWebhookError} from './errors';
+import type {WebhookEventDocument} from './schemas';
 
-export const WEBHOOK_EVENTS_COLLECTION = "webhookEvents";
+export const WEBHOOK_EVENTS_COLLECTION = 'webhookEvents';
 
 // Service interface
 export interface WebhookIdempotencyService {
@@ -327,7 +344,7 @@ export interface WebhookIdempotencyService {
    * Check if event was already processed
    */
   readonly checkEvent: (
-    eventId: string
+    eventId: string,
   ) => Effect.Effect<WebhookEventDocument | null, FirestoreError>;
 
   /**
@@ -336,35 +353,32 @@ export interface WebhookIdempotencyService {
    */
   readonly claimEvent: (
     eventId: string,
-    eventType: string
+    eventType: string,
   ) => Effect.Effect<void, FirestoreError | DuplicateWebhookError>;
 
   /**
    * Mark event as completed
    */
-  readonly completeEvent: (
-    eventId: string
-  ) => Effect.Effect<void, FirestoreError>;
+  readonly completeEvent: (eventId: string) => Effect.Effect<void, FirestoreError>;
 
   /**
    * Mark event as failed with error message
    */
   readonly failEvent: (
     eventId: string,
-    errorMessage: string
+    errorMessage: string,
   ) => Effect.Effect<void, FirestoreError>;
 
   /**
    * Clean up old webhook events (retention: 30 days)
    */
-  readonly cleanupOldEvents: (
-    olderThanDays: number
-  ) => Effect.Effect<number, FirestoreError>;
+  readonly cleanupOldEvents: (olderThanDays: number) => Effect.Effect<number, FirestoreError>;
 }
 
 // Service tag
-export const WebhookIdempotencyService =
-  Context.GenericTag<WebhookIdempotencyService>("WebhookIdempotencyService");
+export const WebhookIdempotencyService = Context.GenericTag<WebhookIdempotencyService>(
+  'WebhookIdempotencyService',
+);
 
 // Implementation
 const make = Effect.sync(() => {
@@ -372,7 +386,7 @@ const make = Effect.sync(() => {
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
     },
   });
 
@@ -382,11 +396,11 @@ const make = Effect.sync(() => {
         try: async () => {
           const doc = await db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).get();
           if (!doc.exists) return null;
-          return { id: doc.id, ...doc.data() } as WebhookEventDocument;
+          return {id: doc.id, ...doc.data()} as WebhookEventDocument;
         },
         catch: (error) =>
           new FirestoreError({
-            code: "CHECK_WEBHOOK_EVENT_FAILED",
+            code: 'CHECK_WEBHOOK_EVENT_FAILED',
             message: `Failed to check webhook event ${eventId}`,
             cause: error,
           }),
@@ -405,14 +419,14 @@ const make = Effect.sync(() => {
               const data = doc.data() as WebhookEventDocument;
 
               // Already completed? Reject as duplicate
-              if (data.status === "completed") {
-                throw { isDuplicate: true, processedAt: data.processedAt };
+              if (data.status === 'completed') {
+                throw {isDuplicate: true, processedAt: data.processedAt};
               }
 
               // Failed previously? Allow retry
-              if (data.status === "failed") {
+              if (data.status === 'failed') {
                 transaction.update(docRef, {
-                  status: "processing",
+                  status: 'processing',
                   retryCount: FieldValue.increment(1),
                   updatedAt: FieldValue.serverTimestamp(),
                 });
@@ -425,12 +439,12 @@ const make = Effect.sync(() => {
 
               if (processingTime > staleThreshold) {
                 // Recent processing, reject as duplicate
-                throw { isDuplicate: true, processedAt: data.processedAt };
+                throw {isDuplicate: true, processedAt: data.processedAt};
               }
 
               // Stale lock, reclaim
               transaction.update(docRef, {
-                status: "processing",
+                status: 'processing',
                 retryCount: FieldValue.increment(1),
                 processedAt: FieldValue.serverTimestamp(),
               });
@@ -439,7 +453,7 @@ const make = Effect.sync(() => {
               transaction.set(docRef, {
                 id: eventId,
                 type: eventType,
-                status: "processing",
+                status: 'processing',
                 processedAt: FieldValue.serverTimestamp(),
                 retryCount: 0,
               });
@@ -454,7 +468,7 @@ const make = Effect.sync(() => {
             });
           }
           return new FirestoreError({
-            code: "CLAIM_WEBHOOK_EVENT_FAILED",
+            code: 'CLAIM_WEBHOOK_EVENT_FAILED',
             message: `Failed to claim webhook event ${eventId}`,
             cause: error,
           });
@@ -465,12 +479,12 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: () =>
           db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: "completed",
+            status: 'completed',
             completedAt: FieldValue.serverTimestamp(),
           }),
         catch: (error) =>
           new FirestoreError({
-            code: "COMPLETE_WEBHOOK_EVENT_FAILED",
+            code: 'COMPLETE_WEBHOOK_EVENT_FAILED',
             message: `Failed to complete webhook event ${eventId}`,
             cause: error,
           }),
@@ -480,13 +494,13 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: () =>
           db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: "failed",
+            status: 'failed',
             errorMessage,
             failedAt: FieldValue.serverTimestamp(),
           }),
         catch: (error) =>
           new FirestoreError({
-            code: "FAIL_WEBHOOK_EVENT_FAILED",
+            code: 'FAIL_WEBHOOK_EVENT_FAILED',
             message: `Failed to mark webhook event ${eventId} as failed`,
             cause: error,
           }),
@@ -500,7 +514,7 @@ const make = Effect.sync(() => {
 
           const snapshot = await db
             .collection(WEBHOOK_EVENTS_COLLECTION)
-            .where("processedAt", "<", Timestamp.fromDate(cutoff))
+            .where('processedAt', '<', Timestamp.fromDate(cutoff))
             .limit(500)
             .get();
 
@@ -514,8 +528,8 @@ const make = Effect.sync(() => {
         },
         catch: (error) =>
           new FirestoreError({
-            code: "CLEANUP_WEBHOOK_EVENTS_FAILED",
-            message: "Failed to cleanup old webhook events",
+            code: 'CLEANUP_WEBHOOK_EVENTS_FAILED',
+            message: 'Failed to cleanup old webhook events',
             cause: error,
           }),
       }),
@@ -630,6 +644,7 @@ deleteMembership: (userId, membershipId) =>
 Update `src/lib/effect/membership.service.ts`:
 
 Key changes:
+
 1. In `processCheckoutCompleted`: Only create membership if subscription is `active`
 2. Add `processInvoicePaymentFailed`: Log for alerting (Stripe handles retries)
 3. Handle `incomplete` subscriptions by NOT creating membership records
@@ -692,32 +707,27 @@ processInvoicePaymentFailed: (invoice) =>
 Update `app/api/webhooks/stripe/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-import { Effect, pipe } from "effect";
-import { headers } from "next/headers";
-import type Stripe from "stripe";
-import { StripeService } from "@/src/lib/effect/stripe.service";
-import { MembershipService } from "@/src/lib/effect/membership.service";
-import { WebhookIdempotencyService } from "@/src/lib/effect/webhook-idempotency.service";
-import { LiveLayerWithIdempotency } from "@/src/lib/effect/layers";
+import {NextRequest, NextResponse} from 'next/server';
+import {Effect, pipe} from 'effect';
+import {headers} from 'next/headers';
+import type Stripe from 'stripe';
+import {StripeService} from '@/src/lib/effect/stripe.service';
+import {MembershipService} from '@/src/lib/effect/membership.service';
+import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.service';
+import {LiveLayerWithIdempotency} from '@/src/lib/effect/layers';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const headersList = await headers();
-  const signature = headersList.get("stripe-signature");
+  const signature = headersList.get('stripe-signature');
 
   if (!signature) {
-    return NextResponse.json(
-      { error: "Missing stripe-signature header" },
-      { status: 400 }
-    );
+    return NextResponse.json({error: 'Missing stripe-signature header'}, {status: 400});
   }
 
   const program = pipe(
     // Step 1: Verify webhook signature
-    Effect.flatMap(StripeService, (stripe) =>
-      stripe.verifyWebhookSignature(body, signature)
-    ),
+    Effect.flatMap(StripeService, (stripe) => stripe.verifyWebhookSignature(body, signature)),
 
     // Step 2: Check idempotency and claim event
     Effect.flatMap((event) =>
@@ -726,18 +736,18 @@ export async function POST(request: NextRequest) {
           idempotency.claimEvent(event.id, event.type),
           Effect.map(() => event),
           // If duplicate, return success (already processed)
-          Effect.catchTag("DuplicateWebhookError", (err) => {
+          Effect.catchTag('DuplicateWebhookError', (err) => {
             console.log(`Duplicate webhook ${err.eventId}, skipping`);
-            return Effect.succeed({ ...event, _alreadyProcessed: true });
-          })
-        )
-      )
+            return Effect.succeed({...event, _alreadyProcessed: true});
+          }),
+        ),
+      ),
     ),
 
     // Step 3: Process event (skip if already processed)
-    Effect.flatMap((event: Stripe.Event & { _alreadyProcessed?: boolean }) => {
+    Effect.flatMap((event: Stripe.Event & {_alreadyProcessed?: boolean}) => {
       if (event._alreadyProcessed) {
-        return Effect.succeed({ received: true, duplicate: true });
+        return Effect.succeed({received: true, duplicate: true});
       }
 
       return Effect.flatMap(MembershipService, (membershipService) =>
@@ -747,40 +757,38 @@ export async function POST(request: NextRequest) {
               yield* Effect.log(`Processing webhook: ${event.type}`);
 
               switch (event.type) {
-                case "checkout.session.completed": {
+                case 'checkout.session.completed': {
                   const session = event.data.object as Stripe.Checkout.Session;
                   yield* membershipService.processCheckoutCompleted(session);
                   break;
                 }
 
-                case "customer.subscription.updated": {
+                case 'customer.subscription.updated': {
                   const subscription = event.data.object as Stripe.Subscription;
                   yield* membershipService.processSubscriptionUpdated(subscription);
                   break;
                 }
 
-                case "customer.subscription.deleted": {
+                case 'customer.subscription.deleted': {
                   const subscription = event.data.object as Stripe.Subscription;
                   yield* membershipService.processSubscriptionDeleted(subscription);
                   break;
                 }
 
-                case "invoice.payment_failed": {
+                case 'invoice.payment_failed': {
                   // Log for alerting - Stripe handles retries automatically
                   const invoice = event.data.object as Stripe.Invoice;
                   yield* Effect.log(
-                    `Payment failed: subscription ${invoice.subscription}, attempt ${invoice.attempt_count}`
+                    `Payment failed: subscription ${invoice.subscription}, attempt ${invoice.attempt_count}`,
                   );
                   // Member retains access during retry period (past_due status)
                   break;
                 }
 
-                case "invoice.paid": {
+                case 'invoice.paid': {
                   // Payment succeeded (initial or retry)
                   const invoice = event.data.object as Stripe.Invoice;
-                  yield* Effect.log(
-                    `Payment succeeded: subscription ${invoice.subscription}`
-                  );
+                  yield* Effect.log(`Payment succeeded: subscription ${invoice.subscription}`);
                   break;
                 }
 
@@ -788,7 +796,7 @@ export async function POST(request: NextRequest) {
                   yield* Effect.log(`Unhandled event type: ${event.type}`);
               }
 
-              return { received: true };
+              return {received: true};
             }),
             // Mark as completed on success
             Effect.tap(() => idempotency.completeEvent(event.id)),
@@ -796,35 +804,33 @@ export async function POST(request: NextRequest) {
             Effect.catchAll((error) =>
               pipe(
                 idempotency.failEvent(event.id, String(error)),
-                Effect.flatMap(() => Effect.fail(error))
-              )
-            )
-          )
-        )
+                Effect.flatMap(() => Effect.fail(error)),
+              ),
+            ),
+          ),
+        ),
       );
     }),
 
     // Error handling - always return 200 to Stripe to prevent infinite retries
-    Effect.catchTag("StripeError", (error) => {
-      console.error("Stripe error:", error);
-      return Effect.succeed({ error: error.message, _tag: "error" as const, status: 400 });
+    Effect.catchTag('StripeError', (error) => {
+      console.error('Stripe error:', error);
+      return Effect.succeed({error: error.message, _tag: 'error' as const, status: 400});
     }),
-    Effect.catchTag("FirestoreError", (error) => {
-      console.error("Firestore error:", error);
-      return Effect.succeed({ received: true, error: error.message });
+    Effect.catchTag('FirestoreError', (error) => {
+      console.error('Firestore error:', error);
+      return Effect.succeed({received: true, error: error.message});
     }),
     Effect.catchAll((error) => {
-      console.error("Unexpected error:", error);
-      return Effect.succeed({ received: true, error: String(error) });
-    })
+      console.error('Unexpected error:', error);
+      return Effect.succeed({received: true, error: String(error)});
+    }),
   );
 
-  const result = await Effect.runPromise(
-    program.pipe(Effect.provide(LiveLayerWithIdempotency))
-  );
+  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayerWithIdempotency)));
 
-  if ("_tag" in result && result._tag === "error") {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+  if ('_tag' in result && result._tag === 'error') {
+    return NextResponse.json({error: result.error}, {status: result.status});
   }
 
   return NextResponse.json(result);
@@ -836,27 +842,26 @@ export async function POST(request: NextRequest) {
 Update `src/lib/effect/layers.ts`:
 
 ```typescript
-import { Layer } from "effect";
-import { StripeService, StripeServiceLive } from "./stripe.service";
-import { FirestoreService, FirestoreServiceLive } from "./firestore.service";
-import { MembershipService, MembershipServiceLive } from "./membership.service";
-import { WebhookIdempotencyService, WebhookIdempotencyServiceLive } from "./webhook-idempotency.service";
+import {Layer} from 'effect';
+import {StripeService, StripeServiceLive} from './stripe.service';
+import {FirestoreService, FirestoreServiceLive} from './firestore.service';
+import {MembershipService, MembershipServiceLive} from './membership.service';
+import {
+  WebhookIdempotencyService,
+  WebhookIdempotencyServiceLive,
+} from './webhook-idempotency.service';
 
 // Base layers
 const BaseLayer = Layer.merge(StripeServiceLive, FirestoreServiceLive);
 
 // Original LiveLayer (without idempotency) - for non-webhook use
-export const LiveLayer = MembershipServiceLive.pipe(
-  Layer.provide(BaseLayer)
-);
+export const LiveLayer = MembershipServiceLive.pipe(Layer.provide(BaseLayer));
 
 // LiveLayer with idempotency - for webhook processing
 export const LiveLayerWithIdempotency = Layer.mergeAll(
   MembershipServiceLive,
-  WebhookIdempotencyServiceLive
-).pipe(
-  Layer.provide(BaseLayer)
-);
+  WebhookIdempotencyServiceLive,
+).pipe(Layer.provide(BaseLayer));
 
 // Type exports
 export type LiveServices = StripeService | FirestoreService | MembershipService;
@@ -925,16 +930,14 @@ Update `firestore.indexes.json`:
       "collectionGroup": "memberships",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "endDate", "order": "DESCENDING" }
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "DESCENDING"}
       ]
     },
     {
       "collectionGroup": "webhookEvents",
       "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "processedAt", "order": "ASCENDING" }
-      ]
+      "fields": [{"fieldPath": "processedAt", "order": "ASCENDING"}]
     }
   ],
   "fieldOverrides": []
@@ -994,6 +997,7 @@ getMembershipStatus: (userId) =>
 ### 12. Validate Implementation
 
 Run the following validations:
+
 - TypeScript compilation
 - Build check
 - Test duplicate webhook handling
@@ -1033,12 +1037,12 @@ Run the following validations:
 
 ### Stripe Test Cards
 
-| Card Number | Behavior |
-|------------|----------|
-| 4242 4242 4242 4242 | Succeeds |
-| 4000 0000 0000 0002 | Declines (generic) |
+| Card Number         | Behavior                      |
+| ------------------- | ----------------------------- |
+| 4242 4242 4242 4242 | Succeeds                      |
+| 4000 0000 0000 0002 | Declines (generic)            |
 | 4000 0000 0000 9995 | Declines (insufficient funds) |
-| 4000 0027 6000 3184 | Requires authentication |
+| 4000 0027 6000 3184 | Requires authentication       |
 
 ## Acceptance Criteria
 
@@ -1078,6 +1082,7 @@ stripe trigger customer.subscription.deleted
 ### Stripe Dashboard Configuration
 
 Go to **Billing > Revenue Recovery > Retries**:
+
 1. Enable **Smart Retries**
 2. Set: 8 retries over 2 weeks (recommended)
 3. After all retries fail: **Cancel the subscription**
@@ -1085,6 +1090,7 @@ Go to **Billing > Revenue Recovery > Retries**:
 ### Webhooks to Configure
 
 In Stripe Dashboard, ensure these events are enabled:
+
 - `checkout.session.completed`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
