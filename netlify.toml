@@ -1,5 +1,5 @@
 [build]
-command = "if [ -n \"$FIREBASE_SERVICE_ACCOUNT_BASE64\" ]; then echo $FIREBASE_SERVICE_ACCOUNT_BASE64 | base64 -d > firebase-service-account.json; fi && pnpm build"
+command = "chmod +x scripts/decrypt-credentials.sh && scripts/decrypt-credentials.sh && pnpm build"
 publish = ".next"
 functions = "netlify/functions"
 

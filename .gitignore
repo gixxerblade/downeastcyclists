@@ -20,8 +20,9 @@
 .DS_Store
 *.pem
 
-# Firebase service account (contains secrets)
+# Firebase service account (decrypted - contains secrets)
 firebase-service-account.json
+# Note: firebase-service-account.json.enc (encrypted) is safe to commit
 
 # debug
 npm-debug.log*
