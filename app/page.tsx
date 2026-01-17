@@ -1,6 +1,7 @@
-import { getHeroVideo } from "@/src/contentful/video";
-import TrailStatus from "@/src/components/TrailStatus";
-import { Box, Container, Paper } from "@mui/material";
+import {Box, Container, Paper} from '@mui/material';
+
+import TrailStatus from '@/src/components/TrailStatus';
+import {getHeroVideo} from '@/src/contentful/video';
 
 export default async function Home() {
   const video = await getHeroVideo();
@@ -26,8 +27,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <Box sx={{ position: "fixed", bottom: 0, width: "100%", zIndex: 10 }}>
-        <Container maxWidth="sm" sx={{ mb: 4 }}>
+      <Box sx={{position: 'fixed', bottom: 0, width: '100%', zIndex: 10}}>
+        <Container maxWidth="sm" sx={{mb: 4}}>
           <TrailStatus showTitle={false} />
         </Container>
       </Box>

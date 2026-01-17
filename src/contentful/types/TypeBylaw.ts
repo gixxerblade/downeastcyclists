@@ -4,7 +4,7 @@ import type {
   EntryFieldTypes,
   EntrySkeletonType,
   LocaleCode,
-} from "contentful";
+} from 'contentful';
 
 export interface TypeBylawFields {
   id: EntryFieldTypes.Symbol;
@@ -13,7 +13,7 @@ export interface TypeBylawFields {
   order: EntryFieldTypes.Integer;
 }
 
-export type TypeBylawSkeleton = EntrySkeletonType<TypeBylawFields, "bylaws">;
+export type TypeBylawSkeleton = EntrySkeletonType<TypeBylawFields, 'bylaws'>;
 export type TypeBylaw<Modifiers extends ChainModifiers, Locales extends LocaleCode> = Entry<
   TypeBylawSkeleton,
   Modifiers,

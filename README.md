@@ -110,7 +110,7 @@ Form submissions follow this flow:
 
 ```bash
    yarn install
-   ```
+```
 
 4. Create a `.env.local` file with the required environment variables (see above)
 5. Run the development server:

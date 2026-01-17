@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import React, { Suspense } from "react";
-import { Container, Typography, Button, CircularProgress } from "@mui/material";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import {Container, Typography, Button, CircularProgress} from '@mui/material';
+import Link from 'next/link';
+import {useSearchParams} from 'next/navigation';
+import React, {Suspense} from 'react';
 
 // Client component that uses useSearchParams
 function ThanksContent() {
   const searchParams = useSearchParams();
-  const hasError = searchParams?.get("error") === "true";
+  const hasError = searchParams?.get('error') === 'true';
 
   return (
     <div className="text-center">
       <Typography variant="h3" component="h1" gutterBottom align="center">
-        {hasError ? "Oops!" : "Thank You!"}
+        {hasError ? 'Oops!' : 'Thank You!'}
       </Typography>
 
       {hasError ? (
@@ -48,10 +48,10 @@ function ThanksContent() {
 // Page component with Suspense boundary
 export default function Thanks() {
   return (
-    <Container maxWidth="md" sx={{ paddingTop: 8, paddingBottom: 8 }}>
+    <Container maxWidth="md" sx={{paddingTop: 8, paddingBottom: 8}}>
       <Suspense
         fallback={
-          <div className="flex justify-center items-center" style={{ minHeight: "200px" }}>
+          <div className="flex justify-center items-center" style={{minHeight: '200px'}}>
             <CircularProgress />
           </div>
         }

@@ -9,12 +9,12 @@ This guide outlines the steps to migrate the bylaws data from the codebase to Co
 3. Name the content type "Bylaw" and give it a description like "Club bylaws articles".
 4. Add the following fields:
 
-   | Field Name | Field Type | Required | Settings |
-   |------------|------------|----------|----------|
-   | id         | Short text | Yes      | This will store the section ID (e.g., "Section 1") |
+   | Field Name | Field Type | Required | Settings                                                                 |
+   | ---------- | ---------- | -------- | ------------------------------------------------------------------------ |
+   | id         | Short text | Yes      | This will store the section ID (e.g., "Section 1")                       |
    | title      | Short text | Yes      | This will store the article title (e.g., "Article I. Organization Name") |
-   | body       | Rich Text  | Yes      | This will store the article content |
-   | order      | Integer    | Yes      | This will determine the display order of the articles |
+   | body       | Rich Text  | Yes      | This will store the article content                                      |
+   | order      | Integer    | Yes      | This will determine the display order of the articles                    |
 
 5. Save the content type.
 
@@ -36,6 +36,7 @@ For each article in the bylaws, create a new entry in Contentful:
 Here's an example of how to migrate the first bylaw article:
 
 ### In Code (Current)
+
 ```javascript
 {
   title: () => <>Article I. Organization Name</>,
@@ -47,6 +48,7 @@ Here's an example of how to migrate the first bylaw article:
 ```
 
 ### In Contentful (New)
+
 - **id**: "Section 1"
 - **title**: "Article I. Organization Name"
 - **body**: "The name of the organization shall be the Down East Cyclist (DEC)."

@@ -1,18 +1,21 @@
-import { fetchBlogPosts } from "@/src/contentful/blogPosts";
-import Link from "next/link";
-import Image from "next/image";
-import clsx from "clsx";
-import Skeleton from "./skeleton";
-import { Suspense } from "react";
-import DecLogo from "../../assets/images/hungry_toad-48.webp";
+import clsx from 'clsx';
+import Image from 'next/image';
+import Link from 'next/link';
+import {Suspense} from 'react';
+
+import {fetchBlogPosts} from '@/src/contentful/blogPosts';
+
+import DecLogo from '../../assets/images/hungry_toad-48.webp';
+
+import Skeleton from './skeleton';
 
 // Set a reasonable revalidation time (e.g., 1 hour)
 export const revalidate = 3600;
 
-export default async function Blog({ searchParams }: { searchParams: { page: string } }) {
-  const page = typeof searchParams.page === "string" ? Number(searchParams.page) : 1;
+export default async function Blog({searchParams}: {searchParams: {page: string}}) {
+  const page = typeof searchParams.page === 'string' ? Number(searchParams.page) : 1;
 
-  const { data: posts, lastPage } = await fetchBlogPosts(page);
+  const {data: posts, lastPage} = await fetchBlogPosts(page);
   return (
     <section className="py-24 px-4 md:px-24">
       <div className="container">
@@ -21,28 +24,28 @@ export default async function Blog({ searchParams }: { searchParams: { page: str
           <div className="flex space-x-6">
             <Link
               href={{
-                pathname: "/blog",
+                pathname: '/blog',
                 query: {
                   page: page > 1 ? page - 1 : 1,
                 },
               }}
               className={clsx(
-                "rounded border bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-300",
-                page <= 1 && "pointer-events-none opacity-50",
+                'rounded border bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-300',
+                page <= 1 && 'pointer-events-none opacity-50',
               )}
             >
               Previous
             </Link>
             <Link
               href={{
-                pathname: "/blog",
+                pathname: '/blog',
                 query: {
                   page: page + 1,
                 },
               }}
               className={clsx(
-                "rounded border bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-300",
-                page >= lastPage && "pointer-events-none opacity-50",
+                'rounded border bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-300',
+                page >= lastPage && 'pointer-events-none opacity-50',
               )}
             >
               Next
@@ -71,10 +74,10 @@ export default async function Blog({ searchParams }: { searchParams: { page: str
                 <div className="flex items-center text-xs text-gray-500 mt-1 mb-2">
                   {post.publishDate && (
                     <time dateTime={post.publishDate}>
-                      {new Date(post.publishDate).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
+                      {new Date(post.publishDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
                       })}
                     </time>
                   )}

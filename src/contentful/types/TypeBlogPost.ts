@@ -4,7 +4,7 @@ import type {
   EntryFieldTypes,
   EntrySkeletonType,
   LocaleCode,
-} from "contentful";
+} from 'contentful';
 
 export interface TypeBlogPostFields {
   id?: EntryFieldTypes.Integer;
@@ -20,7 +20,7 @@ export interface TypeBlogPostFields {
   contentImages?: EntryFieldTypes.Array<EntryFieldTypes.AssetLink>;
 }
 
-export type TypeBlogPostSkeleton = EntrySkeletonType<TypeBlogPostFields, "blogPost">;
+export type TypeBlogPostSkeleton = EntrySkeletonType<TypeBlogPostFields, 'blogPost'>;
 export type TypeBlogPost<Modifiers extends ChainModifiers, Locales extends LocaleCode> = Entry<
   TypeBlogPostSkeleton,
   Modifiers,

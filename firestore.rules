@@ -1,0 +1,58 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Admin SDK only
+
+      // Memberships subcollection
+      match /memberships/{membershipId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Cards subcollection (membership cards)
+      match /cards/{cardId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Admin SDK only
+      }
+    }
+
+    // Counters collection (for membership number generation)
+    // Admin SDK only - no client access
+    match /counters/{counterId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Membership Plans collection (public read)
+    match /membershipPlans/{planId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Trails collection (existing)
+    match /trails/{trailId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Webhook Events collection (idempotency tracking)
+    // Admin SDK only - no client access
+    match /webhookEvents/{eventId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

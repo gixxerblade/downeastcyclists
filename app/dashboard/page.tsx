@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import {PeopleAlt, DirectionsBike, Event} from '@mui/icons-material';
 import {
   Container,
   Typography,
@@ -12,17 +11,31 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Divider,
   Tabs,
   Tab,
   CircularProgress,
-} from "@mui/material";
-import { PeopleAlt, DirectionsBike, Event, Article } from "@mui/icons-material";
-import TrailStatus from "@/src/components/TrailStatus";
-import TrailStatusEditor from "@/src/components/TrailStatusEditor";
-import { TrailData } from "@/src/utils/trails";
-import { signOutUser, auth } from "@/src/utils/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+  Alert,
+} from '@mui/material';
+import {useMutation} from '@tanstack/react-query';
+import {Effect} from 'effect';
+import {useRouter} from 'next/navigation';
+import {useEffect, useState} from 'react';
+
+import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
+import {useAuth} from '@/src/components/auth/AuthProvider';
+import TrailStatus from '@/src/components/TrailStatus';
+import TrailStatusEditor from '@/src/components/TrailStatusEditor';
+import {refreshStats} from '@/src/lib/effect/client-admin';
+import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
+import type {MembershipStats} from '@/src/lib/effect/schemas';
+
+interface DashboardStats {
+  totalMembers: number;
+  activeMembers: number;
+  trails: number;
+  events: number;
+  blogPosts: number;
+}
 
 // Tab panel component for the dashboard
 interface TabPanelProps {
@@ -32,7 +45,7 @@ interface TabPanelProps {
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const {children, value, index, ...other} = props;
 
   return (
     <div
@@ -42,56 +55,103 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`dashboard-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{pt: 3}}>{children}</Box>}
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const [isLoading, setIsLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const router = useRouter();
-
-  // Get the allowed email from environment variable
-  const ALLOWED_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_EMAIL || "your-admin-email@example.com";
+  const {user, loading, signOut} = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalMembers: 0,
+    activeMembers: 0,
+    trails: 1, // Static for now
+    events: 12, // Static for now
+    blogPosts: 36, // Static for now
+  });
 
+  // TanStack Query mutation for refreshing stats (following Effect-TS architecture)
+  const refreshStatsMutation = useMutation<
+    MembershipStats,
+    FirestoreError | UnauthorizedError,
+    void
+  >({
+    mutationFn: () => Effect.runPromise(refreshStats()),
+    onSuccess: (data) => {
+      setDashboardStats((prev) => ({
+        ...prev,
+        totalMembers: data.totalMembers || 0,
+        activeMembers: data.activeMembers || 0,
+      }));
+    },
+  });
+
+  // Check admin status using custom claims
   useEffect(() => {
-    // Check if the auth token exists
-    const hasToken = document.cookie.includes("auth-token=");
+    const checkAdminStatus = async () => {
+      try {
+        const response = await fetch('/api/admin/check');
+        const data = await response.json();
 
-    if (!hasToken) {
-      // If no token, redirect to login
-      router.replace("/login");
-      return;
+        if (!data.authenticated) {
+          // Not authenticated at all
+          router.replace('/login');
+          return;
+        }
+
+        if (!data.isAdmin) {
+          // Authenticated but not admin
+          setAuthError('You are not authorized to access this dashboard.');
+          signOut().then(() => {
+            router.replace('/login');
+          });
+          return;
+        }
+
+        // User is admin
+        setIsAdmin(true);
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+        setAuthError('Failed to verify admin access.');
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+
+    if (!loading && user) {
+      checkAdminStatus();
+    } else if (!loading && !user) {
+      router.replace('/login');
     }
+  }, [user, loading, router, signOut]);
 
-    // Check Firebase authentication state
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // No user is signed in, redirect to login
-        router.replace("/login");
-        return;
+  // Fetch dashboard stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/admin/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setDashboardStats((prev) => ({
+            ...prev,
+            totalMembers: data.totalMembers || 0,
+            activeMembers: data.activeMembers || 0,
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
       }
+    };
 
-      // Check if the user's email is allowed
-      if (user.email !== ALLOWED_EMAIL) {
-        setAuthError("You are not authorized to access this dashboard.");
-        // Sign out the user
-        signOutUser().then(() => {
-          document.cookie = "auth-token=; path=/; max-age=0";
-          router.replace("/login");
-        });
-        return;
-      }
-
-      // User is authenticated and authorized
-      setIsLoading(false);
-    });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [router, ALLOWED_EMAIL]);
+    if (isAdmin) {
+      fetchStats();
+    }
+  }, [isAdmin]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -102,55 +162,48 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-
-      // Sign out from Firebase
-      await signOutUser();
-
-      // Clear the auth token cookie
-      document.cookie = "auth-token=; path=/; max-age=0";
-
-      // Clear browser history before redirecting
-      window.history.replaceState(null, "", "/login");
-      router.replace("/login");
+      await signOut();
+      window.history.replaceState(null, '', '/');
+      router.replace('/');
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error('Error signing out:', error);
     } finally {
       setIsLoggingOut(false);
     }
   };
 
-  if (isLoading) {
+  if (loading || checkingAdmin) {
     return (
       <Container>
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <Box sx={{display: 'flex', justifyContent: 'center', mt: 8}}>
           <CircularProgress />
         </Box>
       </Container>
     );
   }
 
-  if (authError) {
+  if (authError || !isAdmin) {
     return (
       <Container>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: 8 }}>
+        <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8}}>
           <Typography color="error" variant="h6" gutterBottom>
-            {authError}
+            {authError || 'Access denied'}
           </Typography>
           <Typography>You will be redirected to the login page.</Typography>
-          <CircularProgress sx={{ mt: 2 }} />
+          <CircularProgress sx={{mt: 2}} />
         </Box>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: { xs: 8, sm: 4 }, mb: 4 }}>
+    <Container maxWidth="lg" sx={{mt: {xs: 8, sm: 4}, mb: 4}}>
       <Box
         sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-start", sm: "center" },
+          display: 'flex',
+          flexDirection: {xs: 'column', sm: 'row'},
+          justifyContent: 'space-between',
+          alignItems: {xs: 'flex-start', sm: 'center'},
           mb: 4,
           gap: 2,
         }}
@@ -160,35 +213,33 @@ export default function DashboardPage() {
         </Typography>
         <Box
           sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: { xs: "flex-start", sm: "center" },
+            display: 'flex',
+            flexDirection: {xs: 'column', sm: 'row'},
+            alignItems: {xs: 'flex-start', sm: 'center'},
             gap: 2,
           }}
         >
-          {auth.currentUser && (
+          {user && (
             <Typography
               variant="body1"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                mr: { xs: 0, sm: 2 },
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                mr: {xs: 0, sm: 2},
               }}
             >
-              Welcome,{" "}
+              Welcome,{' '}
               <Typography
                 component="span"
                 variant="body1"
                 sx={{
-                  fontWeight: "bold",
+                  fontWeight: 'bold',
                   ml: 0.5,
                   mr: 1,
                 }}
               >
-                {auth.currentUser.displayName ||
-                  auth.currentUser.email?.split("@")[0] ||
-                  auth.currentUser.email}
+                {user.displayName || user.email?.split('@')[0] || user.email}
               </Typography>
             </Typography>
           )}
@@ -199,23 +250,57 @@ export default function DashboardPage() {
             disabled={isLoggingOut}
             startIcon={isLoggingOut ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{
-              minWidth: { xs: "100%", sm: "auto" },
+              minWidth: {xs: '100%', sm: 'auto'},
             }}
           >
-            {isLoggingOut ? "Logging Out..." : "Logout"}
+            {isLoggingOut ? 'Logging Out...' : 'Logout'}
           </Button>
         </Box>
       </Box>
 
       <Grid container spacing={3}>
+        {/* Stats Section Header with Refresh Button */}
+        <Grid item xs={12}>
+          <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+            <Typography variant="h5" component="h2">
+              Membership Overview
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => refreshStatsMutation.mutate()}
+              disabled={refreshStatsMutation.isPending}
+              startIcon={refreshStatsMutation.isPending ? <CircularProgress size={20} /> : null}
+            >
+              {refreshStatsMutation.isPending ? 'Refreshing...' : 'Refresh Stats'}
+            </Button>
+          </Box>
+          {/* Error display for stats refresh */}
+          {refreshStatsMutation.error && (
+            <Alert severity="error" sx={{mb: 2}}>
+              {refreshStatsMutation.error.message}
+            </Alert>
+          )}
+        </Grid>
+
         {/* Stats Cards */}
         <Grid item xs={12} md={3}>
           <Card>
-            <CardHeader title="Members" />
+            <CardHeader title="Total Members" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <PeopleAlt sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">124</Typography>
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <PeopleAlt sx={{fontSize: 40, mr: 2, color: '#1976d2'}} />
+                <Typography variant="h4">{dashboardStats.totalMembers}</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardHeader title="Active Members" />
+            <CardContent>
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <PeopleAlt sx={{fontSize: 40, mr: 2, color: '#2e7d32'}} />
+                <Typography variant="h4">{dashboardStats.activeMembers}</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -224,9 +309,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Trails" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <DirectionsBike sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">8</Typography>
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <DirectionsBike sx={{fontSize: 40, mr: 2}} />
+                <Typography variant="h4">{dashboardStats.trails}</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -235,20 +320,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader title="Events" />
             <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Event sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">12</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardHeader title="Blog Posts" />
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Article sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">36</Typography>
+              <Box sx={{display: 'flex', alignItems: 'center'}}>
+                <Event sx={{fontSize: 40, mr: 2}} />
+                <Typography variant="h6">Coming Soon</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -256,52 +330,53 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{p: 3}}>
             <Typography variant="h5" gutterBottom>
               Welcome to the Down East Cyclists Admin Dashboard
             </Typography>
-            <Typography paragraph>
+            <Typography component="p">
               This dashboard provides administrative tools and analytics for managing the Down East
               Cyclists website. From here, you can manage content, view statistics, and update site
               information.
             </Typography>
-            <Typography paragraph>
+            <Typography component="p">
               Note: This is a protected area that requires authentication to access.
             </Typography>
           </Paper>
         </Grid>
 
-        {/* Trail Status Section */}
+        {/* Management Sections */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Trail Status Management
-            </Typography>
-            <Typography paragraph>
-              View and update the status of all trails. Toggle trails between open and closed, and
-              add notes about current conditions.
-            </Typography>
-
-            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-              <Tabs value={tabValue} onChange={handleTabChange} aria-label="trail status tabs">
+          <Paper sx={{p: 3}}>
+            <Box sx={{borderBottom: 1, borderColor: 'divider'}}>
+              <Tabs value={tabValue} onChange={handleTabChange} aria-label="admin dashboard tabs">
                 <Tab
-                  label="View Status"
+                  label="Membership Management"
                   id="dashboard-tab-0"
                   aria-controls="dashboard-tabpanel-0"
                 />
                 <Tab
-                  label="Update Status"
+                  label="View Trail Status"
                   id="dashboard-tab-1"
                   aria-controls="dashboard-tabpanel-1"
+                />
+                <Tab
+                  label="Update Trail Status"
+                  id="dashboard-tab-2"
+                  aria-controls="dashboard-tabpanel-2"
                 />
               </Tabs>
             </Box>
 
             <TabPanel value={tabValue} index={0}>
-              <TrailStatus showTitle={false} />
+              <MembershipManagement />
             </TabPanel>
 
             <TabPanel value={tabValue} index={1}>
+              <TrailStatus showTitle={false} />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={2}>
               <TrailStatusEditor />
             </TabPanel>
           </Paper>

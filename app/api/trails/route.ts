@@ -1,5 +1,6 @@
-import { Firestore } from "@google-cloud/firestore";
-import { NextResponse } from "next/server";
+import {NextResponse} from 'next/server';
+
+import {getFirestoreClient} from '@/src/lib/firestore-client';
 
 interface TrailData {
   id: string;
@@ -20,17 +21,11 @@ export async function GET() {
   }
 
   try {
-    const db = new Firestore({
-      projectId: process.env.GOOGLE_PROJECT_ID,
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.split("\\n").join("\n"),
-      },
-    });
+    const db = getFirestoreClient();
 
-    const snapshot = await db.collection("trails").get();
+    const snapshot = await db.collection('trails').get();
     const result: TrailData[] = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }) as TrailData)
+      .map((doc) => ({id: doc.id, ...doc.data()}) as TrailData)
       .filter((item): item is TrailData => item.shouldShow);
 
     cachedTrails = result;
@@ -38,13 +33,13 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error fetching trails:", error);
+    console.error('Error fetching trails:', error);
     return NextResponse.json(
       {
-        error: "Failed to fetch trails data",
+        error: 'Failed to fetch trails data',
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 },
+      {status: 500},
     );
   }
 }

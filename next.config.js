@@ -1,20 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Configuration for Netlify deployment
-  distDir: ".next",
+  distDir: '.next',
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "images.ctfassets.net",
-        port: "",
-        pathname: "/**",
+        protocol: 'https',
+        hostname: 'images.ctfassets.net',
+        port: '',
+        pathname: '/**',
       },
       {
-        protocol: "https",
-        hostname: "images.contentful.com",
-        port: "",
-        pathname: "/**",
+        protocol: 'https',
+        hostname: 'images.contentful.com',
+        port: '',
+        pathname: '/**',
       },
     ],
   },
@@ -29,14 +29,14 @@ const nextConfig = {
   staticPageGenerationTimeout: 120, // Increase timeout for static generation (in seconds)
   experimental: {
     // Optimize serverless function size
-    serverComponentsExternalPackages: ["@google-cloud/firestore"],
+    serverComponentsExternalPackages: ['@google-cloud/firestore'],
   },
   // Add redirect from /about to /about/bylaws
   async redirects() {
     return [
       {
-        source: "/about",
-        destination: "/about/bylaws",
+        source: '/about',
+        destination: '/about/bylaws',
         permanent: false,
       },
     ];

@@ -1,0 +1,46 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "planType", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "planType", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "DESCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "memberships",
+      "fieldPath": "endDate",
+      "indexes": [{"queryScope": "COLLECTION_GROUP", "order": "DESCENDING"}]
+    },
+    {
+      "collectionGroup": "cards",
+      "fieldPath": "membershipNumber",
+      "indexes": [{"queryScope": "COLLECTION_GROUP", "order": "ASCENDING"}]
+    },
+    {
+      "collectionGroup": "webhookEvents",
+      "fieldPath": "processedAt",
+      "indexes": [{"queryScope": "COLLECTION", "order": "ASCENDING"}]
+    }
+  ]
+}

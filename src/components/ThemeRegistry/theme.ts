@@ -1,15 +1,15 @@
-import { Poppins } from "next/font/google";
-import { createTheme } from "@mui/material/styles";
+import {createTheme} from '@mui/material/styles';
+import {Poppins} from 'next/font/google';
 
 const poppins = Poppins({
-  weight: ["300", "400", "500", "700"],
-  subsets: ["latin"],
-  display: "swap",
+  weight: ['300', '400', '500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 const theme = createTheme({
   palette: {
-    mode: "light",
+    mode: 'light',
   },
   typography: {
     fontFamily: poppins.style.fontFamily,
@@ -17,9 +17,9 @@ const theme = createTheme({
   components: {
     MuiAlert: {
       styleOverrides: {
-        root: ({ ownerState }) => ({
-          ...(ownerState.severity === "info" && {
-            backgroundColor: "#60a5fa",
+        root: ({ownerState}) => ({
+          ...(ownerState.severity === 'info' && {
+            backgroundColor: '#60a5fa',
           }),
         }),
       },
@@ -27,10 +27,10 @@ const theme = createTheme({
     MuiContainer: {
       styleOverrides: {
         root: {
-          [createTheme().breakpoints.down("sm")]: {
-            maxWidth: "100% !important",
-            paddingLeft: "16px",
-            paddingRight: "16px",
+          [createTheme().breakpoints.down('sm')]: {
+            maxWidth: '100% !important',
+            paddingLeft: '16px',
+            paddingRight: '16px',
           },
         },
       },

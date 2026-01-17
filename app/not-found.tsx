@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import Image from "next/image";
+import Image from 'next/image';
+import React from 'react';
 
 const NotFound = () => {
   return (
@@ -29,13 +29,7 @@ const NotFound = () => {
         `}</style>
         <div className="relative flex justify-center items-center w-full h-full">
           <div className="relative w-full h-full">
-            <Image
-              src="/bicycle.svg"
-              alt="Bicycle"
-              fill
-              priority
-              style={{ objectFit: "contain" }}
-            />
+            <Image src="/bicycle.svg" alt="Bicycle" fill priority style={{objectFit: 'contain'}} />
           </div>
         </div>
       </div>
@@ -43,10 +37,10 @@ const NotFound = () => {
       <p className="text-center mb-2">Even the best cyclists take a wrong turn sometimes.</p>
 
       <p className="text-center">
-        Head back to the{" "}
+        Head back to the{' '}
         <a href="/" className="text-blue-600 hover:text-blue-800 no-underline">
           trailhead
-        </a>{" "}
+        </a>{' '}
         and start over.
       </p>
     </div>
