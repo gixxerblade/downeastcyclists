@@ -1,6 +1,7 @@
-import {Firestore, FieldValue, Timestamp} from '@google-cloud/firestore';
+import {FieldValue, Timestamp} from '@google-cloud/firestore';
 import {Context, Effect, Layer} from 'effect';
 
+import {getFirestoreClient} from '@/src/lib/firestore-client';
 import {FirestoreError, DuplicateWebhookError} from './errors';
 import type {WebhookEventDocument} from './schemas';
 
@@ -50,13 +51,7 @@ export const WebhookIdempotencyService = Context.GenericTag<WebhookIdempotencySe
 
 // Implementation
 const make = Effect.sync(() => {
-  const db = new Firestore({
-    projectId: process.env.GOOGLE_PROJECT_ID,
-    credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
-    },
-  });
+  const db = getFirestoreClient();
 
   return WebhookIdempotencyService.of({
     checkEvent: (eventId) =>

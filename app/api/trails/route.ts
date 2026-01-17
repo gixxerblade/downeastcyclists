@@ -1,5 +1,6 @@
-import {Firestore} from '@google-cloud/firestore';
 import {NextResponse} from 'next/server';
+
+import {getFirestoreClient} from '@/src/lib/firestore-client';
 
 interface TrailData {
   id: string;
@@ -20,13 +21,7 @@ export async function GET() {
   }
 
   try {
-    const db = new Firestore({
-      projectId: process.env.GOOGLE_PROJECT_ID,
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
-      },
-    });
+    const db = getFirestoreClient();
 
     const snapshot = await db.collection('trails').get();
     const result: TrailData[] = snapshot.docs

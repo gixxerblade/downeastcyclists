@@ -1,6 +1,7 @@
-import {Firestore} from '@google-cloud/firestore';
 import {cookies} from 'next/headers';
 import {NextRequest, NextResponse} from 'next/server';
+
+import {getFirestoreClient} from '@/src/lib/firestore-client';
 
 interface TrailUpdateData {
   trail?: string;
@@ -27,14 +28,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
     // Parse the request body
     const trailData: TrailUpdateData = await request.json();
 
-    // Initialize Firestore with credentials from environment variables - match the Netlify function implementation
-    const db = new Firestore({
-      projectId: process.env.GOOGLE_PROJECT_ID,
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.split('\\n').join('\n'),
-      },
-    });
+    const db = getFirestoreClient();
 
     // Reference to the trail document
     const trailRef = db.collection('trails').doc(id);
