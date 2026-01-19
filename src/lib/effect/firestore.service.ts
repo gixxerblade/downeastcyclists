@@ -813,82 +813,95 @@ const make = Effect.sync(() => {
           const expiryDate = new Date();
           expiryDate.setDate(now.getDate() + withinDays);
 
-          // Convert to Firestore Timestamps for proper query comparison
-          const nowTimestamp = Timestamp.fromDate(now);
-          const expiryTimestamp = Timestamp.fromDate(expiryDate);
-
-          // Query memberships expiring within the time frame
-          // Using a single range query to avoid needing composite index
           console.log(
             '[getExpiringMemberships] Querying for memberships expiring between',
             now,
             'and',
             expiryDate,
           );
-          const snapshot = await db
-            .collectionGroup('memberships')
-            .where('endDate', '<=', expiryTimestamp)
-            .orderBy('endDate', 'asc')
-            .get();
 
-          console.log(
-            '[getExpiringMemberships] Query successful, found',
-            snapshot.size,
-            'documents',
-          );
+          // Get all users first (avoid collection group index requirement)
+          const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+          console.log('[getExpiringMemberships] Found', usersSnapshot.size, 'users');
 
-          // Fetch user and card data for each membership
-          const members: MemberWithMembership[] = await Promise.all(
-            snapshot.docs
-              .filter((doc) => {
-                // Filter by status and date range in memory to avoid composite index
-                const data = doc.data();
-                const isActiveOrPastDue = data.status === 'active' || data.status === 'past_due';
+          // Fetch memberships for each user and filter
+          const allMembers: MemberWithMembership[] = [];
 
-                // Check if endDate is within our range
-                const endDate = data.endDate;
-                let endDateObj: Date;
+          for (const userDoc of usersSnapshot.docs) {
+            const userId = userDoc.id;
+            const user = {id: userDoc.id, ...userDoc.data()} as UserDocument;
 
-                // Handle Firestore Timestamp
-                if (endDate && typeof endDate === 'object' && 'toDate' in endDate) {
-                  endDateObj = endDate.toDate();
-                } else {
-                  endDateObj = new Date(endDate);
-                }
+            // Get memberships for this user
+            const membershipsSnapshot = await db
+              .collection(COLLECTIONS.USERS)
+              .doc(userId)
+              .collection(COLLECTIONS.MEMBERSHIPS)
+              .get();
 
-                const isInRange = endDateObj >= now && endDateObj <= expiryDate;
+            for (const membershipDoc of membershipsSnapshot.docs) {
+              const membership = {
+                id: membershipDoc.id,
+                ...membershipDoc.data(),
+              } as MembershipDocument;
 
-                return isActiveOrPastDue && isInRange;
-              })
-              .map(async (doc) => {
-                const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
-                const parentRef = doc.ref.parent.parent;
-                if (!parentRef) {
-                  throw new Error('Invalid membership document path structure');
-                }
-                const userId = parentRef.id;
+              // Filter by status
+              if (membership.status !== 'active' && membership.status !== 'past_due') {
+                continue;
+              }
 
-                const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-                const user = userDoc.exists
-                  ? ({id: userDoc.id, ...userDoc.data()} as UserDocument)
-                  : null;
+              // Filter by date range
+              const endDate = membership.endDate;
+              let endDateObj: Date;
 
-                const cardDoc = await db
-                  .collection(COLLECTIONS.USERS)
-                  .doc(userId)
-                  .collection('cards')
-                  .doc('current')
-                  .get();
-                const card = cardDoc.exists
-                  ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
-                  : null;
+              // Handle Firestore Timestamp
+              if (endDate && typeof endDate === 'object' && 'toDate' in endDate) {
+                endDateObj = endDate.toDate();
+              } else {
+                endDateObj = new Date(endDate as string);
+              }
 
-                return {user, membership, card};
-              }),
-          );
+              // Check if in range
+              if (endDateObj < now || endDateObj > expiryDate) {
+                continue;
+              }
+
+              // Get card
+              const cardDoc = await db
+                .collection(COLLECTIONS.USERS)
+                .doc(userId)
+                .collection('cards')
+                .doc('current')
+                .get();
+
+              const card = cardDoc.exists
+                ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
+                : null;
+
+              allMembers.push({user, membership, card});
+            }
+          }
+
+          console.log('[getExpiringMemberships] Found', allMembers.length, 'expiring memberships');
+
+          // Sort by end date ascending
+          allMembers.sort((a, b) => {
+            const aDate =
+              a.membership?.endDate &&
+              typeof a.membership.endDate === 'object' &&
+              'toDate' in a.membership.endDate
+                ? a.membership.endDate.toDate()
+                : new Date(a.membership?.endDate as string);
+            const bDate =
+              b.membership?.endDate &&
+              typeof b.membership.endDate === 'object' &&
+              'toDate' in b.membership.endDate
+                ? b.membership.endDate.toDate()
+                : new Date(b.membership?.endDate as string);
+            return aDate.getTime() - bDate.getTime();
+          });
 
           // Serialize timestamps to ISO strings for client compatibility
-          return members.map((m) => serializeTimestamps(m));
+          return allMembers.map((m) => serializeTimestamps(m));
         },
         catch: (error) => {
           console.error('[getExpiringMemberships] Error caught:', error);
