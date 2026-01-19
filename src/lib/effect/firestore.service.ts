@@ -1,4 +1,4 @@
-import {FieldValue} from '@google-cloud/firestore';
+import {FieldValue, Timestamp} from '@google-cloud/firestore';
 import {Context, Effect, Layer} from 'effect';
 
 import {getFirestoreClient} from '@/src/lib/firestore-client';
@@ -18,6 +18,49 @@ export const COLLECTIONS = {
   USERS: 'users',
   MEMBERSHIPS: 'memberships',
 } as const;
+
+/**
+ * Converts Firestore Timestamps to ISO date strings in an object
+ * This ensures proper serialization when data is sent to the client
+ */
+function serializeTimestamps<T>(obj: T): T {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => serializeTimestamps(item)) as T;
+  }
+
+  const serialized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    // Check if it's a Firestore Timestamp (has toDate method)
+    if (
+      value &&
+      typeof value === 'object' &&
+      'toDate' in value &&
+      typeof value.toDate === 'function'
+    ) {
+      serialized[key] = value.toDate().toISOString();
+    }
+    // Check if it's a serialized timestamp (has _seconds)
+    else if (
+      value &&
+      typeof value === 'object' &&
+      '_seconds' in value &&
+      typeof value._seconds === 'number'
+    ) {
+      serialized[key] = new Date((value._seconds as number) * 1000).toISOString();
+    }
+    // Recursively handle nested objects
+    else if (value && typeof value === 'object') {
+      serialized[key] = serializeTimestamps(value);
+    } else {
+      serialized[key] = value;
+    }
+  }
+
+  return serialized as T;
+}
 
 // Audit entry type for query results
 export interface AuditEntryDocument {
@@ -580,7 +623,8 @@ const make = Effect.sync(() => {
           if (params.expiringWithinDays) {
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + params.expiringWithinDays);
-            query = query.where('endDate', '<=', expiryDate);
+            const expiryTimestamp = Timestamp.fromDate(expiryDate);
+            query = query.where('endDate', '<=', expiryTimestamp);
           }
 
           // Order and paginate
@@ -641,7 +685,10 @@ const make = Effect.sync(() => {
             );
           }
 
-          return {members: filteredMembers, total};
+          // Serialize timestamps to ISO strings for client compatibility
+          const serializedMembers = filteredMembers.map((m) => serializeTimestamps(m));
+
+          return {members: serializedMembers, total};
         },
         catch: (error) =>
           new FirestoreError({
@@ -766,12 +813,16 @@ const make = Effect.sync(() => {
           const expiryDate = new Date();
           expiryDate.setDate(now.getDate() + withinDays);
 
+          // Convert to Firestore Timestamps for proper query comparison
+          const nowTimestamp = Timestamp.fromDate(now);
+          const expiryTimestamp = Timestamp.fromDate(expiryDate);
+
           // Query memberships expiring within the time frame
           const snapshot = await db
             .collectionGroup('memberships')
             .where('status', 'in', ['active', 'past_due'])
-            .where('endDate', '>=', now)
-            .where('endDate', '<=', expiryDate)
+            .where('endDate', '>=', nowTimestamp)
+            .where('endDate', '<=', expiryTimestamp)
             .orderBy('endDate', 'asc')
             .get();
 
@@ -804,7 +855,8 @@ const make = Effect.sync(() => {
             }),
           );
 
-          return members;
+          // Serialize timestamps to ISO strings for client compatibility
+          return members.map((m) => serializeTimestamps(m));
         },
         catch: (error) =>
           new FirestoreError({
