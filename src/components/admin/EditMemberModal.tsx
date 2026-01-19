@@ -34,11 +34,20 @@ interface EditMemberModalProps {
 
 /**
  * Safely converts a date value to ISO date string (YYYY-MM-DD)
+ * Handles Firestore Timestamps, Date objects, and date strings
  * Returns empty string if the date is invalid
  */
 function toISODateString(dateValue: unknown): string {
   if (!dateValue) return '';
 
+  // Handle Firestore Timestamp objects
+  if (typeof dateValue === 'object' && dateValue !== null && 'toDate' in dateValue) {
+    const date = (dateValue as {toDate: () => Date}).toDate();
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  }
+
+  // Handle Date objects and date strings
   const date = new Date(dateValue as string | number | Date);
 
   // Check if date is valid
