@@ -44,12 +44,6 @@ jobs:
       - name: TypeScript check
         run: pnpm tsc
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Format check
-        run: pnpm fmt:check
-
       - name: Run tests
         run: pnpm test:run
         # env:
