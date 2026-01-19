@@ -820,12 +820,24 @@ const make = Effect.sync(() => {
           // Query memberships expiring within the time frame
           // Note: Firestore limits combining 'in' with multiple range queries
           // So we query a broader range and filter in memory
+          console.log(
+            '[getExpiringMemberships] Querying for memberships expiring between',
+            now,
+            'and',
+            expiryDate,
+          );
           const snapshot = await db
             .collectionGroup('memberships')
             .where('endDate', '>=', nowTimestamp)
             .where('endDate', '<=', expiryTimestamp)
             .orderBy('endDate', 'asc')
             .get();
+
+          console.log(
+            '[getExpiringMemberships] Query successful, found',
+            snapshot.size,
+            'documents',
+          );
 
           // Fetch user and card data for each membership
           const members: MemberWithMembership[] = await Promise.all(
@@ -865,12 +877,18 @@ const make = Effect.sync(() => {
           // Serialize timestamps to ISO strings for client compatibility
           return members.map((m) => serializeTimestamps(m));
         },
-        catch: (error) =>
-          new FirestoreError({
+        catch: (error) => {
+          console.error('[getExpiringMemberships] Error caught:', error);
+          console.error(
+            '[getExpiringMemberships] Error stack:',
+            error instanceof Error ? error.stack : 'No stack',
+          );
+          return new FirestoreError({
             code: 'GET_EXPIRING_MEMBERSHIPS_FAILED',
-            message: 'Failed to get expiring memberships',
+            message: `Failed to get expiring memberships: ${error instanceof Error ? error.message : String(error)}`,
             cause: error,
-          }),
+          });
+        },
       }),
 
     softDeleteMember: (userId, deletedBy, reason) =>
