@@ -256,6 +256,20 @@ const make = Effect.gen(function* () {
         if (activeSubscription) {
           const priceId = activeSubscription.items.data[0]?.price.id || '';
           const subscriptionData = activeSubscription as unknown as Record<string, unknown>;
+
+          // Safely convert timestamps to ISO strings
+          const periodStart = subscriptionData.current_period_start as number | undefined;
+          const periodEnd = subscriptionData.current_period_end as number | undefined;
+
+          if (!periodStart || !periodEnd) {
+            return yield* Effect.fail(
+              new StripeError({
+                code: 'INVALID_SUBSCRIPTION_DATA',
+                message: `Subscription ${activeSubscription.id} missing period dates`,
+              }),
+            );
+          }
+
           stripeData = {
             customerId: stripeCustomer.id,
             customerEmail: stripeCustomer.email || email,
@@ -263,12 +277,8 @@ const make = Effect.gen(function* () {
             subscriptionStatus: activeSubscription.status,
             priceId,
             planType: resolvePlanType(priceId),
-            currentPeriodStart: new Date(
-              (subscriptionData.current_period_start as number) * 1000,
-            ).toISOString(),
-            currentPeriodEnd: new Date(
-              (subscriptionData.current_period_end as number) * 1000,
-            ).toISOString(),
+            currentPeriodStart: new Date(periodStart * 1000).toISOString(),
+            currentPeriodEnd: new Date(periodEnd * 1000).toISOString(),
             cancelAtPeriodEnd: activeSubscription.cancel_at_period_end,
           };
         }

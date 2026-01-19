@@ -110,6 +110,17 @@ export async function handleAdminRoute(options: AdminRouteOptions): Promise<Next
         {} as Record<string, (error: any) => Effect.Effect<ErrorResult, never, never>>,
       ),
     ),
+    // Catch-all for unexpected errors
+    Effect.catchAll((error: unknown) => {
+      console.error('Unexpected error in admin route:', error);
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred';
+      return Effect.succeed({
+        error: message,
+        _tag: 'error' as const,
+        status: 500,
+      });
+    }),
   );
 
   const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
