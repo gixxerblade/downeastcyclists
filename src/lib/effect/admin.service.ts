@@ -1129,11 +1129,8 @@ const make = Effect.gen(function* () {
         return members
           .filter((m) => m.user && m.membership)
           .map((m) => {
-            const endDate = m.membership!.endDate;
-            const expirationDate =
-              typeof endDate === 'object' && 'toDate' in endDate
-                ? (endDate as {toDate: () => Date}).toDate()
-                : new Date(endDate);
+            // Timestamps are serialized as ISO strings from Firestore
+            const expirationDate = new Date(m.membership!.endDate as string);
 
             const daysUntilExpiration = Math.ceil(
               (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),

@@ -818,9 +818,10 @@ const make = Effect.sync(() => {
           const expiryTimestamp = Timestamp.fromDate(expiryDate);
 
           // Query memberships expiring within the time frame
+          // Note: Firestore limits combining 'in' with multiple range queries
+          // So we query a broader range and filter in memory
           const snapshot = await db
             .collectionGroup('memberships')
-            .where('status', 'in', ['active', 'past_due'])
             .where('endDate', '>=', nowTimestamp)
             .where('endDate', '<=', expiryTimestamp)
             .orderBy('endDate', 'asc')
@@ -828,31 +829,37 @@ const make = Effect.sync(() => {
 
           // Fetch user and card data for each membership
           const members: MemberWithMembership[] = await Promise.all(
-            snapshot.docs.map(async (doc) => {
-              const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
-              const parentRef = doc.ref.parent.parent;
-              if (!parentRef) {
-                throw new Error('Invalid membership document path structure');
-              }
-              const userId = parentRef.id;
+            snapshot.docs
+              .filter((doc) => {
+                // Filter by status in memory since Firestore limits 'in' with range queries
+                const data = doc.data();
+                return data.status === 'active' || data.status === 'past_due';
+              })
+              .map(async (doc) => {
+                const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
+                const parentRef = doc.ref.parent.parent;
+                if (!parentRef) {
+                  throw new Error('Invalid membership document path structure');
+                }
+                const userId = parentRef.id;
 
-              const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-              const user = userDoc.exists
-                ? ({id: userDoc.id, ...userDoc.data()} as UserDocument)
-                : null;
+                const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+                const user = userDoc.exists
+                  ? ({id: userDoc.id, ...userDoc.data()} as UserDocument)
+                  : null;
 
-              const cardDoc = await db
-                .collection(COLLECTIONS.USERS)
-                .doc(userId)
-                .collection('cards')
-                .doc('current')
-                .get();
-              const card = cardDoc.exists
-                ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
-                : null;
+                const cardDoc = await db
+                  .collection(COLLECTIONS.USERS)
+                  .doc(userId)
+                  .collection('cards')
+                  .doc('current')
+                  .get();
+                const card = cardDoc.exists
+                  ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
+                  : null;
 
-              return {user, membership, card};
-            }),
+                return {user, membership, card};
+              }),
           );
 
           // Serialize timestamps to ISO strings for client compatibility
