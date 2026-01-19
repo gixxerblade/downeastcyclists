@@ -54,9 +54,3 @@ jobs:
         #   GOOGLE_PROJECT_ID: ${{ secrets.TEST_GOOGLE_PROJECT_ID }}
         #   GOOGLE_CLIENT_EMAIL: ${{ secrets.TEST_GOOGLE_CLIENT_EMAIL }}
         #   GOOGLE_PRIVATE_KEY: ${{ secrets.TEST_GOOGLE_PRIVATE_KEY }}
-
-      - name: Build
-        run: pnpm build
-        env:
-          # Add any required build-time environment variables here
-          NODE_ENV: production
