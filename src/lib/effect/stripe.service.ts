@@ -36,6 +36,14 @@ export interface StripeService {
     amount: number,
     description: string,
   ) => Effect.Effect<Stripe.InvoiceItem, StripeError>;
+
+  readonly getCustomerByEmail: (
+    email: string,
+  ) => Effect.Effect<Stripe.Customer | null, StripeError>;
+
+  readonly listCustomerSubscriptions: (
+    customerId: string,
+  ) => Effect.Effect<Stripe.Subscription[], StripeError>;
 }
 
 // Service tag
@@ -103,8 +111,8 @@ const make = Effect.sync(() => {
               ? Math.round((params.planPrice * 0.027 + 0.05) * 100) // Convert to cents
               : 0;
 
-          // Base session config
-          const sessionConfig: any = {
+          // Base session config with proper Stripe types
+          const sessionConfig: Stripe.Checkout.SessionCreateParams = {
             mode: 'subscription',
             payment_method_types: ['card'],
             line_items: [{price: params.priceId, quantity: 1}],
@@ -241,6 +249,40 @@ const make = Effect.sync(() => {
           new StripeError({
             code: 'INVOICE_ITEM_CREATE_FAILED',
             message: 'Failed to add invoice item',
+            cause: error,
+          }),
+      }),
+
+    getCustomerByEmail: (email) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          const customers = await stripe.customers.list({email, limit: 1});
+          return customers.data[0] || null;
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'CUSTOMER_SEARCH_FAILED',
+            message: `Failed to search for customer by email ${email}`,
+            cause: error,
+          }),
+      }),
+
+    listCustomerSubscriptions: (customerId) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: 'all',
+            expand: ['data.items.data.price'],
+          });
+          return subscriptions.data;
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'SUBSCRIPTIONS_LIST_FAILED',
+            message: `Failed to list subscriptions for customer ${customerId}`,
             cause: error,
           }),
       }),

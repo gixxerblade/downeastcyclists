@@ -25,8 +25,14 @@ export interface QRService {
 // Service tag
 export const QRService = Context.GenericTag<QRService>('QRService');
 
-// Secret for signing (should be in env)
-const getSigningSecret = () => process.env.QR_SIGNING_SECRET || 'dec-membership-secret-2025';
+// Secret for signing - REQUIRED environment variable
+const getSigningSecret = (): string => {
+  const secret = process.env.QR_SIGNING_SECRET;
+  if (!secret) {
+    throw new Error('QR_SIGNING_SECRET environment variable is required');
+  }
+  return secret;
+};
 
 // Implementation
 const make = Effect.sync(() => {
@@ -40,13 +46,13 @@ const make = Effect.sync(() => {
           // Create compact date (YYYYMMDD)
           const compactDate = validUntil.toISOString().slice(0, 10).replace(/-/g, '');
 
-          // Create signature
+          // Create signature (16 hex chars = 64 bits of collision resistance)
           const dataToSign = `${membershipNumber}:${userId.slice(0, 8)}:${compactDate}`;
           const signature = crypto
             .createHmac('sha256', secret)
             .update(dataToSign)
             .digest('hex')
-            .slice(0, 8); // Truncate for compact QR
+            .slice(0, 16);
 
           const payload: QRPayload = {
             mn: membershipNumber,
@@ -88,13 +94,13 @@ const make = Effect.sync(() => {
         try: () => {
           const payload = JSON.parse(data) as QRPayload;
 
-          // Recreate signature to verify
+          // Recreate signature to verify (16 hex chars to match generation)
           const dataToSign = `${payload.mn}:${payload.u}:${payload.v}`;
           const expectedSignature = crypto
             .createHmac('sha256', secret)
             .update(dataToSign)
             .digest('hex')
-            .slice(0, 8);
+            .slice(0, 16);
 
           return {
             ...payload,

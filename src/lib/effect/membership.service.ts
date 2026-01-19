@@ -21,10 +21,25 @@ import type {
 import {StripeService} from './stripe.service';
 
 // Price ID to plan type mapping - loaded from environment variables
-const PRICE_TO_PLAN: Record<string, 'individual' | 'family'> = {
-  [process.env.STRIPE_PRICE_INDIVIDUAL || '']: 'individual',
-  [process.env.STRIPE_PRICE_FAMILY || '']: 'family',
+// Validates that required price IDs are configured
+const getPriceToPlanMapping = (): Record<string, 'individual' | 'family'> => {
+  const individualPriceId = process.env.STRIPE_PRICE_INDIVIDUAL;
+  const familyPriceId = process.env.STRIPE_PRICE_FAMILY;
+
+  const mapping: Record<string, 'individual' | 'family'> = {};
+
+  if (individualPriceId) {
+    mapping[individualPriceId] = 'individual';
+  }
+
+  if (familyPriceId) {
+    mapping[familyPriceId] = 'family';
+  }
+
+  return mapping;
 };
+
+const PRICE_TO_PLAN = getPriceToPlanMapping();
 
 // Service interface
 export interface MembershipService {
@@ -187,12 +202,16 @@ const make = Effect.gen(function* () {
         }
 
         // Find or create user
+        // If no Firebase UID is provided (guest checkout), we:
+        // 1. Check if a user exists with this email
+        // 2. Fall back to using subscriptionId as the document ID
+        // This allows guest checkouts to create user records that can be linked later
         let userDocId = userId;
         if (!userDocId) {
           const existingUser = customerEmail
             ? yield* firestore.getUserByEmail(customerEmail)
             : null;
-          userDocId = existingUser?.id || subscriptionId; // Use subscription ID as fallback
+          userDocId = existingUser?.id || subscriptionId;
         }
 
         // Update user document

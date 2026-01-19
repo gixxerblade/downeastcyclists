@@ -6,8 +6,52 @@ import {ValidationError} from '@/src/lib/effect/errors';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {MembershipService} from '@/src/lib/effect/membership.service';
 import {CheckoutSessionRequest} from '@/src/lib/effect/schemas';
+import {getFirebaseAdmin} from '@/src/lib/firebase-admin';
+
+// Simple in-memory rate limiter for unauthenticated requests
+const rateLimitStore = new Map<string, {count: number; resetTime: number}>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute for unauthenticated
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitStore.set(ip, {count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS});
+    return false;
+  }
+
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX_REQUESTS;
+}
 
 export async function POST(request: NextRequest) {
+  // Check for authentication (optional - allows guest checkout)
+  const sessionCookie = request.cookies.get('session')?.value;
+  let isAuthenticated = false;
+
+  if (sessionCookie) {
+    try {
+      const {auth} = getFirebaseAdmin();
+      await auth.verifySessionCookie(sessionCookie, true);
+      isAuthenticated = true;
+    } catch {
+      // Session invalid - treat as unauthenticated guest checkout
+    }
+  }
+
+  // Rate limit unauthenticated requests
+  if (!isAuthenticated) {
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (isRateLimited(clientIp)) {
+      return NextResponse.json(
+        {error: 'Too many checkout requests. Please wait and try again.'},
+        {status: 429},
+      );
+    }
+  }
+
   // Parse request body
   const body = await request.json();
 

@@ -2,6 +2,7 @@ import {FieldValue} from '@google-cloud/firestore';
 import {Context, Effect, Layer} from 'effect';
 
 import {getFirestoreClient} from '@/src/lib/firestore-client';
+
 import {FirestoreError} from './errors';
 import type {
   UserDocument,
@@ -75,6 +76,11 @@ export interface FirestoreService {
   readonly setMembershipCard: (
     userId: string,
     card: Omit<MembershipCard, 'id'>,
+  ) => Effect.Effect<void, FirestoreError>;
+
+  readonly updateMembershipCard: (
+    userId: string,
+    data: Partial<MembershipCard>,
   ) => Effect.Effect<void, FirestoreError>;
 
   readonly getMembershipByNumber: (
@@ -206,12 +212,11 @@ const make = Effect.sync(() => {
         try: async () => {
           try {
             // Try the indexed query first
-            // Note: Also including "canceled" temporarily for debugging
             const snapshot = await db
               .collection(COLLECTIONS.USERS)
               .doc(userId)
               .collection(COLLECTIONS.MEMBERSHIPS)
-              .where('status', 'in', ['active', 'trialing', 'past_due', 'canceled'])
+              .where('status', 'in', ['active', 'trialing', 'past_due'])
               .orderBy('endDate', 'desc')
               .limit(1)
               .get();
@@ -220,14 +225,8 @@ const make = Effect.sync(() => {
               const doc = snapshot.docs[0];
               return {id: doc.id, ...doc.data()} as MembershipDocument;
             }
-          } catch (indexError: any) {
-            // If index error, log it and fall back to getting all memberships
-            console.error(
-              'Firestore index error (expected if indexes not deployed):',
-              indexError.message,
-            );
-
-            // Fallback: get all memberships and filter in memory
+          } catch {
+            // Fallback: get all memberships and filter in memory (handles missing index)
             const allMemberships = await db
               .collection(COLLECTIONS.USERS)
               .doc(userId)
@@ -235,23 +234,13 @@ const make = Effect.sync(() => {
               .get();
 
             if (allMemberships.empty) {
-              console.log(`No memberships found for user ${userId}`);
               return null;
             }
 
-            // Log all memberships for debugging
-            console.log(`Found ${allMemberships.size} membership(s) for user ${userId}:`);
-            allMemberships.docs.forEach((doc) => {
-              console.log(
-                `  - ID: ${doc.id}, Status: ${doc.data().status}, EndDate: ${doc.data().endDate}`,
-              );
-            });
-
             // Filter and sort in memory
-            // Note: Also including "canceled" temporarily for debugging
             const activeMemberships = allMemberships.docs
               .map((doc) => ({id: doc.id, ...doc.data()}) as MembershipDocument)
-              .filter((m) => ['active', 'trialing', 'past_due', 'canceled'].includes(m.status))
+              .filter((m) => ['active', 'trialing', 'past_due'].includes(m.status))
               .sort((a, b) => {
                 const aDate = a.endDate.toDate?.() || new Date(a.endDate as any);
                 const bDate = b.endDate.toDate?.() || new Date(b.endDate as any);
@@ -259,13 +248,9 @@ const make = Effect.sync(() => {
               });
 
             if (activeMemberships.length > 0) {
-              console.log(
-                `Found active membership: ${activeMemberships[0].id} (${activeMemberships[0].status})`,
-              );
               return activeMemberships[0];
             }
 
-            console.log(`No active memberships found for user ${userId}`);
             return null;
           }
 
@@ -485,6 +470,26 @@ const make = Effect.sync(() => {
           new FirestoreError({
             code: 'SET_CARD_FAILED',
             message: `Failed to set membership card for user ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    updateMembershipCard: (userId, data) =>
+      Effect.tryPromise({
+        try: () =>
+          db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .collection('cards')
+            .doc('current')
+            .update({
+              ...data,
+              updatedAt: FieldValue.serverTimestamp(),
+            }),
+        catch: (error) =>
+          new FirestoreError({
+            code: 'UPDATE_CARD_FAILED',
+            message: `Failed to update membership card for user ${userId}`,
             cause: error,
           }),
       }),

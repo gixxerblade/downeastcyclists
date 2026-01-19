@@ -54,5 +54,19 @@ service cloud.firestore {
       allow read: if false;
       allow write: if false;
     }
+
+    // Stats collection (membership statistics)
+    // Admin SDK only - no client access
+    match /stats/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Audit logs within user documents
+    // Admin SDK only - no client access
+    match /users/{userId}/audit/{auditId} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }
