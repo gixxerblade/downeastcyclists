@@ -75,7 +75,7 @@ FIX_OUTPUT_DIRECTORY: `app_fix_reports/`
 
 Your fix report must follow this exact structure:
 
-```markdown
+````markdown
 # Fix Report
 
 **Generated**: [ISO timestamp]
@@ -103,10 +103,12 @@ Your fix report must follow this exact structure:
 **Solution Applied**: [Which recommended solution was used]
 
 **Changes Made**:
+
 - File: `[path/to/file.ext]`
 - Lines: `[XX-YY]`
 
 **Code Changed**:
+
 ```[language]
 // Before
 [original code]
@@ -114,6 +116,7 @@ Your fix report must follow this exact structure:
 // After
 [fixed code]
 ```
+````
 
 **Verification**: [How it was verified to work]
 
@@ -141,9 +144,9 @@ Your fix report must follow this exact structure:
 
 [List any issues that were NOT fixed with rationale]
 
-| Issue | Risk Level | Reason Skipped |
-| ----- | ---------- | -------------- |
-| [Issue description] | MEDIUM | [Why it was skipped] |
+| Issue               | Risk Level | Reason Skipped       |
+| ------------------- | ---------- | -------------------- |
+| [Issue description] | MEDIUM     | [Why it was skipped] |
 
 ---
 
@@ -151,8 +154,8 @@ Your fix report must follow this exact structure:
 
 ### Validation Commands Executed
 
-| Command | Result | Notes |
-| ------- | ------ | ----- |
+| Command     | Result            | Notes                |
+| ----------- | ----------------- | -------------------- |
 | `[command]` | ✅ PASS / ❌ FAIL | [Any relevant notes] |
 
 ---
@@ -161,9 +164,9 @@ Your fix report must follow this exact structure:
 
 [Summary of all files modified]
 
-| File | Changes | Lines +/- |
-| ---- | ------- | --------- |
-| `[path/to/file.ext]` | [Brief description] | +X / -Y |
+| File                 | Changes             | Lines +/- |
+| -------------------- | ------------------- | --------- |
+| `[path/to/file.ext]` | [Brief description] | +X / -Y   |
 
 ---
 
@@ -176,12 +179,14 @@ Your fix report must follow this exact structure:
 **Overall Status**: [✅ ALL FIXED / ⚠️ PARTIAL / ❌ BLOCKED]
 
 **Next Steps** (if any):
+
 - [Remaining action items]
 - [Follow-up tasks]
 
 ---
 
 **Report File**: `FIX_OUTPUT_DIRECTORY/fix_[timestamp].md`
+
 ```
 
 ## Important Notes
@@ -192,3 +197,4 @@ Your fix report must follow this exact structure:
 - Test each fix before moving to the next issue
 - If you cannot fix an issue, clearly document why and suggest next steps
 - The goal is to get the codebase to a state where it passes review
+```

@@ -1,17 +1,34 @@
 import {Context, Effect, Layer, pipe} from 'effect';
+import type Stripe from 'stripe';
+
+import type {
+  AuditEntry,
+  BulkImportResult,
+  BulkImportRow,
+  CreateMemberInput,
+  DeleteMemberInput,
+  ExpiringMember,
+  PaymentHistoryItem,
+  UpdateMemberInput,
+} from '@/src/types/admin';
 
 import {AuthService} from './auth.service';
 import {MembershipCardService} from './card.service';
 import {
   AdminError,
   CardError,
+  EmailConflictError,
   FirestoreError,
+  ImportError,
+  MemberNotFoundError,
   NotFoundError,
   QRError,
   StripeError,
+  StripeSubscriptionActiveError,
   UnauthorizedError,
   SessionError,
   AuthError,
+  ValidationError,
 } from './errors';
 import {FirestoreService} from './firestore.service';
 import type {
@@ -67,6 +84,71 @@ export interface AdminService {
     ReconciliationResult,
     AdminError | StripeError | FirestoreError | CardError | QRError
   >;
+
+  // Member CRUD operations
+  readonly createMember: (
+    input: CreateMemberInput,
+    adminUid: string,
+    adminEmail?: string,
+  ) => Effect.Effect<
+    {userId: string; membershipId: string; membershipNumber: string},
+    ValidationError | EmailConflictError | FirestoreError | AuthError | CardError | QRError
+  >;
+
+  readonly updateMember: (
+    userId: string,
+    input: UpdateMemberInput,
+    adminUid: string,
+    adminEmail?: string,
+  ) => Effect.Effect<
+    {emailSyncedToStripe?: boolean; emailSyncedToAuth?: boolean},
+    | MemberNotFoundError
+    | ValidationError
+    | FirestoreError
+    | StripeError
+    | AuthError
+    | CardError
+    | QRError
+  >;
+
+  readonly deleteMember: (
+    userId: string,
+    input: DeleteMemberInput,
+    adminUid: string,
+    adminEmail?: string,
+  ) => Effect.Effect<
+    {stripeSubscriptionCanceled?: boolean},
+    MemberNotFoundError | StripeSubscriptionActiveError | FirestoreError | StripeError
+  >;
+
+  readonly bulkImportMembers: (
+    rows: BulkImportRow[],
+    adminUid: string,
+    adminEmail?: string,
+  ) => Effect.Effect<
+    BulkImportResult,
+    ImportError | FirestoreError | AuthError | CardError | QRError
+  >;
+
+  readonly getExpiringMemberships: (
+    withinDays: 30 | 60 | 90,
+  ) => Effect.Effect<ExpiringMember[], FirestoreError>;
+
+  readonly getMemberAuditLog: (
+    userId: string,
+  ) => Effect.Effect<AuditEntry[], MemberNotFoundError | FirestoreError>;
+
+  readonly getPaymentHistory: (
+    userId: string,
+  ) => Effect.Effect<PaymentHistoryItem[], MemberNotFoundError | StripeError | FirestoreError>;
+
+  readonly issueRefund: (
+    userId: string,
+    paymentIntentId: string,
+    adminUid: string,
+    amount?: number,
+    reason?: string,
+  ) => Effect.Effect<Stripe.Refund, MemberNotFoundError | StripeError | FirestoreError>;
 }
 
 // Service tag
@@ -577,6 +659,599 @@ const make = Effect.gen(function* () {
           cardCreated,
           userCreated,
         };
+      }),
+
+    // Create member manually
+    createMember: (input, adminUid, adminEmail) =>
+      Effect.gen(function* () {
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(input.email)) {
+          return yield* Effect.fail(
+            new ValidationError({
+              field: 'email',
+              message: 'Invalid email format',
+            }),
+          );
+        }
+
+        // Validate dates
+        const startDate = new Date(input.startDate);
+        const endDate = new Date(input.endDate);
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return yield* Effect.fail(
+            new ValidationError({
+              field: 'dates',
+              message: 'Invalid date format',
+            }),
+          );
+        }
+        if (endDate <= startDate) {
+          return yield* Effect.fail(
+            new ValidationError({
+              field: 'endDate',
+              message: 'End date must be after start date',
+            }),
+          );
+        }
+
+        // Check if email already exists in Firestore
+        const existingUser = yield* firestore.getUserByEmail(input.email);
+        if (existingUser) {
+          return yield* Effect.fail(
+            new EmailConflictError({
+              email: input.email,
+              message: 'A member with this email already exists',
+            }),
+          );
+        }
+
+        // Check if email exists in Firebase Auth
+        const existingAuthUser = yield* auth.getUserByEmail(input.email);
+        let userId: string;
+
+        if (existingAuthUser) {
+          userId = existingAuthUser.uid;
+        } else {
+          // Create Firebase Auth user
+          const newAuthUser = yield* auth.createAuthUser(input.email, input.name);
+          userId = newAuthUser.uid;
+        }
+
+        // Create user document in Firestore
+        yield* firestore.createUser(userId, {
+          email: input.email,
+          name: input.name,
+          phone: input.phone,
+          stripeCustomerId: input.stripeCustomerId,
+        });
+
+        // Generate membership ID
+        const membershipId = `manual_${Date.now()}`;
+
+        // Map status to valid MembershipStatus
+        const membershipStatus: MembershipStatus =
+          input.status === 'complimentary' || input.status === 'legacy' ? 'active' : input.status;
+
+        // Create membership document
+        yield* firestore.setMembership(userId, membershipId, {
+          stripeSubscriptionId: membershipId,
+          planType: input.planType,
+          status: membershipStatus,
+          startDate,
+          endDate,
+          autoRenew: false,
+          createdAt: null as unknown,
+          updatedAt: null as unknown,
+        });
+
+        // Get user and membership for card creation
+        const user = yield* firestore.getUser(userId);
+        const membership = yield* firestore.getMembership(userId, membershipId);
+
+        if (!user || !membership) {
+          return yield* Effect.fail(
+            new FirestoreError({
+              code: 'DATA_NOT_FOUND',
+              message: 'Failed to retrieve created user or membership',
+            }),
+          );
+        }
+
+        // Create membership card
+        const cardResult = yield* cardService.createCard({userId, user, membership});
+        const membershipNumber = cardResult.membershipNumber;
+
+        // Update stats
+        yield* stats.incrementStat('totalMembers');
+        yield* stats.incrementStat('activeMembers');
+        if (input.planType === 'individual') {
+          yield* stats.incrementStat('individualCount');
+        } else {
+          yield* stats.incrementStat('familyCount');
+        }
+
+        // Log audit entry
+        yield* firestore.logAuditEntry(userId, 'MEMBER_CREATED', {
+          performedBy: adminUid,
+          performedByEmail: adminEmail,
+          newValues: {
+            email: input.email,
+            name: input.name,
+            planType: input.planType,
+            status: input.status,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            notes: input.notes,
+          },
+          timestamp: new Date().toISOString(),
+        });
+
+        return {userId, membershipId, membershipNumber};
+      }),
+
+    // Update member
+    updateMember: (userId, input, adminUid, adminEmail) =>
+      Effect.gen(function* () {
+        // Get existing user
+        const existingUser = yield* firestore.getUser(userId);
+        if (!existingUser) {
+          return yield* Effect.fail(
+            new MemberNotFoundError({
+              userId,
+              message: 'Member not found',
+            }),
+          );
+        }
+
+        const previousValues: Record<string, unknown> = {};
+        const newValues: Record<string, unknown> = {};
+        let emailSyncedToStripe = false;
+        let emailSyncedToAuth = false;
+
+        // Update user fields
+        const userUpdates: Record<string, unknown> = {};
+
+        if (input.email && input.email !== existingUser.email) {
+          previousValues.email = existingUser.email;
+          newValues.email = input.email;
+          userUpdates.email = input.email;
+
+          // Sync email to Stripe if customer exists
+          if (existingUser.stripeCustomerId) {
+            yield* stripe.updateCustomerEmail(existingUser.stripeCustomerId, input.email);
+            emailSyncedToStripe = true;
+          }
+
+          // Update Firebase Auth email
+          yield* auth.updateUserEmail(userId, input.email);
+          emailSyncedToAuth = true;
+        }
+
+        if (input.name !== undefined && input.name !== existingUser.name) {
+          previousValues.name = existingUser.name;
+          newValues.name = input.name;
+          userUpdates.name = input.name;
+        }
+
+        if (input.phone !== undefined && input.phone !== existingUser.phone) {
+          previousValues.phone = existingUser.phone;
+          newValues.phone = input.phone;
+          userUpdates.phone = input.phone;
+        }
+
+        if (input.stripeCustomerId !== undefined) {
+          previousValues.stripeCustomerId = existingUser.stripeCustomerId;
+          newValues.stripeCustomerId = input.stripeCustomerId;
+          userUpdates.stripeCustomerId = input.stripeCustomerId;
+        }
+
+        if (Object.keys(userUpdates).length > 0) {
+          yield* firestore.updateUser(userId, userUpdates);
+        }
+
+        // Update membership if needed
+        const activeMembership = yield* firestore.getActiveMembership(userId);
+        if (activeMembership) {
+          const membershipUpdates: Record<string, unknown> = {};
+
+          if (input.planType && input.planType !== activeMembership.planType) {
+            previousValues.planType = activeMembership.planType;
+            newValues.planType = input.planType;
+            membershipUpdates.planType = input.planType;
+
+            // Update stats
+            if (activeMembership.planType === 'individual') {
+              yield* stats.decrementStat('individualCount');
+            } else {
+              yield* stats.decrementStat('familyCount');
+            }
+            if (input.planType === 'individual') {
+              yield* stats.incrementStat('individualCount');
+            } else {
+              yield* stats.incrementStat('familyCount');
+            }
+          }
+
+          if (input.status && input.status !== activeMembership.status) {
+            previousValues.status = activeMembership.status;
+            newValues.status = input.status;
+            membershipUpdates.status = input.status;
+
+            // Update stats for status changes
+            if (
+              activeMembership.status === 'active' &&
+              input.status !== 'active' &&
+              input.status !== 'past_due'
+            ) {
+              yield* stats.decrementStat('activeMembers');
+              if (input.status === 'canceled') {
+                yield* stats.incrementStat('canceledMembers');
+              }
+            } else if (
+              activeMembership.status !== 'active' &&
+              (input.status === 'active' || input.status === 'past_due')
+            ) {
+              yield* stats.incrementStat('activeMembers');
+              if (activeMembership.status === 'canceled') {
+                yield* stats.decrementStat('canceledMembers');
+              }
+            }
+          }
+
+          if (input.startDate) {
+            const startDate = new Date(input.startDate);
+            previousValues.startDate = activeMembership.startDate;
+            newValues.startDate = input.startDate;
+            membershipUpdates.startDate = startDate;
+          }
+
+          if (input.endDate) {
+            const endDate = new Date(input.endDate);
+            previousValues.endDate = activeMembership.endDate;
+            newValues.endDate = input.endDate;
+            membershipUpdates.endDate = endDate;
+          }
+
+          if (Object.keys(membershipUpdates).length > 0) {
+            yield* firestore.updateMembership(userId, activeMembership.id, membershipUpdates);
+
+            // Update card to match membership
+            const updatedUser = yield* firestore.getUser(userId);
+            const updatedMembership = yield* firestore.getMembership(userId, activeMembership.id);
+            if (updatedUser && updatedMembership) {
+              yield* cardService.updateCard({
+                userId,
+                user: updatedUser,
+                membership: updatedMembership,
+              });
+            }
+          }
+        }
+
+        // Log audit entry
+        yield* firestore.logAuditEntry(userId, 'MEMBER_UPDATED', {
+          performedBy: adminUid,
+          performedByEmail: adminEmail,
+          previousValues,
+          newValues,
+          reason: input.reason,
+          timestamp: new Date().toISOString(),
+        });
+
+        return {emailSyncedToStripe, emailSyncedToAuth};
+      }),
+
+    // Delete member (soft delete)
+    deleteMember: (userId, input, adminUid, adminEmail) =>
+      Effect.gen(function* () {
+        // Get existing user
+        const existingUser = yield* firestore.getUser(userId);
+        if (!existingUser) {
+          return yield* Effect.fail(
+            new MemberNotFoundError({
+              userId,
+              message: 'Member not found',
+            }),
+          );
+        }
+
+        let stripeSubscriptionCanceled = false;
+
+        // Cancel Stripe subscription if requested
+        if (input.cancelStripeSubscription && existingUser.stripeCustomerId) {
+          const subscriptions = yield* stripe.listCustomerSubscriptions(
+            existingUser.stripeCustomerId,
+          );
+          const activeSubscription = subscriptions.find(
+            (sub) => sub.status === 'active' || sub.status === 'past_due',
+          );
+
+          if (activeSubscription) {
+            yield* stripe.cancelSubscription(activeSubscription.id, input.reason);
+            stripeSubscriptionCanceled = true;
+          }
+        }
+
+        // Soft delete - sets membership and card status to 'deleted'
+        yield* firestore.softDeleteMember(userId, adminUid, input.reason);
+
+        // Update stats
+        const activeMembership = yield* firestore.getActiveMembership(userId);
+        if (activeMembership) {
+          yield* stats.decrementStat('activeMembers');
+          yield* stats.decrementStat('totalMembers');
+          if (activeMembership.planType === 'individual') {
+            yield* stats.decrementStat('individualCount');
+          } else {
+            yield* stats.decrementStat('familyCount');
+          }
+        }
+
+        // Log audit entry (already logged in softDeleteMember, but add admin details)
+        yield* firestore.logAuditEntry(userId, 'MEMBER_DELETED', {
+          performedBy: adminUid,
+          performedByEmail: adminEmail,
+          reason: input.reason,
+          stripeSubscriptionCanceled,
+          timestamp: new Date().toISOString(),
+        });
+
+        return {stripeSubscriptionCanceled};
+      }),
+
+    // Bulk import members
+    bulkImportMembers: (rows, adminUid, adminEmail) =>
+      Effect.gen(function* () {
+        const results: BulkImportResult = {created: 0, errors: []};
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+
+          try {
+            // Validate row
+            if (!row.email || !row.planType || !row.startDate || !row.endDate) {
+              results.errors.push({
+                row: i + 1,
+                email: row.email,
+                error: 'Missing required fields',
+              });
+              continue;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(row.email)) {
+              results.errors.push({
+                row: i + 1,
+                email: row.email,
+                error: 'Invalid email format',
+              });
+              continue;
+            }
+
+            const startDate = new Date(row.startDate);
+            const endDate = new Date(row.endDate);
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+              results.errors.push({
+                row: i + 1,
+                email: row.email,
+                error: 'Invalid date format',
+              });
+              continue;
+            }
+
+            // Check for existing user
+            const existingUser = yield* firestore.getUserByEmail(row.email);
+            if (existingUser) {
+              results.errors.push({
+                row: i + 1,
+                email: row.email,
+                error: 'Email already exists',
+              });
+              continue;
+            }
+
+            // Create the member using the existing createMember method logic
+            const existingAuthUser = yield* auth.getUserByEmail(row.email);
+            let userId: string;
+
+            if (existingAuthUser) {
+              userId = existingAuthUser.uid;
+            } else {
+              const newAuthUser = yield* auth.createAuthUser(row.email, row.name);
+              userId = newAuthUser.uid;
+            }
+
+            yield* firestore.createUser(userId, {
+              email: row.email,
+              name: row.name,
+              phone: row.phone,
+            });
+
+            const membershipId = `import_${Date.now()}_${i}`;
+
+            yield* firestore.setMembership(userId, membershipId, {
+              stripeSubscriptionId: membershipId,
+              planType: row.planType,
+              status: 'active',
+              startDate,
+              endDate,
+              autoRenew: false,
+              createdAt: null as unknown,
+              updatedAt: null as unknown,
+            });
+
+            const user = yield* firestore.getUser(userId);
+            const membership = yield* firestore.getMembership(userId, membershipId);
+
+            if (user && membership) {
+              yield* cardService.createCard({userId, user, membership});
+            }
+
+            // Update stats
+            yield* stats.incrementStat('totalMembers');
+            yield* stats.incrementStat('activeMembers');
+            if (row.planType === 'individual') {
+              yield* stats.incrementStat('individualCount');
+            } else {
+              yield* stats.incrementStat('familyCount');
+            }
+
+            results.created++;
+          } catch {
+            results.errors.push({
+              row: i + 1,
+              email: row.email,
+              error: 'Failed to create member',
+            });
+          }
+        }
+
+        // Log bulk import audit entry
+        yield* firestore.logAuditEntry('system', 'BULK_IMPORT', {
+          performedBy: adminUid,
+          performedByEmail: adminEmail,
+          totalRows: rows.length,
+          created: results.created,
+          errors: results.errors.length,
+          timestamp: new Date().toISOString(),
+        });
+
+        return results;
+      }),
+
+    // Get expiring memberships
+    getExpiringMemberships: (withinDays) =>
+      Effect.gen(function* () {
+        const members = yield* firestore.getExpiringMemberships(withinDays);
+        const now = new Date();
+
+        return members
+          .filter((m) => m.user && m.membership)
+          .map((m) => {
+            const endDate = m.membership!.endDate;
+            const expirationDate =
+              typeof endDate === 'object' && 'toDate' in endDate
+                ? (endDate as {toDate: () => Date}).toDate()
+                : new Date(endDate);
+
+            const daysUntilExpiration = Math.ceil(
+              (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            return {
+              userId: m.user!.id,
+              email: m.user!.email,
+              name: m.user!.name,
+              phone: m.user!.phone,
+              planType: m.membership!.planType,
+              status: m.membership!.status,
+              membershipNumber: m.card?.membershipNumber,
+              expirationDate: expirationDate.toISOString(),
+              daysUntilExpiration,
+            };
+          });
+      }),
+
+    // Get member audit log
+    getMemberAuditLog: (userId) =>
+      Effect.gen(function* () {
+        const user = yield* firestore.getUser(userId);
+        if (!user) {
+          return yield* Effect.fail(
+            new MemberNotFoundError({
+              userId,
+              message: 'Member not found',
+            }),
+          );
+        }
+
+        const entries = yield* firestore.getMemberAuditLog(userId);
+
+        return entries.map((entry) => ({
+          id: entry.id,
+          action: entry.action as AuditEntry['action'],
+          performedBy: (entry.details?.performedBy as string) || 'system',
+          performedByEmail: entry.details?.performedByEmail as string | undefined,
+          details: entry.details || {},
+          timestamp:
+            typeof entry.timestamp === 'object' && 'toDate' in entry.timestamp
+              ? (entry.timestamp as {toDate: () => Date}).toDate().toISOString()
+              : typeof entry.timestamp === 'string'
+                ? entry.timestamp
+                : new Date().toISOString(),
+        }));
+      }),
+
+    // Get payment history
+    getPaymentHistory: (userId) =>
+      Effect.gen(function* () {
+        const user = yield* firestore.getUser(userId);
+        if (!user) {
+          return yield* Effect.fail(
+            new MemberNotFoundError({
+              userId,
+              message: 'Member not found',
+            }),
+          );
+        }
+
+        if (!user.stripeCustomerId) {
+          return [];
+        }
+
+        const invoices = yield* stripe.getPaymentHistory(user.stripeCustomerId);
+
+        return invoices.map((invoice) => {
+          // payment_intent is expanded via the API call, access via type assertion
+          const invoiceWithExpanded = invoice as Stripe.Invoice & {
+            payment_intent?: string | Stripe.PaymentIntent | null;
+          };
+          const paymentIntent =
+            typeof invoiceWithExpanded.payment_intent === 'object'
+              ? invoiceWithExpanded.payment_intent
+              : null;
+
+          return {
+            id: invoice.id,
+            date: new Date(invoice.created * 1000).toISOString(),
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            status: invoice.status === 'paid' ? 'paid' : ('pending' as const),
+            description: invoice.description || `Invoice ${invoice.number}`,
+            invoiceUrl: invoice.hosted_invoice_url || undefined,
+            paymentIntentId: paymentIntent?.id,
+            refundable: invoice.status === 'paid' && !!paymentIntent?.id,
+          };
+        });
+      }),
+
+    // Issue refund
+    issueRefund: (userId, paymentIntentId, adminUid, amount, reason) =>
+      Effect.gen(function* () {
+        const user = yield* firestore.getUser(userId);
+        if (!user) {
+          return yield* Effect.fail(
+            new MemberNotFoundError({
+              userId,
+              message: 'Member not found',
+            }),
+          );
+        }
+
+        const refund = yield* stripe.createRefund(paymentIntentId, amount, reason);
+
+        // Log audit entry
+        yield* firestore.logAuditEntry(userId, 'REFUND_ISSUED', {
+          performedBy: adminUid,
+          refundId: refund.id,
+          paymentIntentId,
+          amount: refund.amount,
+          reason,
+          timestamp: new Date().toISOString(),
+        });
+
+        return refund;
       }),
   });
 });

@@ -81,6 +81,30 @@ export class ExportError extends Data.TaggedError('ExportError')<{
   readonly cause?: unknown;
 }> {}
 
+export class MemberNotFoundError extends Data.TaggedError('MemberNotFoundError')<{
+  readonly userId: string;
+  readonly message: string;
+}> {}
+
+export class EmailConflictError extends Data.TaggedError('EmailConflictError')<{
+  readonly email: string;
+  readonly message: string;
+}> {}
+
+export class StripeSubscriptionActiveError extends Data.TaggedError(
+  'StripeSubscriptionActiveError',
+)<{
+  readonly subscriptionId: string;
+  readonly message: string;
+}> {}
+
+export class ImportError extends Data.TaggedError('ImportError')<{
+  readonly code: string;
+  readonly message: string;
+  readonly row?: number;
+  readonly cause?: unknown;
+}> {}
+
 // Union type for all errors
 export type AppError =
   | StripeError
@@ -96,4 +120,8 @@ export type AppError =
   | CardError
   | QRError
   | AdminError
-  | ExportError;
+  | ExportError
+  | MemberNotFoundError
+  | EmailConflictError
+  | StripeSubscriptionActiveError
+  | ImportError;

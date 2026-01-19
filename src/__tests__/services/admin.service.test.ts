@@ -4,8 +4,8 @@ import {describe, it, expect, vi} from 'vitest';
 import {AdminService, AdminServiceLive} from '@/src/lib/effect/admin.service';
 import {MembershipCardService} from '@/src/lib/effect/card.service';
 import {AdminError, FirestoreError, StripeError} from '@/src/lib/effect/errors';
-import {StatsService} from '@/src/lib/effect/stats.service';
 import type {ReconciliationReport} from '@/src/lib/effect/schemas';
+import {StatsService} from '@/src/lib/effect/stats.service';
 
 import {
   createTestAdminService,
@@ -17,8 +17,12 @@ import {
   TestFirestoreLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
+import {
+  createMockMembershipCard,
+  createMockMembershipDocument,
+  createMockUserDocument,
+} from '../mocks/firestore.mock';
 import {createMockCustomer, createMockSubscription} from '../mocks/stripe.mock';
-import {createMockMembershipCard, createMockMembershipDocument, createMockUserDocument} from '../mocks/firestore.mock';
 
 describe('AdminService', () => {
   describe('validateStripeVsFirebase', () => {
@@ -67,7 +71,11 @@ describe('AdminService', () => {
               cancelAtPeriodEnd: false,
             },
             firebaseData: null,
-            discrepancies: ['MISSING_FIREBASE_USER', 'MISSING_FIREBASE_MEMBERSHIP', 'MISSING_FIREBASE_CARD'],
+            discrepancies: [
+              'MISSING_FIREBASE_USER',
+              'MISSING_FIREBASE_MEMBERSHIP',
+              'MISSING_FIREBASE_CARD',
+            ],
             canReconcile: true,
             reconcileActions: [
               'Create Firebase user linked to Stripe customer',

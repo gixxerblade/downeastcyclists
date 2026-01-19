@@ -44,6 +44,33 @@ export interface StripeService {
   readonly listCustomerSubscriptions: (
     customerId: string,
   ) => Effect.Effect<Stripe.Subscription[], StripeError>;
+
+  readonly cancelSubscription: (
+    subscriptionId: string,
+    reason?: string,
+  ) => Effect.Effect<Stripe.Subscription, StripeError>;
+
+  readonly updateCustomerEmail: (
+    customerId: string,
+    newEmail: string,
+  ) => Effect.Effect<Stripe.Customer, StripeError>;
+
+  readonly getPaymentHistory: (
+    customerId: string,
+    limit?: number,
+  ) => Effect.Effect<Stripe.Invoice[], StripeError>;
+
+  readonly createRefund: (
+    paymentIntentId: string,
+    amount?: number,
+    reason?: string,
+  ) => Effect.Effect<Stripe.Refund, StripeError>;
+
+  readonly createCustomer: (
+    email: string,
+    name?: string,
+    metadata?: Record<string, string>,
+  ) => Effect.Effect<Stripe.Customer, StripeError>;
 }
 
 // Service tag
@@ -283,6 +310,97 @@ const make = Effect.sync(() => {
           new StripeError({
             code: 'SUBSCRIPTIONS_LIST_FAILED',
             message: `Failed to list subscriptions for customer ${customerId}`,
+            cause: error,
+          }),
+      }),
+
+    cancelSubscription: (subscriptionId, reason) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          return stripe.subscriptions.cancel(subscriptionId, {
+            cancellation_details: reason ? {comment: reason} : undefined,
+          });
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'SUBSCRIPTION_CANCEL_FAILED',
+            message: `Failed to cancel subscription ${subscriptionId}`,
+            cause: error,
+          }),
+      }),
+
+    updateCustomerEmail: (customerId, newEmail) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          return stripe.customers.update(customerId, {email: newEmail}) as Promise<Stripe.Customer>;
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'CUSTOMER_UPDATE_FAILED',
+            message: `Failed to update email for customer ${customerId}`,
+            cause: error,
+          }),
+      }),
+
+    getPaymentHistory: (customerId, limit = 20) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          const invoices = await stripe.invoices.list({
+            customer: customerId,
+            limit,
+            expand: ['data.payment_intent'],
+          });
+          return invoices.data;
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'PAYMENT_HISTORY_FAILED',
+            message: `Failed to get payment history for customer ${customerId}`,
+            cause: error,
+          }),
+      }),
+
+    createRefund: (paymentIntentId, amount, reason) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          const refundParams: Stripe.RefundCreateParams = {
+            payment_intent: paymentIntentId,
+          };
+          if (amount !== undefined) {
+            refundParams.amount = amount;
+          }
+          if (reason) {
+            refundParams.reason = 'requested_by_customer';
+            refundParams.metadata = {admin_reason: reason};
+          }
+          return stripe.refunds.create(refundParams);
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'REFUND_FAILED',
+            message: `Failed to create refund for payment ${paymentIntentId}`,
+            cause: error,
+          }),
+      }),
+
+    createCustomer: (email, name, metadata) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          return stripe.customers.create({
+            email,
+            name,
+            metadata,
+          }) as Promise<Stripe.Customer>;
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'CUSTOMER_CREATE_FAILED',
+            message: `Failed to create customer with email ${email}`,
             cause: error,
           }),
       }),

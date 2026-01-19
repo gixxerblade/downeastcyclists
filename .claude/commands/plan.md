@@ -16,6 +16,7 @@ PLAN_OUTPUT_DIRECTORY: `specs/`
 ## Instructions
 
 - IMPORTANT: If no `USER_PROMPT` is provided, stop and ask the user to provide it.
+- IMPORTANT: Keep the total plan length under 800 lines. If a plan would exceed this limit, prioritize essential information and summarize less critical details.
 - Carefully analyze the user's requirements provided in the USER_PROMPT variable
 - Determine the task type (chore|feature|refactor|fix|enhancement) and complexity (simple|medium|complex)
 - Think deeply (ultrathink) about the best approach to implement the requested functionality or solve the problem
@@ -25,8 +26,9 @@ PLAN_OUTPUT_DIRECTORY: `specs/`
 - Generate a descriptive, kebab-case filename based on the main topic of the plan
 - Save the complete implementation plan to `PLAN_OUTPUT_DIRECTORY/<descriptive-name>.md`
 - Ensure the plan is detailed enough that another developer could follow it to implement the solution
-- Include code examples or pseudo-code where appropriate to clarify complex concepts
+- Include code examples or pseudo-code where appropriate to clarify complex concepts, but keep them concise
 - Consider edge cases, error handling, and scalability concerns
+- Balance detail with brevity - be comprehensive but concise to stay within the 800-line limit
 
 ## Workflow
 
