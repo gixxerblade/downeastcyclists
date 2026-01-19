@@ -3,6 +3,7 @@ import {NextRequest, NextResponse} from 'next/server';
 
 import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
 import type {MemberSearchParams} from '@/src/lib/effect/schemas';
+import type {CreateMemberInput} from '@/src/types/admin';
 
 export async function GET(request: NextRequest) {
   // Parse query params
@@ -57,4 +58,30 @@ export async function GET(request: NextRequest) {
   };
 
   return NextResponse.json(serializedResult);
+}
+
+// POST - Create new member
+export async function POST(request: NextRequest) {
+  const body: CreateMemberInput = await request.json();
+
+  return handleAdminRoute({
+    handler: (admin, sessionCookie) =>
+      Effect.gen(function* () {
+        // Verify admin access
+        const adminUser = yield* admin.verifyAdmin(sessionCookie);
+
+        // Create member
+        return yield* admin.createMember(body, adminUser.uid, adminUser.email);
+      }),
+    errorTags: [
+      'UnauthorizedError',
+      'SessionError',
+      'AuthError',
+      'FirestoreError',
+      'ValidationError',
+      'EmailConflictError',
+      'CardError',
+      'QRError',
+    ],
+  });
 }

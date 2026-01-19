@@ -16,7 +16,12 @@ type AdminErrorTag =
   | 'FirestoreError'
   | 'CardError'
   | 'QRError'
-  | 'AdminError';
+  | 'AdminError'
+  | 'MemberNotFoundError'
+  | 'EmailConflictError'
+  | 'StripeSubscriptionActiveError'
+  | 'ImportError'
+  | 'ValidationError';
 
 /**
  * Error result with status code
@@ -47,6 +52,16 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
   AdminError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+  MemberNotFoundError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 404}),
+  EmailConflictError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 409}),
+  StripeSubscriptionActiveError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 409}),
+  ImportError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
+  ValidationError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
 };
 
 /**
@@ -113,8 +128,7 @@ export async function handleAdminRoute(options: AdminRouteOptions): Promise<Next
     // Catch-all for unexpected errors
     Effect.catchAll((error: unknown) => {
       console.error('Unexpected error in admin route:', error);
-      const message =
-        error instanceof Error ? error.message : 'An unexpected error occurred';
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred';
       return Effect.succeed({
         error: message,
         _tag: 'error' as const,

@@ -1,0 +1,553 @@
+import {Effect, Layer} from 'effect';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+
+import {AdminService, AdminServiceLive} from '@/src/lib/effect/admin.service';
+import {AuthService} from '@/src/lib/effect/auth.service';
+import {MembershipCardService} from '@/src/lib/effect/card.service';
+import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {StatsService} from '@/src/lib/effect/stats.service';
+import {StripeService} from '@/src/lib/effect/stripe.service';
+import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/src/types/admin';
+
+import {
+  createTestAdminService,
+  createTestAuthService,
+  createTestFirestoreService,
+  createTestStripeService,
+  TestAuthLayer,
+  TestFirestoreLayer,
+  TestStripeLayer,
+} from '../layers/test-layers';
+
+describe('Admin Member Management Integration', () => {
+  describe('Full Member Lifecycle', () => {
+    it('should create, update, and delete a member', async () => {
+      const userId = 'test_user_123';
+      const membershipNumber = 'DEC-2026-000001';
+
+      // Create member
+      const authService = createTestAuthService({
+        getUserByEmail: vi.fn(() => Effect.succeed(null)),
+        createAuthUser: vi.fn((email) => Effect.succeed({uid: userId, email})),
+        updateUserEmail: vi.fn(() => Effect.succeed(undefined)),
+      });
+
+      const firestoreService = createTestFirestoreService({
+        getUserByEmail: vi.fn(() => Effect.succeed(null)),
+        getUser: vi.fn((uid) => {
+          if (uid === userId) {
+            return Effect.succeed({
+              id: userId,
+              email: 'test@example.com',
+              name: 'Test User',
+              phone: '207-555-1234',
+              stripeCustomerId: 'cus_123',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+          return Effect.succeed(null);
+        }),
+        createUser: vi.fn(() =>
+          Effect.succeed({
+            id: userId,
+            email: 'test@example.com',
+            name: 'Test User',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }),
+        ),
+        updateUser: vi.fn(() => Effect.succeed(undefined)),
+        getNextMembershipNumber: vi.fn(() => Effect.succeed(membershipNumber)),
+        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        getMembership: vi.fn((uid, membershipId) =>
+          Effect.succeed({
+            id: membershipId || 'mem_123',
+            userId: uid,
+            stripeSubscriptionId: 'sub_123',
+            status: 'active' as const,
+            planType: 'individual' as const,
+            startDate: null,
+            endDate: null,
+            autoRenew: false,
+            createdAt: null,
+            updatedAt: null,
+          }),
+        ),
+        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        softDeleteMember: vi.fn(() => Effect.succeed(undefined)),
+        getStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 10,
+            activeMembers: 8,
+            individualCount: 5,
+            familyCount: 3,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+        updateStats: vi.fn(() => Effect.succeed(undefined)),
+        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        getMemberAuditLog: vi.fn(() =>
+          Effect.succeed([
+            {
+              id: 'audit_1',
+              userId,
+              action: 'MEMBER_CREATED',
+              timestamp: new Date().toISOString(),
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
+              newValues: {
+                email: 'test@example.com',
+                planType: 'individual',
+              },
+            },
+            {
+              id: 'audit_2',
+              userId,
+              action: 'MEMBER_UPDATED',
+              timestamp: new Date().toISOString(),
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
+              previousValues: {email: 'test@example.com'},
+              newValues: {email: 'newemail@example.com'},
+              reason: 'Email change',
+            },
+            {
+              id: 'audit_3',
+              userId,
+              action: 'MEMBER_DELETED',
+              timestamp: new Date().toISOString(),
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
+              reason: 'User requested deletion',
+            },
+          ]),
+        ),
+      });
+
+      const stripeService = createTestStripeService({
+        updateCustomerEmail: vi.fn(() =>
+          Effect.succeed({id: 'cus_123', email: 'newemail@example.com'} as any),
+        ),
+        cancelSubscription: vi.fn(() =>
+          Effect.succeed({id: 'sub_123', status: 'canceled'} as any),
+        ),
+      });
+
+      const cardService = {
+        generateCard: vi.fn(() =>
+          Effect.succeed({
+            membershipNumber,
+            qrCodeUrl: 'https://example.com/qr.png',
+            cardUrl: 'https://example.com/card.png',
+          }),
+        ),
+        updateCard: vi.fn(() => Effect.succeed(undefined)),
+      };
+
+      const statsService = {
+        getStats: firestoreService.getStats,
+        incrementStat: vi.fn(() => Effect.succeed(undefined)),
+        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        refreshStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 10,
+            activeMembers: 8,
+            individualCount: 5,
+            familyCount: 3,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+      };
+
+      const testLayer = Layer.mergeAll(
+        TestAuthLayer(authService),
+        TestFirestoreLayer(firestoreService),
+        TestStripeLayer(stripeService),
+        Layer.succeed(MembershipCardService, cardService),
+        Layer.succeed(StatsService, statsService),
+      );
+
+      // Step 1: Create member
+      const createInput: CreateMemberInput = {
+        email: 'test@example.com',
+        name: 'Test User',
+        phone: '207-555-1234',
+        planType: 'individual',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        status: 'active',
+      };
+
+      const createProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.createMember(createInput, 'admin_123', 'admin@example.com');
+      });
+
+      const createResult = await Effect.runPromise(Effect.provide(Effect.provide(createProgram, AdminServiceLive), testLayer));
+
+      expect(createResult.userId).toBe(userId);
+      expect(createResult.membershipNumber).toBe(membershipNumber);
+      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+        userId,
+        'MEMBER_CREATED',
+        expect.any(Object),
+      );
+
+      // Step 2: Update member
+      const updateInput: UpdateMemberInput = {
+        email: 'newemail@example.com',
+        reason: 'Email change requested',
+      };
+
+      const updateProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.updateMember(userId, updateInput, 'admin_123', 'admin@example.com');
+      });
+
+      const updateResult = await Effect.runPromise(Effect.provide(Effect.provide(updateProgram, AdminServiceLive), testLayer));
+
+      expect(updateResult.emailSyncedToStripe).toBe(true);
+      expect(updateResult.emailSyncedToAuth).toBe(true);
+      expect(stripeService.updateCustomerEmail).toHaveBeenCalled();
+      expect(authService.updateUserEmail).toHaveBeenCalled();
+
+      // Step 3: View audit log
+      const auditProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.getMemberAuditLog(userId);
+      });
+
+      const auditLog = await Effect.runPromise(Effect.provide(Effect.provide(auditProgram, AdminServiceLive), testLayer));
+
+      expect(auditLog).toHaveLength(3);
+      expect(auditLog[0].action).toBe('MEMBER_CREATED');
+      expect(auditLog[1].action).toBe('MEMBER_UPDATED');
+      expect(auditLog[2].action).toBe('MEMBER_DELETED');
+
+      // Step 4: Delete member
+      const deleteInput: DeleteMemberInput = {
+        reason: 'User requested deletion',
+        cancelStripeSubscription: true,
+      };
+
+      const deleteProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.deleteMember(userId, deleteInput, 'admin_123', 'admin@example.com');
+      });
+
+      const deleteResult = await Effect.runPromise(Effect.provide(Effect.provide(deleteProgram, AdminServiceLive), testLayer));
+
+      expect(deleteResult.stripeSubscriptionCanceled).toBe(true);
+      expect(stripeService.cancelSubscription).toHaveBeenCalledWith(
+        'sub_123',
+        deleteInput.reason,
+      );
+      expect(firestoreService.softDeleteMember).toHaveBeenCalled();
+    });
+  });
+
+  describe('Bulk Import Flow', () => {
+    it('should import multiple legacy members', async () => {
+      const authService = createTestAuthService({
+        getUserByEmail: vi.fn(() => Effect.succeed(null)),
+        createAuthUser: vi.fn((email) => Effect.succeed({uid: `user_${email.split('@')[0]}`})),
+      });
+
+      let membershipNumberCounter = 1;
+      const firestoreService = createTestFirestoreService({
+        getUserByEmail: vi.fn(() => Effect.succeed(null)),
+        createUser: vi.fn((userId, data) =>
+          Effect.succeed({
+            id: userId,
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }),
+        ),
+        getNextMembershipNumber: vi.fn(() => {
+          const num = `DEC-2026-${String(membershipNumberCounter).padStart(6, '0')}`;
+          membershipNumberCounter++;
+          return Effect.succeed(num);
+        }),
+        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        getStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 10,
+            activeMembers: 8,
+            individualCount: 5,
+            familyCount: 3,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+        updateStats: vi.fn(() => Effect.succeed(undefined)),
+        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+      });
+
+      const cardService = {
+        generateCard: vi.fn(() =>
+          Effect.succeed({
+            membershipNumber: 'DEC-2026-000001',
+            qrCodeUrl: 'https://example.com/qr.png',
+            cardUrl: 'https://example.com/card.png',
+          }),
+        ),
+        updateCard: vi.fn(() => Effect.succeed(undefined)),
+      };
+
+      const statsService = {
+        getStats: firestoreService.getStats,
+        incrementStat: vi.fn(() => Effect.succeed(undefined)),
+        refreshStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 15,
+            activeMembers: 13,
+            individualCount: 8,
+            familyCount: 5,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+      };
+
+      const testLayer = Layer.mergeAll(
+        TestAuthLayer(authService),
+        TestFirestoreLayer(firestoreService),
+        Layer.succeed(MembershipCardService, cardService),
+        Layer.succeed(StatsService, statsService),
+      );
+
+      const rows = [
+        {
+          email: 'legacy1@example.com',
+          name: 'Legacy Member 1',
+          planType: 'individual' as const,
+          startDate: '2025-01-01',
+          endDate: '2025-12-31',
+        },
+        {
+          email: 'legacy2@example.com',
+          name: 'Legacy Member 2',
+          planType: 'family' as const,
+          startDate: '2025-01-01',
+          endDate: '2025-12-31',
+        },
+        {
+          email: 'legacy3@example.com',
+          name: 'Legacy Member 3',
+          planType: 'individual' as const,
+          startDate: '2025-06-01',
+          endDate: '2026-05-31',
+        },
+      ];
+
+      const program = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.bulkImportMembers(rows, 'admin_123', 'admin@example.com');
+      });
+
+      const result = await Effect.runPromise(Effect.provide(Effect.provide(program, AdminServiceLive), testLayer));
+
+      expect(result.successCount).toBe(3);
+      expect(result.failedCount).toBe(0);
+      expect(result.errors).toEqual([]);
+      expect(authService.createAuthUser).toHaveBeenCalledTimes(3);
+      expect(firestoreService.createUser).toHaveBeenCalledTimes(3);
+      expect(firestoreService.setMembership).toHaveBeenCalledTimes(3);
+      expect(cardService.generateCard).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Expiring Members Report', () => {
+    it('should retrieve members expiring within 30 days', async () => {
+      const now = new Date();
+      const in29Days = new Date(now.getTime() + 29 * 24 * 60 * 60 * 1000);
+
+      const firestoreService = createTestFirestoreService({
+        getExpiringMemberships: vi.fn((withinDays) =>
+          Effect.succeed([
+            {
+              userId: 'user_1',
+              email: 'expiring1@example.com',
+              name: 'Expiring Member 1',
+              membershipNumber: 'DEC-2025-000001',
+              planType: 'individual' as const,
+              status: 'active' as const,
+              endDate: in29Days.toISOString().split('T')[0],
+              daysUntilExpiration: 29,
+            },
+            {
+              userId: 'user_2',
+              email: 'expiring2@example.com',
+              name: 'Expiring Member 2',
+              membershipNumber: 'DEC-2025-000002',
+              planType: 'family' as const,
+              status: 'active' as const,
+              endDate: in29Days.toISOString().split('T')[0],
+              daysUntilExpiration: 29,
+            },
+          ]),
+        ),
+      });
+
+      const authService = createTestAuthService();
+      const stripeService = createTestStripeService();
+      const cardService = {
+        generateCard: vi.fn(() =>
+          Effect.succeed({
+            membershipNumber: 'DEC-2026-000001',
+            qrCodeUrl: 'https://example.com/qr.png',
+            cardUrl: 'https://example.com/card.png',
+          }),
+        ),
+        updateCard: vi.fn(() => Effect.succeed(undefined)),
+      };
+      const statsService = {
+        getStats: firestoreService.getStats,
+        incrementStat: vi.fn(() => Effect.succeed(undefined)),
+        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        refreshStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 10,
+            activeMembers: 8,
+            individualCount: 5,
+            familyCount: 3,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+      };
+
+      const testLayer = Layer.mergeAll(
+        TestFirestoreLayer(firestoreService),
+        TestAuthLayer(authService),
+        TestStripeLayer(stripeService),
+        Layer.succeed(MembershipCardService, cardService),
+        Layer.succeed(StatsService, statsService),
+      );
+
+      const program = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.getExpiringMemberships(30);
+      });
+
+      const result = await Effect.runPromise(Effect.provide(Effect.provide(program, AdminServiceLive), testLayer));
+
+      expect(result).toHaveLength(2);
+      expect(result[0].daysUntilExpiration).toBe(29);
+      expect(result[1].daysUntilExpiration).toBe(29);
+      expect(firestoreService.getExpiringMemberships).toHaveBeenCalledWith(30);
+    });
+  });
+
+  describe('Payment History and Refunds', () => {
+    it('should retrieve payment history and issue refund', async () => {
+      const userId = 'user_123';
+
+      const firestoreService = createTestFirestoreService({
+        getUser: vi.fn(() =>
+          Effect.succeed({
+            id: userId,
+            email: 'test@example.com',
+            name: 'Test User',
+            stripeCustomerId: 'cus_123',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }),
+        ),
+        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+      });
+
+      const stripeService = createTestStripeService({
+        getPaymentHistory: vi.fn(() =>
+          Effect.succeed([
+            {
+              id: 'in_123',
+              created: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+              amount_paid: 5000,
+              currency: 'usd',
+              status: 'paid',
+              description: 'Individual Membership',
+              hosted_invoice_url: 'https://stripe.com/invoice/123',
+              payment_intent: {
+                id: 'pi_123',
+                status: 'succeeded',
+              },
+            } as any,
+          ]),
+        ),
+        createRefund: vi.fn(() =>
+          Effect.succeed({
+            id: 'ref_123',
+            amount: 5000,
+            status: 'succeeded',
+          } as any),
+        ),
+      });
+
+      const authService = createTestAuthService();
+      const cardService = {
+        generateCard: vi.fn(() =>
+          Effect.succeed({
+            membershipNumber: 'DEC-2026-000001',
+            qrCodeUrl: 'https://example.com/qr.png',
+            cardUrl: 'https://example.com/card.png',
+          }),
+        ),
+        updateCard: vi.fn(() => Effect.succeed(undefined)),
+      };
+      const statsService = {
+        getStats: firestoreService.getStats,
+        incrementStat: vi.fn(() => Effect.succeed(undefined)),
+        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        refreshStats: vi.fn(() =>
+          Effect.succeed({
+            totalMembers: 10,
+            activeMembers: 8,
+            individualCount: 5,
+            familyCount: 3,
+            lastUpdated: new Date().toISOString(),
+          }),
+        ),
+      };
+
+      const testLayer = Layer.mergeAll(
+        TestFirestoreLayer(firestoreService),
+        TestStripeLayer(stripeService),
+        TestAuthLayer(authService),
+        Layer.succeed(MembershipCardService, cardService),
+        Layer.succeed(StatsService, statsService),
+      );
+
+      // Get payment history
+      const historyProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.getPaymentHistory(userId);
+      });
+
+      const history = await Effect.runPromise(Effect.provide(Effect.provide(historyProgram, AdminServiceLive), testLayer));
+
+      expect(history).toHaveLength(1);
+      expect(history[0].amount).toBe(5000);
+      expect(history[0].status).toBe('paid');
+      expect(history[0].refundable).toBe(true);
+
+      // Issue refund
+      const refundProgram = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        return yield* admin.issueRefund(userId, 'pi_123', 'admin_123');
+      });
+
+      const refund = await Effect.runPromise(Effect.provide(Effect.provide(refundProgram, AdminServiceLive), testLayer));
+
+      expect(refund.id).toBe('ref_123');
+      expect(refund.amount).toBe(5000);
+      expect(stripeService.createRefund).toHaveBeenCalledWith('pi_123', undefined, undefined);
+      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+        userId,
+        'REFUND_ISSUED',
+        expect.objectContaining({
+          performedBy: 'admin_123',
+        }),
+      );
+    });
+  });
+});

@@ -19,11 +19,29 @@ export const COLLECTIONS = {
   MEMBERSHIPS: 'memberships',
 } as const;
 
+// Audit entry type for query results
+export interface AuditEntryDocument {
+  id: string;
+  action: string;
+  details: Record<string, unknown>;
+  timestamp: FirebaseFirestore.Timestamp | Date | string;
+}
+
 // Service interface
 export interface FirestoreService {
   readonly getUser: (userId: string) => Effect.Effect<UserDocument | null, FirestoreError>;
 
   readonly getUserByEmail: (email: string) => Effect.Effect<UserDocument | null, FirestoreError>;
+
+  readonly createUser: (
+    userId: string,
+    data: Omit<UserDocument, 'id' | 'createdAt' | 'updatedAt'>,
+  ) => Effect.Effect<UserDocument, FirestoreError>;
+
+  readonly updateUser: (
+    userId: string,
+    data: Partial<Omit<UserDocument, 'id' | 'createdAt'>>,
+  ) => Effect.Effect<void, FirestoreError>;
 
   readonly getUserByStripeCustomerId: (
     customerId: string,
@@ -101,6 +119,22 @@ export interface FirestoreService {
     action: string,
     details: Record<string, unknown>,
   ) => Effect.Effect<void, FirestoreError>;
+
+  readonly getMemberAuditLog: (
+    userId: string,
+  ) => Effect.Effect<AuditEntryDocument[], FirestoreError>;
+
+  readonly getExpiringMemberships: (
+    withinDays: number,
+  ) => Effect.Effect<MemberWithMembership[], FirestoreError>;
+
+  readonly softDeleteMember: (
+    userId: string,
+    deletedBy: string,
+    reason: string,
+  ) => Effect.Effect<void, FirestoreError>;
+
+  readonly getAllUsers: () => Effect.Effect<UserDocument[], FirestoreError>;
 }
 
 // Service tag
@@ -659,6 +693,192 @@ const make = Effect.sync(() => {
           new FirestoreError({
             code: 'AUDIT_LOG_FAILED',
             message: `Failed to log audit entry for ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    createUser: (userId, data) =>
+      Effect.tryPromise({
+        try: async () => {
+          const userData = {
+            id: userId,
+            ...data,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          };
+          await db.collection(COLLECTIONS.USERS).doc(userId).set(userData);
+          return {id: userId, ...data} as UserDocument;
+        },
+        catch: (error) =>
+          new FirestoreError({
+            code: 'CREATE_USER_FAILED',
+            message: `Failed to create user ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    updateUser: (userId, data) =>
+      Effect.tryPromise({
+        try: () =>
+          db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .update({
+              ...data,
+              updatedAt: FieldValue.serverTimestamp(),
+            }),
+        catch: (error) =>
+          new FirestoreError({
+            code: 'UPDATE_USER_FAILED',
+            message: `Failed to update user ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    getMemberAuditLog: (userId) =>
+      Effect.tryPromise({
+        try: async () => {
+          const snapshot = await db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .collection('audit')
+            .orderBy('timestamp', 'desc')
+            .limit(100)
+            .get();
+
+          return snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as AuditEntryDocument[];
+        },
+        catch: (error) =>
+          new FirestoreError({
+            code: 'GET_AUDIT_LOG_FAILED',
+            message: `Failed to get audit log for user ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    getExpiringMemberships: (withinDays) =>
+      Effect.tryPromise({
+        try: async () => {
+          const now = new Date();
+          const expiryDate = new Date();
+          expiryDate.setDate(now.getDate() + withinDays);
+
+          // Query memberships expiring within the time frame
+          const snapshot = await db
+            .collectionGroup('memberships')
+            .where('status', 'in', ['active', 'past_due'])
+            .where('endDate', '>=', now)
+            .where('endDate', '<=', expiryDate)
+            .orderBy('endDate', 'asc')
+            .get();
+
+          // Fetch user and card data for each membership
+          const members: MemberWithMembership[] = await Promise.all(
+            snapshot.docs.map(async (doc) => {
+              const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
+              const parentRef = doc.ref.parent.parent;
+              if (!parentRef) {
+                throw new Error('Invalid membership document path structure');
+              }
+              const userId = parentRef.id;
+
+              const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+              const user = userDoc.exists
+                ? ({id: userDoc.id, ...userDoc.data()} as UserDocument)
+                : null;
+
+              const cardDoc = await db
+                .collection(COLLECTIONS.USERS)
+                .doc(userId)
+                .collection('cards')
+                .doc('current')
+                .get();
+              const card = cardDoc.exists
+                ? ({id: cardDoc.id, ...cardDoc.data()} as MembershipCard)
+                : null;
+
+              return {user, membership, card};
+            }),
+          );
+
+          return members;
+        },
+        catch: (error) =>
+          new FirestoreError({
+            code: 'GET_EXPIRING_MEMBERSHIPS_FAILED',
+            message: 'Failed to get expiring memberships',
+            cause: error,
+          }),
+      }),
+
+    softDeleteMember: (userId, deletedBy, reason) =>
+      Effect.tryPromise({
+        try: async () => {
+          const batch = db.batch();
+
+          // Get all memberships for this user
+          const membershipsSnapshot = await db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .collection(COLLECTIONS.MEMBERSHIPS)
+            .get();
+
+          // Update all memberships to deleted status
+          membershipsSnapshot.docs.forEach((doc) => {
+            batch.update(doc.ref, {
+              status: 'deleted',
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          });
+
+          // Update card status to deleted
+          const cardRef = db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .collection('cards')
+            .doc('current');
+          const cardDoc = await cardRef.get();
+          if (cardDoc.exists) {
+            batch.update(cardRef, {
+              status: 'deleted',
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+
+          // Add audit entry
+          const auditRef = db.collection(COLLECTIONS.USERS).doc(userId).collection('audit').doc();
+          batch.set(auditRef, {
+            action: 'MEMBER_DELETED',
+            details: {
+              deletedBy,
+              reason,
+            },
+            timestamp: FieldValue.serverTimestamp(),
+          });
+
+          await batch.commit();
+        },
+        catch: (error) =>
+          new FirestoreError({
+            code: 'SOFT_DELETE_FAILED',
+            message: `Failed to soft delete member ${userId}`,
+            cause: error,
+          }),
+      }),
+
+    getAllUsers: () =>
+      Effect.tryPromise({
+        try: async () => {
+          const snapshot = await db.collection(COLLECTIONS.USERS).get();
+          return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}) as UserDocument);
+        },
+        catch: (error) =>
+          new FirestoreError({
+            code: 'GET_ALL_USERS_FAILED',
+            message: 'Failed to get all users',
             cause: error,
           }),
       }),

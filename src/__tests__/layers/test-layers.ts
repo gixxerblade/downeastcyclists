@@ -52,6 +52,19 @@ export const createTestStripeService = (
   ) as unknown as StripeServiceType['addInvoiceItem'],
   getCustomerByEmail: vi.fn(() => Effect.succeed(null)),
   listCustomerSubscriptions: vi.fn(() => Effect.succeed([])),
+  cancelSubscription: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as StripeServiceType['cancelSubscription'],
+  updateCustomerEmail: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as StripeServiceType['updateCustomerEmail'],
+  getPaymentHistory: vi.fn(() => Effect.succeed([])),
+  createRefund: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as StripeServiceType['createRefund'],
+  createCustomer: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as StripeServiceType['createCustomer'],
   ...overrides,
 });
 
@@ -62,6 +75,10 @@ export const createTestFirestoreService = (
   getUserByEmail: vi.fn(() => Effect.succeed(null)),
   getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
   setUser: vi.fn(() => Effect.succeed(undefined)),
+  createUser: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as FirestoreServiceType['createUser'],
+  updateUser: vi.fn(() => Effect.succeed(undefined)),
   getMembership: vi.fn(() => Effect.succeed(null)),
   getActiveMembership: vi.fn(() => Effect.succeed(null)),
   setMembership: vi.fn(() => Effect.succeed(undefined)),
@@ -79,6 +96,10 @@ export const createTestFirestoreService = (
   getStats: vi.fn(() => Effect.succeed(null)),
   updateStats: vi.fn(() => Effect.succeed(undefined)),
   logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+  getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+  getExpiringMemberships: vi.fn(() => Effect.succeed([])),
+  softDeleteMember: vi.fn(() => Effect.succeed(undefined)),
+  getAllUsers: vi.fn(() => Effect.succeed([])),
   ...overrides,
 });
 
@@ -103,6 +124,12 @@ export const createTestAuthService = (
   verifyAdminClaim: vi.fn(() =>
     Effect.fail(new Error('Not mocked')),
   ) as unknown as AuthServiceType['verifyAdminClaim'],
+  updateUserEmail: vi.fn(() => Effect.succeed(undefined)),
+  createAuthUser: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AuthServiceType['createAuthUser'],
+  getUserByEmail: vi.fn(() => Effect.succeed(null)),
+  deleteUser: vi.fn(() => Effect.succeed(undefined)),
   ...overrides,
 });
 
@@ -169,6 +196,24 @@ export const createTestAdminService = (
   reconcileMembership: vi.fn((_email: string, _adminUid?: string) =>
     Effect.fail(new Error('Not mocked')),
   ) as unknown as AdminServiceType['reconcileMembership'],
+  createMember: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['createMember'],
+  updateMember: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['updateMember'],
+  deleteMember: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['deleteMember'],
+  bulkImportMembers: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['bulkImportMembers'],
+  getExpiringMemberships: vi.fn(() => Effect.succeed([])),
+  getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+  getPaymentHistory: vi.fn(() => Effect.succeed([])),
+  issueRefund: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['issueRefund'],
   ...overrides,
 });
 
@@ -190,8 +235,7 @@ export const TestMembershipLayer = (service: MembershipServiceType) =>
 export const TestPortalLayer = (service: PortalServiceType) =>
   Layer.succeed(PortalService, service);
 
-export const TestAdminLayer = (service: AdminServiceType) =>
-  Layer.succeed(AdminService, service);
+export const TestAdminLayer = (service: AdminServiceType) => Layer.succeed(AdminService, service);
 
 // Combined test layer builder for integration tests
 export const createTestLayers = (services: {

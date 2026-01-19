@@ -1,6 +1,6 @@
 'use client';
 
-import {Edit, NavigateBefore, NavigateNext} from '@mui/icons-material';
+import {Edit, Delete, History, Payment, NavigateBefore, NavigateNext} from '@mui/icons-material';
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ import {
   MenuItem,
   FormControl,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 
 import type {MemberWithMembership} from '@/src/lib/effect/schemas';
@@ -29,6 +30,9 @@ interface MemberTableProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   onEditMember: (member: MemberWithMembership) => void;
+  onDeleteMember?: (member: MemberWithMembership) => void;
+  onViewAudit?: (member: MemberWithMembership) => void;
+  onViewPayments?: (member: MemberWithMembership) => void;
 }
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
@@ -40,6 +44,9 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> 
   incomplete: 'default',
   incomplete_expired: 'default',
   unpaid: 'error',
+  deleted: 'error',
+  complimentary: 'success',
+  legacy: 'success',
 };
 
 export function MemberTable({
@@ -50,6 +57,9 @@ export function MemberTable({
   onPageChange,
   onPageSizeChange,
   onEditMember,
+  onDeleteMember,
+  onViewAudit,
+  onViewPayments,
 }: MemberTableProps) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -96,9 +106,42 @@ export function MemberTable({
                   </TableCell>
                   <TableCell>{formattedEndDate}</TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" color="primary" onClick={() => onEditMember(member)}>
-                      <Edit fontSize="small" />
-                    </IconButton>
+                    <Box sx={{display: 'flex', gap: 0.5, justifyContent: 'center'}}>
+                      <Tooltip title="Edit">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => onEditMember(member)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {onViewAudit && (
+                        <Tooltip title="View Audit Log">
+                          <IconButton size="small" onClick={() => onViewAudit(member)}>
+                            <History fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {onViewPayments && member.user?.stripeCustomerId && (
+                        <Tooltip title="Payment History">
+                          <IconButton size="small" onClick={() => onViewPayments(member)}>
+                            <Payment fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {onDeleteMember && (
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => onDeleteMember(member)}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               );

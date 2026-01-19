@@ -37,6 +37,19 @@ export interface AuthService {
   readonly verifyAdminClaim: (
     sessionCookie: string,
   ) => Effect.Effect<{uid: string; email?: string; isAdmin: boolean}, AuthError | SessionError>;
+
+  readonly updateUserEmail: (uid: string, newEmail: string) => Effect.Effect<void, AuthError>;
+
+  readonly createAuthUser: (
+    email: string,
+    displayName?: string,
+  ) => Effect.Effect<{uid: string; email: string}, AuthError>;
+
+  readonly getUserByEmail: (
+    email: string,
+  ) => Effect.Effect<{uid: string; email: string} | null, AuthError>;
+
+  readonly deleteUser: (uid: string) => Effect.Effect<void, AuthError>;
 }
 
 // Service tag
@@ -149,6 +162,64 @@ const make = Effect.gen(function* () {
           email: decoded.email,
           isAdmin: decoded.admin === true,
         };
+      }),
+
+    updateUserEmail: (uid, newEmail) =>
+      Effect.tryPromise({
+        try: () => auth.updateUser(uid, {email: newEmail}),
+        catch: (error) =>
+          new AuthError({
+            code: 'UPDATE_EMAIL_FAILED',
+            message: `Failed to update email for user ${uid}`,
+            cause: error,
+          }),
+      }).pipe(Effect.map(() => undefined)),
+
+    createAuthUser: (email, displayName) =>
+      Effect.tryPromise({
+        try: async () => {
+          const userRecord = await auth.createUser({
+            email,
+            displayName,
+            emailVerified: true, // Legacy/complimentary members are pre-verified
+          });
+          return {uid: userRecord.uid, email: userRecord.email || email};
+        },
+        catch: (error) =>
+          new AuthError({
+            code: 'CREATE_USER_FAILED',
+            message: `Failed to create auth user with email ${email}`,
+            cause: error,
+          }),
+      }),
+
+    getUserByEmail: (email) =>
+      Effect.tryPromise({
+        try: async () => {
+          try {
+            const userRecord = await auth.getUserByEmail(email);
+            return {uid: userRecord.uid, email: userRecord.email || email};
+          } catch {
+            return null;
+          }
+        },
+        catch: (error) =>
+          new AuthError({
+            code: 'GET_USER_BY_EMAIL_FAILED',
+            message: `Failed to get user by email ${email}`,
+            cause: error,
+          }),
+      }),
+
+    deleteUser: (uid) =>
+      Effect.tryPromise({
+        try: () => auth.deleteUser(uid),
+        catch: (error) =>
+          new AuthError({
+            code: 'DELETE_USER_FAILED',
+            message: `Failed to delete user ${uid}`,
+            cause: error,
+          }),
       }),
   });
 });

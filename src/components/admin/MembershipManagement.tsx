@@ -1,6 +1,6 @@
 'use client';
 
-import {Refresh} from '@mui/icons-material';
+import {Refresh, Add, Upload, Schedule} from '@mui/icons-material';
 import {
   Box,
   Typography,
@@ -21,9 +21,16 @@ import {useState} from 'react';
 
 import {refreshStats, getStats, getMembers} from '@/src/lib/effect/client-admin';
 import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
-import {MembershipStats} from '@/src/lib/effect/schemas';
+import type {MembershipStats, MemberWithMembership} from '@/src/lib/effect/schemas';
 
+import {BulkImportModal} from './BulkImportModal';
+import {CreateMemberModal} from './CreateMemberModal';
+import {DeleteMemberDialog} from './DeleteMemberDialog';
+import {EditMemberModal} from './EditMemberModal';
+import {ExpiringMembersReport} from './ExpiringMembersReport';
+import {MemberAuditLog} from './MemberAuditLog';
 import {MemberTable} from './MemberTable';
+import {PaymentHistoryPanel} from './PaymentHistoryPanel';
 import {StatsCards} from './StatsCards';
 
 export function MembershipManagement() {
@@ -37,6 +44,17 @@ export function MembershipManagement() {
   const [planTypeFilter, setPlanTypeFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Modal state
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
+  const [expiringReportOpen, setExpiringReportOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<MemberWithMembership | null>(null);
+  const [deletingMember, setDeletingMember] = useState<MemberWithMembership | null>(null);
+  const [auditMember, setAuditMember] = useState<MemberWithMembership | null>(null);
+  const [paymentHistoryMember, setPaymentHistoryMember] = useState<MemberWithMembership | null>(
+    null,
+  );
 
   // Debounce search input using TanStack Pacer React hook
   const debouncedSetSearch = useDebouncedCallback(
@@ -160,6 +178,28 @@ export function MembershipManagement() {
           <Box sx={{display: 'flex', gap: 1}}>
             <Button
               variant="contained"
+              color="primary"
+              onClick={() => setCreateModalOpen(true)}
+              startIcon={<Add />}
+            >
+              Create Member
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => setBulkImportModalOpen(true)}
+              startIcon={<Upload />}
+            >
+              Bulk Import
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => setExpiringReportOpen(true)}
+              startIcon={<Schedule />}
+            >
+              Expiring Report
+            </Button>
+            <Button
+              variant="contained"
               color="success"
               onClick={() => handleExport('csv')}
               disabled={exporting}
@@ -213,6 +253,7 @@ export function MembershipManagement() {
                   <MenuItem value="canceled">Canceled</MenuItem>
                   <MenuItem value="incomplete">Incomplete</MenuItem>
                   <MenuItem value="unpaid">Unpaid</MenuItem>
+                  <MenuItem value="deleted">Deleted</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -275,14 +316,49 @@ export function MembershipManagement() {
               setPageSize(newSize);
               setPage(1);
             }}
-            onEditMember={(member) => {
-              // TODO: Open edit dialog
-              console.log('Edit member:', member);
-              alert('Edit functionality coming soon!');
-            }}
+            onEditMember={(member) => setEditingMember(member)}
+            onDeleteMember={(member) => setDeletingMember(member)}
+            onViewAudit={(member) => setAuditMember(member)}
+            onViewPayments={(member) => setPaymentHistoryMember(member)}
           />
         )}
       </Box>
+
+      {/* Modals */}
+      <CreateMemberModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+
+      <BulkImportModal open={bulkImportModalOpen} onClose={() => setBulkImportModalOpen(false)} />
+
+      <ExpiringMembersReport
+        open={expiringReportOpen}
+        onClose={() => setExpiringReportOpen(false)}
+      />
+
+      <EditMemberModal
+        open={!!editingMember}
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+      />
+
+      <DeleteMemberDialog
+        open={!!deletingMember}
+        member={deletingMember}
+        onClose={() => setDeletingMember(null)}
+      />
+
+      <MemberAuditLog
+        open={!!auditMember}
+        userId={auditMember?.user?.id || null}
+        memberName={auditMember?.user?.name || auditMember?.user?.email}
+        onClose={() => setAuditMember(null)}
+      />
+
+      <PaymentHistoryPanel
+        open={!!paymentHistoryMember}
+        userId={paymentHistoryMember?.user?.id || null}
+        memberName={paymentHistoryMember?.user?.name || paymentHistoryMember?.user?.email}
+        onClose={() => setPaymentHistoryMember(null)}
+      />
     </Box>
   );
 }
