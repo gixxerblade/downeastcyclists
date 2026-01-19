@@ -133,16 +133,16 @@ The code automatically detects which method to use.
 
 ```md
 FIREBASE_SERVICE_ACCOUNT_BASE64: 2,400 bytes
-Other env vars (Stripe, etc.):     1,289 bytes
-TOTAL:                             3,689 bytes ⚠️ (close to or over limit)
+Other env vars (Stripe, etc.): 1,289 bytes
+TOTAL: 3,689 bytes ⚠️ (close to or over limit)
 ```
 
 **After (well under 4KB limit):**
 
 ```md
-FIREBASE_ENCRYPTION_KEY:             44 bytes ✓
-Other env vars (Stripe, etc.):    1,289 bytes ✓
-TOTAL:                            1,333 bytes ✓ (67% reduction!)
+FIREBASE_ENCRYPTION_KEY: 44 bytes ✓
+Other env vars (Stripe, etc.): 1,289 bytes ✓
+TOTAL: 1,333 bytes ✓ (67% reduction!)
 ```
 
 ## Security Notes

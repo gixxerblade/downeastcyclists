@@ -2,6 +2,7 @@ import {FieldValue, Timestamp} from '@google-cloud/firestore';
 import {Context, Effect, Layer} from 'effect';
 
 import {getFirestoreClient} from '@/src/lib/firestore-client';
+
 import {FirestoreError, DuplicateWebhookError} from './errors';
 import type {WebhookEventDocument} from './schemas';
 

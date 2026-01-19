@@ -22,6 +22,7 @@ import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
 
 import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
+import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
 import {useAuth} from '@/src/components/auth/AuthProvider';
 import TrailStatus from '@/src/components/TrailStatus';
 import TrailStatusEditor from '@/src/components/TrailStatusEditor';
@@ -365,6 +366,11 @@ export default function DashboardPage() {
                   id="dashboard-tab-2"
                   aria-controls="dashboard-tabpanel-2"
                 />
+                <Tab
+                  label="Reconciliation"
+                  id="dashboard-tab-3"
+                  aria-controls="dashboard-tabpanel-3"
+                />
               </Tabs>
             </Box>
 
@@ -378,6 +384,10 @@ export default function DashboardPage() {
 
             <TabPanel value={tabValue} index={2}>
               <TrailStatusEditor />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={3}>
+              <ReconciliationTool />
             </TabPanel>
           </Paper>
         </Grid>

@@ -294,3 +294,88 @@ export const ExportOptions = S.Struct({
   format: S.Literal('csv', 'json'),
 });
 export type ExportOptions = S.Schema.Type<typeof ExportOptions>;
+
+// ============================================================================
+// Reconciliation Types
+// ============================================================================
+
+// Discrepancy types for reconciliation
+export const DiscrepancyType = S.Literal(
+  'NO_STRIPE_CUSTOMER', // No Stripe customer found for email
+  'NO_STRIPE_SUBSCRIPTION', // Customer has no active subscription
+  'MISSING_FIREBASE_USER', // User not in Firebase
+  'MISSING_FIREBASE_MEMBERSHIP', // Membership document missing
+  'MISSING_FIREBASE_CARD', // Card document missing
+  'STATUS_MISMATCH', // Status differs between Stripe and Firebase
+  'DATE_MISMATCH', // Start/end dates differ
+  'PLAN_MISMATCH', // Plan type differs
+  'CARD_STATUS_MISMATCH', // Card status doesn't match membership
+  'CARD_DATES_MISMATCH', // Card dates don't match membership
+  'NO_DISCREPANCY', // Everything matches
+);
+export type DiscrepancyType = S.Schema.Type<typeof DiscrepancyType>;
+
+// Stripe data snapshot for comparison
+export const StripeDataSnapshot = S.Struct({
+  customerId: S.String,
+  customerEmail: S.String,
+  subscriptionId: S.String,
+  subscriptionStatus: S.String,
+  priceId: S.String,
+  planType: PlanType,
+  currentPeriodStart: S.String, // ISO date
+  currentPeriodEnd: S.String, // ISO date
+  cancelAtPeriodEnd: S.Boolean,
+});
+export type StripeDataSnapshot = S.Schema.Type<typeof StripeDataSnapshot>;
+
+// Firebase data snapshot for comparison
+export const FirebaseDataSnapshot = S.Struct({
+  userId: S.String,
+  userEmail: S.String,
+  membership: S.NullOr(
+    S.Struct({
+      id: S.String,
+      stripeSubscriptionId: S.String,
+      status: MembershipStatus,
+      planType: PlanType,
+      startDate: S.String, // ISO date
+      endDate: S.String, // ISO date
+      autoRenew: S.Boolean,
+    }),
+  ),
+  card: S.NullOr(
+    S.Struct({
+      membershipNumber: S.String,
+      status: MembershipStatus,
+      planType: PlanType,
+      validFrom: S.String,
+      validUntil: S.String,
+    }),
+  ),
+});
+export type FirebaseDataSnapshot = S.Schema.Type<typeof FirebaseDataSnapshot>;
+
+// Reconciliation report
+export const ReconciliationReport = S.Struct({
+  email: S.String,
+  stripeData: S.NullOr(StripeDataSnapshot),
+  firebaseData: S.NullOr(FirebaseDataSnapshot),
+  discrepancies: S.Array(DiscrepancyType),
+  canReconcile: S.Boolean,
+  reconcileActions: S.Array(S.String), // Human-readable list of actions to take
+});
+export type ReconciliationReport = S.Schema.Type<typeof ReconciliationReport>;
+
+// Reconciliation result
+export const ReconciliationResult = S.Struct({
+  success: S.Boolean,
+  email: S.String,
+  actionsPerformed: S.Array(S.String),
+  membershipUpdated: S.Boolean,
+  cardUpdated: S.Boolean,
+  cardCreated: S.Boolean,
+  userCreated: S.Boolean,
+  error: S.optional(S.String),
+});
+export type ReconciliationResult = S.Schema.Type<typeof ReconciliationResult>;

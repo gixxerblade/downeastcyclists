@@ -71,9 +71,7 @@ export function MemberTable({
           <TableBody>
             {members.map((member) => {
               const endDate = member.membership?.endDate;
-              const formattedEndDate = endDate
-                ? new Date(endDate).toLocaleDateString()
-                : '-';
+              const formattedEndDate = endDate ? new Date(endDate).toLocaleDateString() : '-';
 
               return (
                 <TableRow

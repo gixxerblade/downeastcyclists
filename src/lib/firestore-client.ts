@@ -1,6 +1,7 @@
-import {Firestore} from '@google-cloud/firestore';
 import {readFileSync, existsSync} from 'fs';
 import {join} from 'path';
+
+import {Firestore} from '@google-cloud/firestore';
 
 let cachedFirestore: Firestore | null = null;
 
@@ -30,7 +31,7 @@ export function getFirestoreClient(): Firestore {
   // Fall back to environment variables (local development)
   if (!process.env.GOOGLE_PROJECT_ID || !process.env.GOOGLE_PRIVATE_KEY) {
     throw new Error(
-      'Firebase credentials not found. Either provide firebase-service-account.json or set GOOGLE_PROJECT_ID and GOOGLE_PRIVATE_KEY environment variables.'
+      'Firebase credentials not found. Either provide firebase-service-account.json or set GOOGLE_PROJECT_ID and GOOGLE_PRIVATE_KEY environment variables.',
     );
   }
 

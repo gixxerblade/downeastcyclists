@@ -13,6 +13,12 @@ export interface MembershipCardService {
     membership: MembershipDocument;
   }) => Effect.Effect<MembershipCard, CardError | FirestoreError | QRError>;
 
+  readonly updateCard: (params: {
+    userId: string;
+    user: UserDocument;
+    membership: MembershipDocument;
+  }) => Effect.Effect<MembershipCard, CardError | FirestoreError | QRError>;
+
   readonly getCard: (userId: string) => Effect.Effect<MembershipCard | null, FirestoreError>;
 
   readonly verifyMembership: (
@@ -79,6 +85,94 @@ const make = Effect.gen(function* () {
         yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
         return {...card, id: 'current'} as MembershipCard;
+      }),
+
+    // Update existing card - preserves membership number
+    updateCard: ({userId, user, membership}) =>
+      Effect.gen(function* () {
+        // Get existing card to preserve membership number
+        const existingCard = yield* firestore.getMembershipCard(userId);
+
+        if (!existingCard) {
+          // No existing card - create new one using createCard logic
+          // Get current year
+          const currentYear = new Date().getFullYear();
+
+          // Generate unique membership number (atomic)
+          const membershipNumber = yield* firestore.getNextMembershipNumber(currentYear);
+
+          // Calculate validity dates
+          const validFrom =
+            membership.startDate.toDate?.()?.toISOString() ||
+            new Date(membership.startDate as unknown as number).toISOString();
+          const validUntil =
+            membership.endDate.toDate?.() || new Date(membership.endDate as unknown as number);
+
+          // Generate QR code data
+          const qrData = yield* qr.generateQRData({
+            membershipNumber,
+            userId,
+            validUntil,
+          });
+
+          // Create card document
+          const card: Omit<MembershipCard, 'id'> = {
+            userId,
+            membershipNumber,
+            memberName: user.name || user.email,
+            email: user.email,
+            planType: membership.planType,
+            status: membership.status,
+            validFrom,
+            validUntil: validUntil.toISOString(),
+            qrCodeData: qrData,
+            pdfUrl: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Save to Firestore
+          yield* firestore.setMembershipCard(userId, card);
+
+          yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
+
+          return {...card, id: 'current'} as MembershipCard;
+        }
+
+        // Calculate validity dates from membership
+        const validFrom =
+          membership.startDate.toDate?.()?.toISOString() ||
+          new Date(membership.startDate as unknown as number).toISOString();
+        const validUntil =
+          membership.endDate.toDate?.() || new Date(membership.endDate as unknown as number);
+
+        // Regenerate QR code with updated dates
+        const qrData = yield* qr.generateQRData({
+          membershipNumber: existingCard.membershipNumber,
+          userId,
+          validUntil,
+        });
+
+        // Update card document preserving membership number
+        const updatedCard: Omit<MembershipCard, 'id'> = {
+          userId,
+          membershipNumber: existingCard.membershipNumber, // Keep existing number
+          memberName: user.name || user.email,
+          email: user.email,
+          planType: membership.planType,
+          status: membership.status,
+          validFrom,
+          validUntil: validUntil.toISOString(),
+          qrCodeData: qrData,
+          pdfUrl: null,
+          createdAt: existingCard.createdAt,
+          updatedAt: new Date().toISOString(),
+        };
+
+        yield* firestore.setMembershipCard(userId, updatedCard);
+        yield* Effect.log(`Membership card updated for user ${userId}`);
+
+        return {...updatedCard, id: 'current'} as MembershipCard;
       }),
 
     // Get existing card - simple delegation

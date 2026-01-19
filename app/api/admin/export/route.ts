@@ -1,88 +1,69 @@
 import {Schema as S} from '@effect/schema';
 import {Effect, pipe} from 'effect';
-import {cookies} from 'next/headers';
 import {NextRequest, NextResponse} from 'next/server';
 
-import {AdminService} from '@/src/lib/effect/admin.service';
+import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
 import {ExportService} from '@/src/lib/effect/export.service';
-import {LiveLayer} from '@/src/lib/effect/layers';
 import {ExportOptions} from '@/src/lib/effect/schemas';
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('session')?.value;
-
-  if (!sessionCookie) {
-    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
-  }
-
   const body = await request.json();
 
-  const program = pipe(
-    // Validate options
-    S.decodeUnknown(ExportOptions)(body),
-    Effect.mapError(() => ({
-      error: 'Invalid export options',
-      _tag: 'error' as const,
-      status: 400,
-    })),
+  const response = await handleAdminRoute({
+    handler: (admin, sessionCookie) =>
+      pipe(
+        // Validate options
+        S.decodeUnknown(ExportOptions)(body),
+        Effect.mapError(() => ({
+          error: 'Invalid export options',
+          _tag: 'error' as const,
+          status: 400,
+        })),
 
-    Effect.flatMap((options) =>
-      Effect.gen(function* () {
-        const admin = yield* AdminService;
-        const exportService = yield* ExportService;
+        Effect.flatMap((options) =>
+          Effect.gen(function* () {
+            const exportService = yield* ExportService;
 
-        // Verify admin access
-        yield* admin.verifyAdmin(sessionCookie);
+            // Verify admin access
+            yield* admin.verifyAdmin(sessionCookie);
 
-        // Generate export
-        if (options.format === 'csv') {
-          return {
-            data: yield* exportService.generateCSV(options),
-            contentType: 'text/csv',
-            filename: `members-export-${Date.now()}.csv`,
-          };
-        } else {
-          return {
-            data: yield* exportService.generateJSON(options),
-            contentType: 'application/json',
-            filename: `members-export-${Date.now()}.json`,
-          };
-        }
-      }),
-    ),
+            // Generate export
+            if (options.format === 'csv') {
+              return {
+                data: yield* exportService.generateCSV(options),
+                contentType: 'text/csv',
+                filename: `members-export-${Date.now()}.csv`,
+              };
+            } else {
+              return {
+                data: yield* exportService.generateJSON(options),
+                contentType: 'application/json',
+                filename: `members-export-${Date.now()}.json`,
+              };
+            }
+          }),
+        ),
+      ),
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError', 'AdminError'],
+  });
 
-    Effect.catchTag('UnauthorizedError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
-    ),
-    Effect.catchTag('SessionError', () =>
-      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
-    ),
-    Effect.catchTag('AuthError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 401}),
-    ),
-    Effect.catchTag('FirestoreError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-    ),
-    Effect.catchTag('ExportError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-    ),
-  );
-
-  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
-
-  if ('_tag' in result && result._tag === 'error') {
-    return NextResponse.json({error: result.error}, {status: result.status});
+  // If response is an error JSON, return it as is
+  const jsonResponse = await response.json();
+  if ('error' in jsonResponse) {
+    return NextResponse.json(jsonResponse, {status: response.status});
   }
 
-  // Type assertion after error check - we know this is the success case
-  const successResult = result as {data: string; contentType: string; filename: string};
+  // Otherwise, return file download
+  const {data, contentType, filename} = jsonResponse as {
+    data: string;
+    contentType: string;
+    filename: string;
+  };
 
-  // Return file download
-  return new NextResponse(successResult.data, {
+  return new NextResponse(data, {
     headers: {
-      'Content-Type': successResult.contentType,
-      'Content-Disposition': `attachment; filename="${successResult.filename}"`,
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
 }

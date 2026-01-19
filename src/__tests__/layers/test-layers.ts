@@ -1,7 +1,9 @@
 import {Effect, Layer} from 'effect';
 import {vi} from 'vitest';
 
+import {AdminService, type AdminService as AdminServiceType} from '@/src/lib/effect/admin.service';
 import {AuthService, type AuthService as AuthServiceType} from '@/src/lib/effect/auth.service';
+import {NotFoundError} from '@/src/lib/effect/errors';
 import {
   FirestoreService,
   type FirestoreService as FirestoreServiceType,
@@ -48,6 +50,8 @@ export const createTestStripeService = (
   addInvoiceItem: vi.fn(() =>
     Effect.fail(new Error('Not mocked')),
   ) as unknown as StripeServiceType['addInvoiceItem'],
+  getCustomerByEmail: vi.fn(() => Effect.succeed(null)),
+  listCustomerSubscriptions: vi.fn(() => Effect.succeed([])),
   ...overrides,
 });
 
@@ -69,6 +73,7 @@ export const createTestFirestoreService = (
   getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2025-000001')),
   getMembershipCard: vi.fn(() => Effect.succeed(null)),
   setMembershipCard: vi.fn(() => Effect.succeed(undefined)),
+  updateMembershipCard: vi.fn(() => Effect.succeed(undefined)),
   getMembershipByNumber: vi.fn(() => Effect.succeed(null)),
   getAllMemberships: vi.fn(() => Effect.succeed({members: [], total: 0})),
   getStats: vi.fn(() => Effect.succeed(null)),
@@ -146,6 +151,27 @@ export const createTestPortalService = (
   ...overrides,
 });
 
+export const createTestAdminService = (
+  overrides: Partial<AdminServiceType> = {},
+): AdminServiceType => ({
+  verifyAdmin: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['verifyAdmin'],
+  setAdminRole: vi.fn(() => Effect.succeed(undefined)),
+  searchMembers: vi.fn(() => Effect.succeed({members: [], total: 0})),
+  getMember: vi.fn(() =>
+    Effect.fail(new NotFoundError({resource: 'user', id: ''})),
+  ) as unknown as AdminServiceType['getMember'],
+  adjustMembership: vi.fn(() => Effect.succeed(undefined)),
+  validateStripeVsFirebase: vi.fn(() =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['validateStripeVsFirebase'],
+  reconcileMembership: vi.fn((_email: string, _adminUid?: string) =>
+    Effect.fail(new Error('Not mocked')),
+  ) as unknown as AdminServiceType['reconcileMembership'],
+  ...overrides,
+});
+
 // Layer builders
 export const TestStripeLayer = (service: StripeServiceType) =>
   Layer.succeed(StripeService, service);
@@ -163,6 +189,9 @@ export const TestMembershipLayer = (service: MembershipServiceType) =>
 
 export const TestPortalLayer = (service: PortalServiceType) =>
   Layer.succeed(PortalService, service);
+
+export const TestAdminLayer = (service: AdminServiceType) =>
+  Layer.succeed(AdminService, service);
 
 // Combined test layer builder for integration tests
 export const createTestLayers = (services: {

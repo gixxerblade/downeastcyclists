@@ -46,11 +46,13 @@ const StatsLayer = StatsServiceLive.pipe(Layer.provide(FirestoreServiceLive));
 // Export service (depends on Firestore)
 const ExportLayer = ExportServiceLive.pipe(Layer.provide(FirestoreServiceLive));
 
-// Admin service (depends on Auth + Firestore + Stats)
+// Admin service (depends on Auth + Firestore + Stats + Stripe + Card)
 const AdminLayer = AdminServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(FirestoreServiceLive),
   Layer.provide(StatsLayer),
+  Layer.provide(StripeServiceLive),
+  Layer.provide(CardLayer),
 );
 
 // Complete live layer with all services

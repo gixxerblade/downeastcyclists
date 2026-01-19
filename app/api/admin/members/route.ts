@@ -1,19 +1,10 @@
-import {Effect, pipe} from 'effect';
-import {cookies} from 'next/headers';
+import {Effect} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
-import {AdminService} from '@/src/lib/effect/admin.service';
-import {LiveLayer} from '@/src/lib/effect/layers';
+import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
 import type {MemberSearchParams} from '@/src/lib/effect/schemas';
 
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('session')?.value;
-
-  if (!sessionCookie) {
-    return NextResponse.json({error: 'Not authenticated'}, {status: 401});
-  }
-
   // Parse query params
   const {searchParams} = new URL(request.url);
   const expiringWithinDaysParam = searchParams.get('expiringWithinDays');
@@ -29,39 +20,26 @@ export async function GET(request: NextRequest) {
     pageSize: pageSizeParam ? parseInt(pageSizeParam) : 20,
   };
 
-  const program = pipe(
-    Effect.gen(function* () {
-      const admin = yield* AdminService;
+  const response = await handleAdminRoute({
+    handler: (admin, sessionCookie) =>
+      Effect.gen(function* () {
+        // Verify admin access
+        yield* admin.verifyAdmin(sessionCookie);
 
-      // Verify admin access
-      yield* admin.verifyAdmin(sessionCookie);
+        // Search members
+        return yield* admin.searchMembers(params);
+      }),
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+  });
 
-      // Search members
-      return yield* admin.searchMembers(params);
-    }),
-
-    Effect.catchTag('UnauthorizedError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
-    ),
-    Effect.catchTag('SessionError', () =>
-      Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
-    ),
-    Effect.catchTag('AuthError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 401}),
-    ),
-    Effect.catchTag('FirestoreError', (error) =>
-      Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-    ),
-  );
-
-  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
-
-  if ('_tag' in result && result._tag === 'error') {
-    return NextResponse.json({error: result.error}, {status: result.status});
+  // If response is an error JSON, return it as is
+  const jsonResponse = await response.json();
+  if ('error' in jsonResponse) {
+    return NextResponse.json(jsonResponse, {status: response.status});
   }
 
   // Serialize Firestore Timestamps to ISO strings for JSON response
-  const data = result as {members: any[]; total: number};
+  const data = jsonResponse as {members: any[]; total: number};
   const serializedResult = {
     members: data.members.map((member: any) => ({
       ...member,
@@ -69,8 +47,7 @@ export async function GET(request: NextRequest) {
         ? {
             ...member.membership,
             startDate:
-              member.membership.startDate?.toDate?.()?.toISOString() ||
-              member.membership.startDate,
+              member.membership.startDate?.toDate?.()?.toISOString() || member.membership.startDate,
             endDate:
               member.membership.endDate?.toDate?.()?.toISOString() || member.membership.endDate,
           }
