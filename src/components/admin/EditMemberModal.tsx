@@ -148,7 +148,7 @@ export function EditMemberModal({open, member, onClose}: EditMemberModalProps) {
     if (formData.startDate !== originalStartDate) changes.startDate = formData.startDate;
     if (formData.endDate !== originalEndDate) changes.endDate = formData.endDate;
 
-    updateMutation.mutate({userId: member.user!.id, input: changes});
+    updateMutation.mutate({userId: member.user.id, input: changes});
   };
 
   const handleInputChange = (field: keyof UpdateMemberInput, value: string | undefined) => {
