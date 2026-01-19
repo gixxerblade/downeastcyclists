@@ -32,6 +32,21 @@ interface EditMemberModalProps {
   onClose: () => void;
 }
 
+/**
+ * Safely converts a date value to ISO date string (YYYY-MM-DD)
+ * Returns empty string if the date is invalid
+ */
+function toISODateString(dateValue: unknown): string {
+  if (!dateValue) return '';
+
+  const date = new Date(dateValue as string | number | Date);
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) return '';
+
+  return date.toISOString().split('T')[0];
+}
+
 export function EditMemberModal({open, member, onClose}: EditMemberModalProps) {
   const queryClient = useQueryClient();
 
@@ -52,12 +67,8 @@ export function EditMemberModal({open, member, onClose}: EditMemberModalProps) {
   // Reset form when member changes
   useEffect(() => {
     if (member) {
-      const startDate = member.membership?.startDate
-        ? new Date(member.membership.startDate).toISOString().split('T')[0]
-        : '';
-      const endDate = member.membership?.endDate
-        ? new Date(member.membership.endDate).toISOString().split('T')[0]
-        : '';
+      const startDate = toISODateString(member.membership?.startDate);
+      const endDate = toISODateString(member.membership?.endDate);
 
       setFormData({
         email: member.user?.email || '',
@@ -131,12 +142,8 @@ export function EditMemberModal({open, member, onClose}: EditMemberModalProps) {
       changes.stripeCustomerId = formData.stripeCustomerId;
     }
 
-    const originalStartDate = member.membership?.startDate
-      ? new Date(member.membership.startDate).toISOString().split('T')[0]
-      : '';
-    const originalEndDate = member.membership?.endDate
-      ? new Date(member.membership.endDate).toISOString().split('T')[0]
-      : '';
+    const originalStartDate = toISODateString(member.membership?.startDate);
+    const originalEndDate = toISODateString(member.membership?.endDate);
 
     if (formData.startDate !== originalStartDate) changes.startDate = formData.startDate;
     if (formData.endDate !== originalEndDate) changes.endDate = formData.endDate;
