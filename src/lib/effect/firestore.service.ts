@@ -818,8 +818,7 @@ const make = Effect.sync(() => {
           const expiryTimestamp = Timestamp.fromDate(expiryDate);
 
           // Query memberships expiring within the time frame
-          // Note: Firestore limits combining 'in' with multiple range queries
-          // So we query a broader range and filter in memory
+          // Using a single range query to avoid needing composite index
           console.log(
             '[getExpiringMemberships] Querying for memberships expiring between',
             now,
@@ -828,7 +827,6 @@ const make = Effect.sync(() => {
           );
           const snapshot = await db
             .collectionGroup('memberships')
-            .where('endDate', '>=', nowTimestamp)
             .where('endDate', '<=', expiryTimestamp)
             .orderBy('endDate', 'asc')
             .get();
@@ -843,9 +841,24 @@ const make = Effect.sync(() => {
           const members: MemberWithMembership[] = await Promise.all(
             snapshot.docs
               .filter((doc) => {
-                // Filter by status in memory since Firestore limits 'in' with range queries
+                // Filter by status and date range in memory to avoid composite index
                 const data = doc.data();
-                return data.status === 'active' || data.status === 'past_due';
+                const isActiveOrPastDue = data.status === 'active' || data.status === 'past_due';
+
+                // Check if endDate is within our range
+                const endDate = data.endDate;
+                let endDateObj: Date;
+
+                // Handle Firestore Timestamp
+                if (endDate && typeof endDate === 'object' && 'toDate' in endDate) {
+                  endDateObj = endDate.toDate();
+                } else {
+                  endDateObj = new Date(endDate);
+                }
+
+                const isInRange = endDateObj >= now && endDateObj <= expiryDate;
+
+                return isActiveOrPastDue && isInRange;
               })
               .map(async (doc) => {
                 const membership = {id: doc.id, ...doc.data()} as MembershipDocument;
