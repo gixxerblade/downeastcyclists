@@ -20,6 +20,7 @@ import {
 import Grid from '@mui/material/Grid2';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {Effect} from 'effect';
+import {Timestamp} from 'firebase/firestore';
 import {useState, useEffect} from 'react';
 
 import {updateMember} from '@/src/lib/effect/client-admin';
@@ -34,15 +35,28 @@ interface EditMemberModalProps {
 
 /**
  * Safely converts a date value to ISO date string (YYYY-MM-DD)
- * Handles Firestore Timestamps, Date objects, and date strings
+ * Handles Firestore Timestamps (instance or serialized), Date objects, and date strings
  * Returns empty string if the date is invalid
  */
 function toISODateString(dateValue: unknown): string {
   if (!dateValue) return '';
 
-  // Handle Firestore Timestamp objects
-  if (typeof dateValue === 'object' && dateValue !== null && 'toDate' in dateValue) {
-    const date = (dateValue as {toDate: () => Date}).toDate();
+  // Handle Firestore Timestamp instances
+  if (dateValue instanceof Timestamp) {
+    const date = dateValue.toDate();
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  }
+
+  // Handle serialized Firestore Timestamp objects (from API/JSON)
+  if (
+    typeof dateValue === 'object' &&
+    dateValue !== null &&
+    '_seconds' in dateValue &&
+    typeof (dateValue as {_seconds: unknown})._seconds === 'number'
+  ) {
+    const timestamp = dateValue as {_seconds: number; _nanoseconds?: number};
+    const date = new Date(timestamp._seconds * 1000);
     if (isNaN(date.getTime())) return '';
     return date.toISOString().split('T')[0];
   }
