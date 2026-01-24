@@ -9,6 +9,7 @@ import {useState, useEffect} from 'react';
 
 import {loginWithPassword, sendMagicLink} from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
+import {auth} from '@/src/utils/firebase';
 
 interface LoginCredentials {
   email: string;
@@ -22,8 +23,17 @@ export function LoginForm() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   // Check if user is already logged in and redirect
+  // Also check if this page was loaded via a magic link
   useEffect(() => {
     const checkAuth = async () => {
+      // First, check if this is a magic link redirect
+      const {isSignInWithEmailLink} = await import('firebase/auth');
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        // Redirect to verify page to handle the magic link
+        router.push(`/member/verify${window.location.search}`);
+        return;
+      }
+
       const hasSession = document.cookie.includes('session=');
       if (hasSession) {
         // Check session validity via server
