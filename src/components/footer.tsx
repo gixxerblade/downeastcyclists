@@ -1,6 +1,9 @@
+'use client';
+
 import {Facebook, Instagram} from '@mui/icons-material';
+import {CircularProgress} from '@mui/material';
 import {styled} from '@mui/material/styles';
-import Link from 'next/link';
+import React, {useEffect, useRef, useState} from 'react';
 
 // Import icons individually
 import BicycleGallery from '../icons/BicycleGallery';
@@ -83,16 +86,7 @@ const Footer = () => {
           </div>
           <div className="flex flex-col items-center">
             <h1 className="text-2xl font-bold text-center mb-4">Weekly Mileage</h1>
-            <div className="text-center">
-              <iframe
-                allowTransparency={true}
-                // frameBorder="0"
-                height="160"
-                // scrolling="no"
-                src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
-                width="300"
-              ></iframe>
-            </div>
+            <StravaWidget />
           </div>
         </div>
         <div className="mt-8 text-center">
@@ -113,3 +107,89 @@ const StyledIcon = styled(Icons)(({theme}) => ({
     },
   },
 }));
+
+const StravaWidget = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify the message is from Strava
+      if (event.origin !== 'https://www.strava.com') return;
+
+      // If we receive any message from Strava, the widget is working
+      setIsLoading(false);
+      setError(false);
+
+      // Clear the timeout since we got a response
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+
+    // Listen for postMessage from Strava iframe
+    window.addEventListener('message', handleMessage);
+
+    // Set a timeout - if we don't hear from Strava in 5 seconds, show error
+    timeoutRef.current = setTimeout(() => {
+      setIsLoading(false);
+      setError(true);
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 text-gray-600">
+        <p className="mb-2">Strava widget temporarily unavailable</p>
+        <a
+          href="https://www.strava.com/clubs/4097"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline"
+        >
+          View our club activities on Strava →
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center">
+      {isLoading && (
+        <div className="flex items-center justify-center h-40">
+          <CircularProgress />
+        </div>
+      )}
+      <iframe
+        ref={iframeRef}
+        height="160"
+        src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
+        style={{display: isLoading ? 'none' : 'block'}}
+        title="Strava Club Widget"
+        width="300"
+      />
+      {!isLoading && !error && (
+        <div className="mt-2 text-sm text-gray-600">
+          <a
+            href="https://www.strava.com/clubs/4097"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            View full activities on Strava →
+          </a>
+        </div>
+      )}
+    </div>
+  );
+};

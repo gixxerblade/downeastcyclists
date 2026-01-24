@@ -19,9 +19,13 @@ export function middleware(request: NextRequest) {
 
   // Protected routes - require authentication
   const protectedRoutes = ['/dashboard', '/member'];
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const publicAuthRoutes = ['/verify', '/auth-handler']; // Routes needed for authentication flow
 
-  if (isProtectedRoute && !token) {
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isPublicAuthRoute = publicAuthRoutes.some((route) => pathname.startsWith(route));
+
+  // Redirect to login if accessing protected route without token, unless it's a public auth route
+  if (isProtectedRoute && !token && !isPublicAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url), {
       status: 302,
       headers: {
