@@ -38,6 +38,10 @@ export default function VerifyPage() {
       const redirectUrl = isAdmin ? '/dashboard' : '/member';
       window.location.href = redirectUrl;
     },
+    onError: () => {
+      // Clear the invalid link state and show error
+      setIsValidLink(false);
+    },
   });
 
   useEffect(() => {
@@ -94,7 +98,7 @@ export default function VerifyPage() {
     );
   }
 
-  // Invalid link
+  // Invalid link or sign-in error
   if (isValidLink === false) {
     return (
       <Container maxWidth="xs">
@@ -106,10 +110,15 @@ export default function VerifyPage() {
             alignItems: 'center',
           }}
         >
-          <Alert severity="error" sx={{width: '100%'}}>
-            Invalid sign-in link
+          <Alert severity="error" sx={{width: '100%', mb: 2}}>
+            {verifyMutation.error
+              ? `Sign-in failed: ${verifyMutation.error.message}`
+              : 'Invalid or expired sign-in link'}
           </Alert>
-          <Button variant="text" onClick={() => router.push('/login')} sx={{mt: 2}}>
+          <Typography variant="body2" color="text.secondary" sx={{mb: 2, textAlign: 'center'}}>
+            The link may have expired or already been used. Please request a new sign-in link.
+          </Typography>
+          <Button variant="contained" onClick={() => router.push('/login')} fullWidth>
             Back to login
           </Button>
         </Box>

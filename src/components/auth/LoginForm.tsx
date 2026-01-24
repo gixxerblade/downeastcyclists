@@ -26,11 +26,25 @@ export function LoginForm() {
   // Also check if this page was loaded via a magic link
   useEffect(() => {
     const checkAuth = async () => {
-      // First, check if this is a magic link redirect
+      // Check if URL has Firebase action parameters (mode, oobCode, apiKey)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasFirebaseActionParams =
+        urlParams.has('mode') || urlParams.has('oobCode') || urlParams.has('apiKey');
+
+      if (hasFirebaseActionParams) {
+        // Firebase redirected us here with auth parameters
+        // Forward to the verify page to handle the magic link
+        router.push(`/verify${window.location.search}`);
+        return;
+      }
+
+      // Also check if this is a magic link using Firebase's method
       const {isSignInWithEmailLink} = await import('firebase/auth');
-      if (isSignInWithEmailLink(auth, window.location.href)) {
+      const isMagicLink = isSignInWithEmailLink(auth, window.location.href);
+
+      if (isMagicLink) {
         // Redirect to verify page to handle the magic link
-        router.push(`/member/verify${window.location.search}`);
+        router.push(`/verify${window.location.search}`);
         return;
       }
 
@@ -55,7 +69,6 @@ export function LoginForm() {
           }
         } catch (error) {
           // Silently fail - user can login normally
-          console.error('Auth check error:', error);
         }
       }
     };
@@ -67,7 +80,6 @@ export function LoginForm() {
   const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
     onSuccess: (_, variables) => {
-      console.log('Login successful, redirecting...', variables.email);
       // Check if user is admin - normalize email comparison
       const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
         .toLowerCase()
@@ -75,22 +87,16 @@ export function LoginForm() {
       const userEmail = variables.email.toLowerCase().trim();
       const isAdmin = userEmail === adminEmail;
 
-      console.log('Admin check:', {adminEmail, userEmail, isAdmin});
-
       // Use window.location for a hard redirect to ensure it works
       const redirectUrl = isAdmin ? '/dashboard' : '/member';
-      console.log('Redirecting to:', redirectUrl);
       window.location.href = redirectUrl;
-    },
-    onError: (error) => {
-      console.error('Login error:', error);
     },
   });
 
   // Magic Link Mutation - using Effect
   const magicLinkMutation = useMutation<void, AuthError, string>({
     mutationFn: (email) =>
-      Effect.runPromise(sendMagicLink(email, `${window.location.origin}/member/verify`)),
+      Effect.runPromise(sendMagicLink(email, `${window.location.origin}/auth-handler`)),
     onSuccess: () => {
       setMagicLinkSent(true);
     },

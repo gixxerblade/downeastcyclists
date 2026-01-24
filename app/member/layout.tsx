@@ -2,7 +2,7 @@ import {redirect} from 'next/navigation';
 
 import {verifySession} from '@/src/actions/auth';
 
-export default async function MemberLayout({children}: {children: React.ReactNode}) {
+export default async function la({children}: {children: React.ReactNode}) {
   const session = await verifySession();
 
   if (!session.authenticated) {
