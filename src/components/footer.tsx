@@ -85,13 +85,12 @@ const Footer = () => {
             <h1 className="text-2xl font-bold text-center mb-4">Weekly Mileage</h1>
             <div className="text-center">
               <iframe
-                title="Strava Club Mileage"
+                allowTransparency={true}
+                // frameBorder="0"
                 height="160"
+                // scrolling="no"
+                src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
                 width="300"
-                // allowTransparency={true}
-                scrolling="no"
-                loading="lazy"
-                src="https://www.strava.com/clubs/down-east-cyclists/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
               ></iframe>
             </div>
           </div>
