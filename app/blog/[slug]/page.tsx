@@ -12,13 +12,13 @@ import DecLogo from '../../../assets/images/hungry_toad-48.webp';
 export const revalidate = 3600;
 
 interface BlogPostPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export default async function BlogPostPage({params}: BlogPostPageProps) {
-  const {slug} = params;
+  const {slug} = await params;
   const post = await fetchBlogPostBySlug(slug);
 
   if (!post) {
@@ -90,10 +90,10 @@ export default async function BlogPostPage({params}: BlogPostPageProps) {
               ),
               img: ({node, src, alt, ...props}) => (
                 <div className="my-6 relative">
-                  {src && (
+                  {typeof src === 'string' && (
                     <Image
-                      src={src?.startsWith('//') ? `https:${src}` : src}
-                      alt={alt || ''}
+                      src={src.startsWith('//') ? `https:${src}` : src}
+                      alt={typeof alt === 'string' ? alt : ''}
                       width={800}
                       height={450}
                       className="rounded-lg max-w-full"
