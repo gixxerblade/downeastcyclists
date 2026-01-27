@@ -20,10 +20,9 @@ const nextConfig = {
   },
   // Configure static generation and ISR
   staticPageGenerationTimeout: 120, // Increase timeout for static generation (in seconds)
-  serverExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
 
-  // Turbopack configuration (empty to acknowledge we're using Turbopack)
-  turbopack: {},
+  // Mark Firebase packages as external (not bundled by Next.js)
+  serverExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
 
   // Add redirect from /about to /about/bylaws
   async redirects() {
