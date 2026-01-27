@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import React from 'react';
 
 const NotFound = () => {
@@ -38,9 +39,9 @@ const NotFound = () => {
 
       <p className="text-center">
         Head back to the{' '}
-        <a href="/" className="text-blue-600 hover:text-blue-800 no-underline">
+        <Link href="/" className="text-blue-600 hover:text-blue-800 no-underline">
           trailhead
-        </a>{' '}
+        </Link>{' '}
         and start over.
       </p>
     </div>
