@@ -1,5 +1,5 @@
 [build]
-command = "chmod +x scripts/decrypt-credentials.sh && scripts/decrypt-credentials.sh && TURBOPACK=0 pnpm build"
+command = "chmod +x scripts/decrypt-credentials.sh && scripts/decrypt-credentials.sh && pnpm build"
 publish = ".next"
 functions = "netlify/functions"
 

@@ -94,8 +94,7 @@ export async function GET() {
     return NextResponse.json(
       {
         topLevelError: 'Entire endpoint crashed',
-        message:
-          topLevelError instanceof Error ? topLevelError.message : String(topLevelError),
+        message: topLevelError instanceof Error ? topLevelError.message : String(topLevelError),
         stack: topLevelError instanceof Error ? topLevelError.stack : undefined,
       },
       {
