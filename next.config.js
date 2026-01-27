@@ -20,7 +20,7 @@ const nextConfig = {
   },
   // Configure static generation and ISR
   staticPageGenerationTimeout: 120, // Increase timeout for static generation (in seconds)
-  serverExternalPackages: ['@google-cloud/firestore'],
+  serverExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
   // Add redirect from /about to /about/bylaws
   async redirects() {
     return [
