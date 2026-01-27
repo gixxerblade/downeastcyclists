@@ -9,10 +9,10 @@ interface TrailUpdateData {
   notes?: string;
 }
 
-export async function PATCH(request: NextRequest, {params}: {params: {id: string}}) {
+export async function PATCH(request: NextRequest, {params}: {params: Promise<{id: string}>}) {
   try {
     // Check authentication
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authToken = cookieStore.get('session');
 
     if (!authToken) {
@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
     }
 
     // Get the trail ID from the URL params
-    const id = params.id;
+    const {id} = await params;
     if (!id) {
       return NextResponse.json({error: 'Trail ID is required'}, {status: 400});
     }

@@ -12,8 +12,9 @@ import Skeleton from './skeleton';
 // Set a reasonable revalidation time (e.g., 1 hour)
 export const revalidate = 3600;
 
-export default async function Blog({searchParams}: {searchParams: {page: string}}) {
-  const page = typeof searchParams.page === 'string' ? Number(searchParams.page) : 1;
+export default async function Blog({searchParams}: {searchParams: Promise<{page: string}>}) {
+  const resolvedParams = await searchParams;
+  const page = typeof resolvedParams.page === 'string' ? Number(resolvedParams.page) : 1;
 
   const {data: posts, lastPage} = await fetchBlogPosts(page);
   return (
