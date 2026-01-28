@@ -53,7 +53,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
     // Refetch when window regains focus (e.g., returning from Stripe)
     refetchOnWindowFocus: true,
     // Don't retry on 401/404 errors
-    retry: (failureCount, error) => {
+    retry: (failureCount: number, error: CardError | NotFoundError | SessionError) => {
       if (error._tag === 'SessionError' || error._tag === 'NotFoundError') {
         return false;
       }
