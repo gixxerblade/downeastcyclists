@@ -1,4 +1,4 @@
-import {Effect, pipe, Exit} from 'effect';
+import {Effect, Exit} from 'effect';
 import {cookies} from 'next/headers';
 import {NextResponse} from 'next/server';
 

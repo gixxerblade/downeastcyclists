@@ -91,7 +91,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, response.clone());
               return response;
             })
-            .catch((error) => {
+            .catch(() => {
               // If network fails, try to return from cache
               return cache.match(event.request);
             });
@@ -109,7 +109,7 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) {
           // Return cached response immediately
           // Fetch from network in the background to update cache
-          const fetchPromise = fetch(event.request).then((networkResponse) => {
+          fetch(event.request).then((networkResponse) => {
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, networkResponse.clone());
             });

@@ -100,7 +100,9 @@ export function BulkImportModal({open, onClose}: BulkImportModalProps) {
   };
 
   const handleImport = () => {
-    const validRows = parsedRows.filter((r) => r.valid && r.data).map((r) => r.data!);
+    const validRows = parsedRows
+      .filter((r) => r.valid && r.data)
+      .map((r) => r.data as NonNullable<typeof r.data>);
     if (validRows.length === 0) {
       setParseError('No valid rows to import');
       return;

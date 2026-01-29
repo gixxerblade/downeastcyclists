@@ -98,7 +98,7 @@ const Footer = () => {
 };
 export default Footer;
 
-const StyledIcon = styled(Icons)(({theme}) => ({
+const StyledIcon = styled(Icons)(() => ({
   '& svg': {
     fill: '#000000',
     '&:hover': {

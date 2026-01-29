@@ -19,7 +19,7 @@ import {useTrails, useUpdateTrail} from '@/src/hooks/useTrailQueries';
 import {TrailData} from '@/src/utils/trails';
 
 export default function TrailStatusEditor() {
-  const {data: trails = [], isLoading: isLoadingTrails} = useTrails();
+  const {data: trails = []} = useTrails();
   const updateTrailMutation = useUpdateTrail();
 
   const [editingTrails, setEditingTrails] = useState<{[key: string]: TrailData}>({});

@@ -167,7 +167,9 @@ export function PaymentHistoryPanel({open, userId, memberName, onClose}: Payment
                           <Button
                             size="small"
                             color="warning"
-                            onClick={() => handleRefund(payment.paymentIntentId!)}
+                            onClick={() =>
+                              payment.paymentIntentId && handleRefund(payment.paymentIntentId)
+                            }
                             disabled={refundingId === payment.paymentIntentId}
                           >
                             {refundingId === payment.paymentIntentId ? 'Refunding...' : 'Refund'}

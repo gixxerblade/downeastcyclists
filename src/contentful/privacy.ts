@@ -6,7 +6,7 @@ import React, {ReactNode} from 'react';
 import {TypePrivacySkeleton} from '@/src/contentful/types/TypePrivacy';
 import {privacy as localPrivacy} from '@/src/data/privacy';
 
-import {client, getEntriesCached} from './contentfulClient';
+import {getEntriesCached} from './contentfulClient';
 
 type PrivacyEntry = Entry<TypePrivacySkeleton, undefined, string>;
 

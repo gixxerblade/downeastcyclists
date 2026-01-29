@@ -1,4 +1,4 @@
-import {client, getAssetCached} from './contentfulClient';
+import {getAssetCached} from './contentfulClient';
 
 export async function getB3Assets() {
   const assets = ['7kyEOS1dsbBjsag1FiN5iK', '4nGfC80BPGaEa2KDhE09ST', '1qzDU1ZDpWfCfjwD4lU6lk'];

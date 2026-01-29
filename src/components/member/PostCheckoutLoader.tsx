@@ -11,7 +11,7 @@ interface PostCheckoutLoaderProps {
 
 export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const _searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'timeout'>('loading');
   const [attempts, setAttempts] = useState(0);
   const maxAttempts = 30; // 30 seconds max (polling every 1 second)

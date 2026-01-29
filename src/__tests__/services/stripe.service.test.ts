@@ -1,4 +1,4 @@
-import {Effect, Exit, Layer} from 'effect';
+import {Effect, Exit} from 'effect';
 import {describe, it, expect, vi} from 'vitest';
 
 import {StripeError, ValidationError} from '@/src/lib/effect/errors';

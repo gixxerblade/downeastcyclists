@@ -1,6 +1,6 @@
 export default async function geoBlock(req, context) {
   // Get geo information and client IP from the context
-  const {geo, ip} = context;
+  const {geo} = context;
 
   // Check if the request is from outside the US
   if (geo.country.code !== 'US') {
@@ -8,7 +8,7 @@ export default async function geoBlock(req, context) {
 
     // Get request headers for additional security checks
     const userAgent = req.headers.get('user-agent') || '';
-    const referer = req.headers.get('referer') || '';
+    const _referer = req.headers.get('referer') || '';
 
     // Simple heuristic for potential DDoS detection
     // This is a basic example - in production you would use more sophisticated detection

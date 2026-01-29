@@ -6,7 +6,7 @@ import React, {ReactNode} from 'react';
 import {TypeBylawSkeleton} from '@/src/contentful/types/TypeBylaw';
 import {bylaws as localBylaws} from '@/src/data/bylaws';
 
-import {client, getEntriesCached} from './contentfulClient';
+import {getEntriesCached} from './contentfulClient';
 
 type BylawEntry = Entry<TypeBylawSkeleton, undefined, string>;
 

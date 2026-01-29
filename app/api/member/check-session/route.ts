@@ -10,7 +10,7 @@ import {PortalService} from '@/src/lib/effect/portal.service';
  * Check if a user's membership has been created after checkout
  * Used for polling after Stripe redirects back to the site
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('session')?.value;
 

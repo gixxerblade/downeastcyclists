@@ -1,4 +1,4 @@
-import {Box, Container, Paper} from '@mui/material';
+import {Box, Container} from '@mui/material';
 
 import TrailStatus from '@/src/components/TrailStatus';
 import {getHeroVideo} from '@/src/contentful/video';
