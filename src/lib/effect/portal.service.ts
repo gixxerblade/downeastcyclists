@@ -55,7 +55,7 @@ const make = Effect.gen(function* () {
         // Fetch user
         const user = yield* firestore.getUser(userId);
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
+          return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
         // Fetch membership
@@ -110,16 +110,14 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
+          return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
         if (!user.stripeCustomerId) {
-          return yield* Effect.fail(
-            new NotFoundError({
-              resource: 'stripeCustomer',
-              id: userId,
-            }),
-          );
+          return yield* new NotFoundError({
+            resource: 'stripeCustomer',
+            id: userId,
+          });
         }
 
         // Create portal session

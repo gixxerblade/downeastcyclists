@@ -429,7 +429,7 @@ describe('AuthService', () => {
   describe('revokeRefreshTokens', () => {
     it('should succeed when revoking tokens', async () => {
       const mockService = createTestAuthService({
-        revokeRefreshTokens: vi.fn(() => Effect.succeed(undefined)),
+        revokeRefreshTokens: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -471,7 +471,7 @@ describe('AuthService', () => {
   describe('setCustomClaims', () => {
     it('should succeed when setting claims', async () => {
       const mockService = createTestAuthService({
-        setCustomClaims: vi.fn(() => Effect.succeed(undefined)),
+        setCustomClaims: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {

@@ -3,9 +3,7 @@ import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
 import {StripeError, FirestoreError, NotFoundError} from '@/src/lib/effect/errors';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
-import {StripeService} from '@/src/lib/effect/stripe.service';
 
 import {
   createTestStripeService,
@@ -13,11 +11,7 @@ import {
   TestStripeLayer,
   TestFirestoreLayer,
 } from '../layers/test-layers';
-import {
-  createMockUserDocument,
-  createMockMembershipDocument,
-  createMockTimestamp,
-} from '../mocks/firestore.mock';
+import {createMockUserDocument, createMockMembershipDocument} from '../mocks/firestore.mock';
 import {
   createMockCheckoutSession,
   createMockSubscription,
@@ -322,8 +316,8 @@ describe('MembershipService', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -358,8 +352,8 @@ describe('MembershipService', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -416,7 +410,7 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -445,7 +439,7 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -504,7 +498,7 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(

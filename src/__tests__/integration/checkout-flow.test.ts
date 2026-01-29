@@ -69,9 +69,9 @@ describe('Checkout Flow Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
+        updateStats: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -177,8 +177,8 @@ describe('Checkout Flow Integration', () => {
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
       const firestoreService = createTestFirestoreService({
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -296,7 +296,7 @@ describe('Checkout Flow Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => {
           callCount++;
           if (callCount === 1) {
@@ -307,7 +307,7 @@ describe('Checkout Flow Integration', () => {
               }),
             );
           }
-          return Effect.succeed(undefined);
+          return Effect.void;
         }),
       });
 
@@ -357,8 +357,8 @@ describe('Checkout Flow Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(existingUser)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -397,8 +397,8 @@ describe('Checkout Flow Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -435,8 +435,8 @@ describe('Checkout Flow Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(

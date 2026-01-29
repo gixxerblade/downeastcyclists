@@ -28,6 +28,11 @@ const escapeCSV = (value: string | null | undefined): string => {
   return str;
 };
 
+// Serialize data to formatted JSON string
+const serializeJSON = (data: unknown): string =>
+  // eslint-disable-next-line no-restricted-syntax
+  JSON.stringify(data, null, 2);
+
 // Implementation
 const make = Effect.gen(function* () {
   const firestore = yield* FirestoreService;
@@ -155,7 +160,7 @@ const make = Effect.gen(function* () {
 
         yield* Effect.log(`Generated JSON export with ${members.length} members`);
 
-        return JSON.stringify(exportData, null, 2);
+        return serializeJSON(exportData);
       }),
   });
 });

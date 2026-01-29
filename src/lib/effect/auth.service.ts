@@ -173,7 +173,7 @@ const make = Effect.gen(function* () {
             message: `Failed to update email for user ${uid}`,
             cause: error,
           }),
-      }).pipe(Effect.map(() => undefined)),
+      }).pipe(Effect.asVoid),
 
     createAuthUser: (email, displayName) =>
       Effect.tryPromise({

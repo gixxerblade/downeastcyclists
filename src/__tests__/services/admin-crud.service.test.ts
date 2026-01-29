@@ -1,26 +1,15 @@
 import {Effect, Exit, Layer} from 'effect';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 
 import {AdminService, AdminServiceLive} from '@/src/lib/effect/admin.service';
-import {AuthService} from '@/src/lib/effect/auth.service';
 import {MembershipCardService} from '@/src/lib/effect/card.service';
-import {
-  EmailConflictError,
-  MemberNotFoundError,
-  ValidationError,
-  StripeSubscriptionActiveError,
-} from '@/src/lib/effect/errors';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
 import {StatsService} from '@/src/lib/effect/stats.service';
-import {StripeService} from '@/src/lib/effect/stripe.service';
 import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/src/types/admin';
 
 import {
-  createTestAdminService,
   createTestAuthService,
   createTestFirestoreService,
   createTestStripeService,
-  TestAdminLayer,
   TestAuthLayer,
   TestFirestoreLayer,
   TestStripeLayer,
@@ -30,7 +19,7 @@ describe('AdminService CRUD Operations', () => {
   describe('createMember', () => {
     it('should create a new member with all required fields', async () => {
       const userId = 'new_user_123';
-      const membershipId = 'mem_123';
+      const _membershipId = 'mem_123';
       const membershipNumber = 'DEC-2026-000001';
 
       const authService = createTestAuthService({
@@ -74,7 +63,7 @@ describe('AdminService CRUD Operations', () => {
           }),
         ),
         getNextMembershipNumber: vi.fn(() => Effect.succeed(membershipNumber)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -88,8 +77,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const cardService = {
@@ -168,8 +157,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -320,8 +309,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -454,8 +443,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -521,7 +510,7 @@ describe('AdminService CRUD Operations', () => {
 
       const firestoreService = createTestFirestoreService({
         getUser: vi.fn(() => Effect.succeed(existingUser)),
-        updateUser: vi.fn(() => Effect.succeed(undefined)),
+        updateUser: vi.fn(() => Effect.void),
         getMembership: vi.fn((uid, membershipId) =>
           Effect.succeed({
             id: membershipId || 'mem_123',
@@ -536,8 +525,8 @@ describe('AdminService CRUD Operations', () => {
             updatedAt: new Date(),
           }),
         ),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const authService = createTestAuthService();
@@ -617,8 +606,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -691,7 +680,7 @@ describe('AdminService CRUD Operations', () => {
 
       const firestoreService = createTestFirestoreService({
         getUser: vi.fn(() => Effect.succeed(existingUser)),
-        updateUser: vi.fn(() => Effect.succeed(undefined)),
+        updateUser: vi.fn(() => Effect.void),
         getMembership: vi.fn((uid, membershipId) =>
           Effect.succeed({
             id: membershipId || 'mem_123',
@@ -706,8 +695,8 @@ describe('AdminService CRUD Operations', () => {
             updatedAt: new Date(),
           }),
         ),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const stripeService = createTestStripeService({
@@ -717,7 +706,7 @@ describe('AdminService CRUD Operations', () => {
       });
 
       const authService = createTestAuthService({
-        updateUserEmail: vi.fn(() => Effect.succeed(undefined)),
+        updateUserEmail: vi.fn(() => Effect.void),
       });
 
       const cardService = {
@@ -730,8 +719,8 @@ describe('AdminService CRUD Operations', () => {
 
       const statsService = {
         getStats: vi.fn(() => Effect.succeed({} as any)),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() => Effect.succeed({} as any)),
       };
 
@@ -834,8 +823,8 @@ describe('AdminService CRUD Operations', () => {
 
       const statsService = {
         getStats: vi.fn(() => Effect.succeed({} as any)),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() => Effect.succeed({} as any)),
       };
 
@@ -913,7 +902,7 @@ describe('AdminService CRUD Operations', () => {
             updatedAt: new Date(),
           }),
         ),
-        softDeleteMember: vi.fn(() => Effect.succeed(undefined)),
+        softDeleteMember: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -927,8 +916,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const stripeService = createTestStripeService({
@@ -961,8 +950,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -1046,8 +1035,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -1145,7 +1134,7 @@ describe('AdminService CRUD Operations', () => {
           }),
         ),
         getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2026-000001')),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -1159,8 +1148,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const cardService = {
@@ -1239,8 +1228,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -1353,7 +1342,7 @@ describe('AdminService CRUD Operations', () => {
           }),
         ),
         getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2026-000001')),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -1367,8 +1356,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const cardService = {
@@ -1447,8 +1436,8 @@ describe('AdminService CRUD Operations', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
