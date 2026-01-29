@@ -1,4 +1,4 @@
-import {client, getAssetCached} from './contentfulClient';
+import {getAssetCached} from './contentfulClient';
 
 export const getHeroVideo = async () => {
   const video = await getAssetCached('5wZuRU3hRNL2PPzaH6NB70');

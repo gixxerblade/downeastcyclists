@@ -1,4 +1,4 @@
-import type {Schema as S} from '@effect/schema';
+import type {Schema as S} from 'effect';
 import {Context, Effect, Layer} from 'effect';
 import Stripe from 'stripe';
 

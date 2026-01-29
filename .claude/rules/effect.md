@@ -77,3 +77,9 @@ export const loginWithPassword = (credentials: {
 
 - Client utilities: `src/lib/effect/client-*.ts`
 - Shared errors: `src/lib/effect/errors.ts`
+
+## Local Effect Source
+
+The Effect repository is cloned to `~/.local/share/effect` for reference.
+Use this to explore APIs, find usage examples, and understand implementation
+details when the documentation isn't enough.

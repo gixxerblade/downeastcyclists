@@ -172,7 +172,7 @@ describe('FirestoreService', () => {
 
     it('should succeed with valid data', async () => {
       const mockService = createTestFirestoreService({
-        setUser: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -508,7 +508,7 @@ describe('FirestoreService', () => {
   describe('setMembership', () => {
     it('should succeed when setting membership', async () => {
       const mockService = createTestFirestoreService({
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const membershipData = {
@@ -561,7 +561,7 @@ describe('FirestoreService', () => {
   describe('updateMembership', () => {
     it('should succeed when updating membership', async () => {
       const mockService = createTestFirestoreService({
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -621,7 +621,7 @@ describe('FirestoreService', () => {
   describe('updateStats', () => {
     it('should succeed when updating stats', async () => {
       const mockService = createTestFirestoreService({
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {

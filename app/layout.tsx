@@ -4,7 +4,6 @@ import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/700.css';
 
-import {AppRouterCacheProvider} from '@mui/material-nextjs/v14-appRouter';
 import type {Metadata, Viewport} from 'next';
 
 import {AuthProvider} from '@/src/components/auth/AuthProvider';

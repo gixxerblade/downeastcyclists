@@ -67,7 +67,7 @@ export function LoginForm() {
               window.location.href = isAdmin ? '/dashboard' : '/member';
             }
           }
-        } catch (error) {
+        } catch {
           // Silently fail - user can login normally
         }
       }

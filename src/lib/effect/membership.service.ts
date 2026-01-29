@@ -1,5 +1,5 @@
-import type {Schema as S} from '@effect/schema';
 import {Timestamp} from '@google-cloud/firestore';
+import type {Schema as S} from 'effect';
 import {Context, Effect, Layer, pipe} from 'effect';
 import type Stripe from 'stripe';
 
@@ -193,12 +193,10 @@ const make = Effect.gen(function* () {
         );
 
         if (!currentPeriodStart || !currentPeriodEnd) {
-          return yield* Effect.fail(
-            new StripeError({
-              code: 'INVALID_SUBSCRIPTION_DATA',
-              message: 'Missing subscription period dates',
-            }),
-          );
+          return yield* new StripeError({
+            code: 'INVALID_SUBSCRIPTION_DATA',
+            message: 'Missing subscription period dates',
+          });
         }
 
         // Find or create user
@@ -295,7 +293,7 @@ const make = Effect.gen(function* () {
         const user = yield* firestore.getUser(userId);
 
         if (!user) {
-          return yield* Effect.fail(new NotFoundError({resource: 'user', id: userId}));
+          return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
         const membership = yield* firestore.getActiveMembership(userId);

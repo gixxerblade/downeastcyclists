@@ -1,4 +1,4 @@
-import {Schema as S} from '@effect/schema';
+import {Schema as S} from 'effect';
 
 // Membership status enum - matches Stripe subscription statuses
 // Note: "trialing" is kept for Stripe API compatibility but DEC doesn't offer trials

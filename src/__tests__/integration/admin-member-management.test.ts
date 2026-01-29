@@ -1,16 +1,12 @@
 import {Effect, Layer} from 'effect';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 
 import {AdminService, AdminServiceLive} from '@/src/lib/effect/admin.service';
-import {AuthService} from '@/src/lib/effect/auth.service';
 import {MembershipCardService} from '@/src/lib/effect/card.service';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
 import {StatsService} from '@/src/lib/effect/stats.service';
-import {StripeService} from '@/src/lib/effect/stripe.service';
 import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/src/types/admin';
 
 import {
-  createTestAdminService,
   createTestAuthService,
   createTestFirestoreService,
   createTestStripeService,
@@ -29,7 +25,7 @@ describe('Admin Member Management Integration', () => {
       const authService = createTestAuthService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         createAuthUser: vi.fn((email) => Effect.succeed({uid: userId, email})),
-        updateUserEmail: vi.fn(() => Effect.succeed(undefined)),
+        updateUserEmail: vi.fn(() => Effect.void),
       });
 
       const firestoreService = createTestFirestoreService({
@@ -57,9 +53,9 @@ describe('Admin Member Management Integration', () => {
             updatedAt: new Date(),
           }),
         ),
-        updateUser: vi.fn(() => Effect.succeed(undefined)),
+        updateUser: vi.fn(() => Effect.void),
         getNextMembershipNumber: vi.fn(() => Effect.succeed(membershipNumber)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
         getMembership: vi.fn((uid, membershipId) =>
           Effect.succeed({
             id: membershipId || 'mem_123',
@@ -88,8 +84,8 @@ describe('Admin Member Management Integration', () => {
             updatedAt: new Date(),
           }),
         ),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
-        softDeleteMember: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
+        softDeleteMember: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -103,9 +99,9 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
-        getMemberAuditLog: vi.fn((uid) =>
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
+        getMemberAuditLog: vi.fn((_uid) =>
           Effect.succeed([
             {
               id: 'audit_1',
@@ -241,8 +237,8 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -398,7 +394,7 @@ describe('Admin Member Management Integration', () => {
           membershipNumberCounter++;
           return Effect.succeed(num);
         }),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setMembership: vi.fn(() => Effect.void),
         getStats: vi.fn(() =>
           Effect.succeed({
             totalMembers: 10,
@@ -412,8 +408,8 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        updateStats: vi.fn(() => Effect.succeed(undefined)),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        updateStats: vi.fn(() => Effect.void),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const cardService = {
@@ -492,8 +488,8 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -567,7 +563,7 @@ describe('Admin Member Management Integration', () => {
       const in29Days = new Date(now.getTime() + 29 * 24 * 60 * 60 * 1000);
 
       const firestoreService = createTestFirestoreService({
-        getExpiringMemberships: vi.fn((withinDays) =>
+        getExpiringMemberships: vi.fn((_withinDays) =>
           Effect.succeed([
             {
               user: {
@@ -696,8 +692,8 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),
@@ -752,7 +748,7 @@ describe('Admin Member Management Integration', () => {
             updatedAt: new Date(),
           }),
         ),
-        logAuditEntry: vi.fn(() => Effect.succeed(undefined)),
+        logAuditEntry: vi.fn(() => Effect.void),
       });
 
       const stripeService = createTestStripeService({
@@ -858,8 +854,8 @@ describe('Admin Member Management Integration', () => {
             yearlyRevenue: 0,
           }),
         ),
-        incrementStat: vi.fn(() => Effect.succeed(undefined)),
-        decrementStat: vi.fn(() => Effect.succeed(undefined)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
         refreshStats: vi.fn(() =>
           Effect.succeed({
             updatedAt: new Date().toISOString(),

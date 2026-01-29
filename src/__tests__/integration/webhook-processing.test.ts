@@ -2,7 +2,7 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {StripeError, FirestoreError, DuplicateWebhookError} from '@/src/lib/effect/errors';
+import {StripeError, DuplicateWebhookError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 import {StripeService} from '@/src/lib/effect/stripe.service';
 import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.service';
@@ -15,10 +15,7 @@ import {
   TestFirestoreLayer,
   TestWebhookLayer,
 } from '../layers/test-layers';
-import {
-  createMockUserDocument,
-  createMockWebhookEvent as createMockWebhookEventDoc,
-} from '../mocks/firestore.mock';
+import {createMockUserDocument} from '../mocks/firestore.mock';
 import {
   createMockCheckoutSession,
   createMockSubscription,
@@ -83,8 +80,8 @@ describe('Webhook Processing Integration', () => {
     it('should process new event successfully', async () => {
       const webhookService = createTestWebhookService({
         checkEvent: vi.fn(() => Effect.succeed(null)),
-        claimEvent: vi.fn(() => Effect.succeed(undefined)),
-        completeEvent: vi.fn(() => Effect.succeed(undefined)),
+        claimEvent: vi.fn(() => Effect.void),
+        completeEvent: vi.fn(() => Effect.void),
       });
 
       const testLayer = TestWebhookLayer(webhookService);
@@ -147,9 +144,9 @@ describe('Webhook Processing Integration', () => {
       const webhookService = createTestWebhookService({
         claimEvent: vi.fn(() => {
           attemptCount++;
-          return Effect.succeed(undefined);
+          return Effect.void;
         }),
-        completeEvent: vi.fn(() => Effect.succeed(undefined)),
+        completeEvent: vi.fn(() => Effect.void),
       });
 
       const testLayer = TestWebhookLayer(webhookService);
@@ -178,8 +175,8 @@ describe('Webhook Processing Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -241,8 +238,8 @@ describe('Webhook Processing Integration', () => {
       });
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
-        setMembership: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -275,7 +272,7 @@ describe('Webhook Processing Integration', () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -339,7 +336,7 @@ describe('Webhook Processing Integration', () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
-        updateMembership: vi.fn(() => Effect.succeed(undefined)),
+        updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
@@ -371,8 +368,8 @@ describe('Webhook Processing Integration', () => {
   describe('error recovery', () => {
     it('should mark event as failed on processing error', async () => {
       const webhookService = createTestWebhookService({
-        claimEvent: vi.fn(() => Effect.succeed(undefined)),
-        failEvent: vi.fn(() => Effect.succeed(undefined)),
+        claimEvent: vi.fn(() => Effect.void),
+        failEvent: vi.fn(() => Effect.void),
       });
 
       const testLayer = TestWebhookLayer(webhookService);
@@ -397,9 +394,9 @@ describe('Webhook Processing Integration', () => {
       const webhookService = createTestWebhookService({
         claimEvent: vi.fn(() => {
           retryCount++;
-          return Effect.succeed(undefined);
+          return Effect.void;
         }),
-        completeEvent: vi.fn(() => Effect.succeed(undefined)),
+        completeEvent: vi.fn(() => Effect.void),
       });
 
       const testLayer = TestWebhookLayer(webhookService);
@@ -440,10 +437,10 @@ describe('Webhook Processing Integration', () => {
       let setMembershipCallCount = 0;
       const firestoreService = createTestFirestoreService({
         getUserByEmail: vi.fn(() => Effect.succeed(mockUser)),
-        setUser: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => {
           setMembershipCallCount++;
-          return Effect.succeed(undefined);
+          return Effect.void;
         }),
       });
 

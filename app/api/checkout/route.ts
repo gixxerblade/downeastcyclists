@@ -1,4 +1,4 @@
-import {Schema as S} from '@effect/schema';
+import {Schema as S} from 'effect';
 import {Effect, pipe} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
@@ -57,23 +57,23 @@ export async function POST(request: NextRequest) {
 
   // Define the Effect program
   const program = pipe(
-    // Step 1: Validate input with Effect Schema
-    S.decodeUnknown(CheckoutSessionRequest)(body),
-    Effect.mapError(
-      (error) =>
-        new ValidationError({
-          field: 'body',
-          message: 'Invalid request body',
-          cause: error,
-        }),
-    ),
+    Effect.gen(function* () {
+      // Step 1: Validate input with Effect Schema
+      const validatedRequest = yield* S.decodeUnknown(CheckoutSessionRequest)(body).pipe(
+        Effect.mapError(
+          (error) =>
+            new ValidationError({
+              field: 'body',
+              message: 'Invalid request body',
+              cause: error,
+            }),
+        ),
+      );
 
-    // Step 2: Create checkout session
-    Effect.flatMap((validatedRequest) =>
-      Effect.flatMap(MembershipService, (membershipService) =>
-        membershipService.createCheckoutSession(validatedRequest),
-      ),
-    ),
+      // Step 2: Create checkout session
+      const membershipService = yield* MembershipService;
+      return yield* membershipService.createCheckoutSession(validatedRequest);
+    }),
 
     // Step 3: Handle specific errors with catchTag
     Effect.catchTag('ValidationError', (error) =>

@@ -1,6 +1,5 @@
 'use client';
 
-import {Schema as S} from '@effect/schema';
 import {Visibility, VisibilityOff} from '@mui/icons-material';
 import {
   Box,
@@ -17,6 +16,7 @@ import {
   Checkbox,
 } from '@mui/material';
 import {useQuery, useMutation} from '@tanstack/react-query';
+import {Schema as S} from 'effect';
 import {Effect} from 'effect';
 import Link from 'next/link';
 import {useState} from 'react';

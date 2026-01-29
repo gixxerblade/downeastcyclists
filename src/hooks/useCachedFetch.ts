@@ -31,7 +31,6 @@ export function useCachedFetch<T = any>(
     cacheDuration = 5 * 60 * 1000, // 5 minutes default
     revalidateOnFocus = false,
     revalidateOnReconnect = true,
-    dedupingInterval = 2000, // 2 seconds
   } = options;
 
   const [state, setState] = useState<CachedData<T>>({

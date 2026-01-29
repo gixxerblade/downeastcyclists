@@ -1,11 +1,8 @@
 import {Effect, Exit, Layer} from 'effect';
 import {describe, it, expect, vi} from 'vitest';
 
-import {AuthService} from '@/src/lib/effect/auth.service';
 import {SessionError, StripeError, NotFoundError} from '@/src/lib/effect/errors';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
 import {PortalService, PortalServiceLive} from '@/src/lib/effect/portal.service';
-import {StripeService} from '@/src/lib/effect/stripe.service';
 
 import {
   createTestAuthService,
@@ -414,7 +411,7 @@ describe('PortalService', () => {
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
-        setUser: vi.fn(() => Effect.succeed(undefined)),
+        setUser: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.mergeAll(

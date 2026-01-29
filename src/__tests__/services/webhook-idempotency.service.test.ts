@@ -5,13 +5,13 @@ import {FirestoreError, DuplicateWebhookError} from '@/src/lib/effect/errors';
 import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.service';
 
 import {createTestWebhookService, TestWebhookLayer} from '../layers/test-layers';
-import {createMockWebhookEvent, createMockTimestamp} from '../mocks/firestore.mock';
+import {createMockWebhookEvent} from '../mocks/firestore.mock';
 
 describe('WebhookIdempotencyService', () => {
   describe('claimEvent', () => {
     it('should claim new event successfully', async () => {
       const mockService = createTestWebhookService({
-        claimEvent: vi.fn(() => Effect.succeed(undefined)),
+        claimEvent: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -67,7 +67,7 @@ describe('WebhookIdempotencyService', () => {
       const mockService = createTestWebhookService({
         claimEvent: vi.fn(() => {
           retryCount++;
-          return Effect.succeed(undefined);
+          return Effect.void;
         }),
       });
 
@@ -86,7 +86,7 @@ describe('WebhookIdempotencyService', () => {
 
     it('should reclaim stale processing event (>5 min)', async () => {
       const mockService = createTestWebhookService({
-        claimEvent: vi.fn(() => Effect.succeed(undefined)),
+        claimEvent: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -160,7 +160,7 @@ describe('WebhookIdempotencyService', () => {
   describe('completeEvent', () => {
     it('should mark event as completed', async () => {
       const mockService = createTestWebhookService({
-        completeEvent: vi.fn(() => Effect.succeed(undefined)),
+        completeEvent: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -204,7 +204,7 @@ describe('WebhookIdempotencyService', () => {
   describe('failEvent', () => {
     it('should mark event as failed', async () => {
       const mockService = createTestWebhookService({
-        failEvent: vi.fn(() => Effect.succeed(undefined)),
+        failEvent: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
@@ -223,7 +223,7 @@ describe('WebhookIdempotencyService', () => {
     it('should store error message', async () => {
       const errorMessage = 'Payment processing failed';
       const mockService = createTestWebhookService({
-        failEvent: vi.fn(() => Effect.succeed(undefined)),
+        failEvent: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {

@@ -1,16 +1,12 @@
 'use server';
 
-import {Effect, pipe, Exit} from 'effect';
+import {Effect, Exit} from 'effect';
 import {cookies} from 'next/headers';
 import {redirect} from 'next/navigation';
 
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
 import type {MemberDashboardResponse} from '@/src/lib/effect/schemas';
-
-type DashboardResult =
-  | {success: true; data: MemberDashboardResponse}
-  | {success: false; error: string; redirect?: string};
 
 // Get member dashboard data - Effect.gen for complex flow
 export async function getMemberDashboard(): Promise<MemberDashboardResponse | {error: string}> {

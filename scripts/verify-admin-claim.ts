@@ -17,6 +17,8 @@ config({path: resolve(__dirname, '../.env.local')});
 
 import {Effect} from 'effect';
 
+import {AuthError} from '@/src/lib/effect/errors';
+
 import {initializeFirebaseAdmin} from '../src/lib/firebase-admin';
 
 const email = process.argv[2];
@@ -37,7 +39,11 @@ const program = Effect.gen(function* () {
     try: () => auth.getUserByEmail(email),
     catch: (error) => {
       console.error(`❌ Failed to find user with email: ${email}`);
-      return new Error(`User not found: ${error}`);
+      return new AuthError({
+        code: 'USER_NOT_FOUND',
+        message: `User not found: ${error}`,
+        cause: error,
+      });
     },
   });
 

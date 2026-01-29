@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
             // Claim the event (atomic operation - fails if already processed)
             yield* idempotency.claimEvent(event.id, event.type);
 
-            try {
+            const processEvent = Effect.gen(function* () {
               switch (event.type) {
                 case 'checkout.session.completed': {
                   const session = event.data.object as Stripe.Checkout.Session;
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
                     Effect.catchAll((error) => {
                       // Log card creation errors but don't fail the webhook
                       console.error('[WEBHOOK] Card creation error (non-fatal):', error);
-                      return Effect.succeed(undefined);
+                      return Effect.void;
                     }),
                   );
 
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
                   }).pipe(
                     Effect.catchAll((error) => {
                       console.error('[WEBHOOK] Stats update error (non-fatal):', error);
-                      return Effect.succeed(undefined);
+                      return Effect.void;
                     }),
                   );
                   break;
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
                   }).pipe(
                     Effect.catchAll((error) => {
                       console.error('[WEBHOOK] Stats update error (non-fatal):', error);
-                      return Effect.succeed(undefined);
+                      return Effect.void;
                     }),
                   );
                   break;
@@ -159,14 +159,16 @@ export async function POST(request: NextRequest) {
               // Mark event as completed
               yield* idempotency.completeEvent(event.id);
               return {received: true};
-            } catch (error) {
-              // Mark event as failed for retry
-              yield* idempotency.failEvent(
-                event.id,
-                error instanceof Error ? error.message : 'Unknown error',
-              );
-              throw error;
-            }
+            });
+
+            const result = yield* processEvent.pipe(
+              Effect.catchAll((error) =>
+                idempotency
+                  .failEvent(event.id, error instanceof Error ? error.message : String(error))
+                  .pipe(Effect.flatMap(() => Effect.fail(error))),
+              ),
+            );
+            return result;
           }),
         ),
       ),

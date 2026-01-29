@@ -184,9 +184,7 @@ const make = Effect.gen(function* () {
         const result = yield* firestore.getMembershipByNumber(membershipNumber);
 
         if (!result) {
-          return yield* Effect.fail(
-            new NotFoundError({resource: 'membership', id: membershipNumber}),
-          );
+          return yield* new NotFoundError({resource: 'membership', id: membershipNumber});
         }
 
         const {card} = result;

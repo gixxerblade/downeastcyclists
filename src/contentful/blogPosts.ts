@@ -1,10 +1,9 @@
 import {Entry} from 'contentful';
-import {Container} from 'postcss';
 
 import {Config} from '@/constants/Config';
 import {TypeBlogPostSkeleton} from '@/src/contentful/types';
 
-import {client, getEntriesCached} from './contentfulClient';
+import {getEntriesCached} from './contentfulClient';
 import {ContentImage, parseContentfulContentImage} from './contentImage';
 import {PaginatedData} from './types/PaginatedData';
 
@@ -43,7 +42,7 @@ export const fetchBlogPosts = async (page: number = 1): Promise<PaginatedData<Bl
     order: ['-fields.publishDate'], // Sort by publishDate in descending order (newest first)
     skip: (page - 1) * Config.LIMIT,
   });
-  if (!!blogPostsResult.items.length) {
+  if (blogPostsResult.items.length) {
     const paginationInfo = getPaginationInfo(blogPostsResult.total, page, Config.LIMIT);
     return {
       ...paginationInfo,

@@ -67,7 +67,7 @@ export default function Navbar() {
   };
 
   // Function to handle opening the dropdown on click (for mobile)
-  const handleOpenDropdown = (event: React.MouseEvent<HTMLElement>, pageHref: string) => {
+  const _handleOpenDropdown = (event: React.MouseEvent<HTMLElement>, pageHref: string) => {
     setAnchorElDropdown(event.currentTarget);
     setActiveDropdown(pageHref);
   };
