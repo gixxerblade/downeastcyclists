@@ -13,6 +13,12 @@ export class FirestoreError extends Data.TaggedError('FirestoreError')<{
   readonly cause?: unknown;
 }> {}
 
+export class DatabaseError extends Data.TaggedError('DatabaseError')<{
+  readonly code: string;
+  readonly message: string;
+  readonly cause?: unknown;
+}> {}
+
 export class ValidationError extends Data.TaggedError('ValidationError')<{
   readonly field: string;
   readonly message: string;
@@ -109,6 +115,7 @@ export class ImportError extends Data.TaggedError('ImportError')<{
 export type AppError =
   | StripeError
   | FirestoreError
+  | DatabaseError
   | ValidationError
   | NotFoundError
   | UnauthorizedError
