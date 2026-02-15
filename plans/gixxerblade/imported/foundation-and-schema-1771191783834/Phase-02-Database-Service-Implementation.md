@@ -17,7 +17,7 @@ This phase builds the core `DatabaseService` that will replace `FirestoreService
   - Add helper function `resolveUserId(firebaseUid) → uuid` for FK resolution
   - Wrap all Drizzle queries with `Effect.tryPromise` and map errors to `DatabaseError`
 
-- [ ] Implement membership management methods:
+- [x] Implement membership management methods:
   - Add `getMembership`, `getActiveMembership` with proper JOIN queries
   - Add `setMembership`, `updateMembership`, `deleteMembership` with FK handling
   - Implement `getAllMemberships` with single SQL query using JOINs (replaces N+1 pattern)

@@ -4,8 +4,14 @@ import {Context, Effect, Layer} from 'effect';
 import {db} from '@/src/db/client';
 import {users} from '@/src/db/schema/tables';
 
+import {createMembershipMethods} from './database-membership.methods';
 import {DatabaseError} from './errors';
-import type {UserDocument} from './schemas';
+import type {
+  MemberSearchParams,
+  MemberWithMembership,
+  MembershipDocument,
+  UserDocument,
+} from './schemas';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,6 +102,41 @@ export interface DatabaseService {
     email: string,
     defaultData: Partial<UserDocument>,
   ) => Effect.Effect<UserDocument, DatabaseError>;
+
+  // Membership management
+  readonly getMembership: (
+    userId: string,
+    membershipId: string,
+  ) => Effect.Effect<MembershipDocument | null, DatabaseError>;
+
+  readonly getActiveMembership: (
+    userId: string,
+  ) => Effect.Effect<MembershipDocument | null, DatabaseError>;
+
+  readonly setMembership: (
+    userId: string,
+    membershipId: string,
+    data: Omit<MembershipDocument, 'id'>,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly updateMembership: (
+    userId: string,
+    membershipId: string,
+    data: Partial<MembershipDocument>,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly deleteMembership: (
+    userId: string,
+    membershipId: string,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly getAllMemberships: (
+    params: MemberSearchParams,
+  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, DatabaseError>;
+
+  readonly getExpiringMemberships: (
+    withinDays: number,
+  ) => Effect.Effect<MemberWithMembership[], DatabaseError>;
 }
 
 // Service tag
@@ -106,6 +147,8 @@ export const DatabaseService = Context.GenericTag<DatabaseService>('DatabaseServ
 // ---------------------------------------------------------------------------
 
 const make = Effect.sync(() => {
+  const membershipMethods = createMembershipMethods();
+
   return DatabaseService.of({
     getUser: (userId) =>
       Effect.tryPromise({
@@ -372,6 +415,9 @@ const make = Effect.sync(() => {
             cause: error,
           }),
       }),
+
+    // Membership management methods
+    ...membershipMethods,
   });
 });
 
