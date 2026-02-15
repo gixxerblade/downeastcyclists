@@ -46,6 +46,12 @@ const createTestDatabaseService = (
   updateMembershipCard: vi.fn(() => Effect.void),
   getMembershipByNumber: vi.fn(() => Effect.succeed(null)),
   getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2025-000001')),
+  getStats: vi.fn(() => Effect.succeed(null)),
+  updateStats: vi.fn(() => Effect.void),
+  logAuditEntry: vi.fn(() => Effect.void),
+  getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+  getAllUsers: vi.fn(() => Effect.succeed([])),
+  softDeleteMember: vi.fn(() => Effect.void),
   ...overrides,
 });
 
@@ -1241,6 +1247,397 @@ describe('DatabaseService', () => {
       expect(Exit.isFailure(result)).toBe(true);
       if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
         expect((result.cause.error as DatabaseError).code).toBe('COUNTER_INCREMENT_FAILED');
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Stats & admin methods
+  // -------------------------------------------------------------------------
+
+  describe('getStats', () => {
+    it('should return null when no stats exist', async () => {
+      const mockService = createTestDatabaseService({
+        getStats: vi.fn(() => Effect.succeed(null)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getStats();
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return stats on success', async () => {
+      const mockStats = {
+        totalMembers: 100,
+        activeMembers: 85,
+        expiredMembers: 10,
+        canceledMembers: 5,
+        individualCount: 60,
+        familyCount: 40,
+        monthlyRevenue: 1500,
+        yearlyRevenue: 18000,
+        updatedAt: new Date().toISOString(),
+      };
+      const mockService = createTestDatabaseService({
+        getStats: vi.fn(() => Effect.succeed(mockStats)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getStats();
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.totalMembers).toBe(100);
+      expect(result?.activeMembers).toBe(85);
+      expect(result?.monthlyRevenue).toBe(1500);
+    });
+
+    it('should fail with DatabaseError on query failure', async () => {
+      const mockService = createTestDatabaseService({
+        getStats: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'GET_STATS_FAILED',
+              message: 'Connection refused',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getStats();
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('GET_STATS_FAILED');
+      }
+    });
+  });
+
+  describe('updateStats', () => {
+    it('should succeed when updating stats', async () => {
+      const mockService = createTestDatabaseService({
+        updateStats: vi.fn(() => Effect.void),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.updateStats({activeMembers: 90, totalMembers: 105});
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockService.updateStats).toHaveBeenCalledWith({
+        activeMembers: 90,
+        totalMembers: 105,
+      });
+    });
+
+    it('should fail with DatabaseError on update failure', async () => {
+      const mockService = createTestDatabaseService({
+        updateStats: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'UPDATE_STATS_FAILED',
+              message: 'Database unavailable',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.updateStats({activeMembers: 90});
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('UPDATE_STATS_FAILED');
+      }
+    });
+  });
+
+  describe('getAllUsers', () => {
+    it('should return empty array when no users exist', async () => {
+      const mockService = createTestDatabaseService({
+        getAllUsers: vi.fn(() => Effect.succeed([])),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getAllUsers();
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return all users', async () => {
+      const mockUsers = [
+        createMockUserDocument({id: 'user_1', email: 'user1@example.com'}),
+        createMockUserDocument({id: 'user_2', email: 'user2@example.com'}),
+      ];
+      const mockService = createTestDatabaseService({
+        getAllUsers: vi.fn(() => Effect.succeed(mockUsers)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getAllUsers();
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].email).toBe('user1@example.com');
+      expect(result[1].email).toBe('user2@example.com');
+    });
+
+    it('should fail with DatabaseError on query failure', async () => {
+      const mockService = createTestDatabaseService({
+        getAllUsers: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'GET_ALL_USERS_FAILED',
+              message: 'Connection lost',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getAllUsers();
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('GET_ALL_USERS_FAILED');
+      }
+    });
+  });
+
+  describe('softDeleteMember', () => {
+    it('should succeed when soft deleting a member', async () => {
+      const mockService = createTestDatabaseService({
+        softDeleteMember: vi.fn(() => Effect.void),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.softDeleteMember('user_123', 'admin_456', 'Membership revoked');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockService.softDeleteMember).toHaveBeenCalledWith(
+        'user_123',
+        'admin_456',
+        'Membership revoked',
+      );
+    });
+
+    it('should fail with DatabaseError on soft delete failure', async () => {
+      const mockService = createTestDatabaseService({
+        softDeleteMember: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'SOFT_DELETE_FAILED',
+              message: 'Transaction failed',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.softDeleteMember('user_123', 'admin_456', 'Test reason');
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('SOFT_DELETE_FAILED');
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Audit methods
+  // -------------------------------------------------------------------------
+
+  describe('logAuditEntry', () => {
+    it('should succeed when logging an audit entry', async () => {
+      const mockService = createTestDatabaseService({
+        logAuditEntry: vi.fn(() => Effect.void),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.logAuditEntry('user_123', 'MEMBER_UPDATED', {
+          performedBy: 'admin_456',
+          reason: 'Updated membership plan',
+        });
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockService.logAuditEntry).toHaveBeenCalledWith('user_123', 'MEMBER_UPDATED', {
+        performedBy: 'admin_456',
+        reason: 'Updated membership plan',
+      });
+    });
+
+    it('should fail with DatabaseError on audit log failure', async () => {
+      const mockService = createTestDatabaseService({
+        logAuditEntry: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'AUDIT_LOG_FAILED',
+              message: 'Database unavailable',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.logAuditEntry('user_123', 'MEMBER_DELETED', {});
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('AUDIT_LOG_FAILED');
+      }
+    });
+  });
+
+  describe('getMemberAuditLog', () => {
+    it('should return empty array when no audit entries exist', async () => {
+      const mockService = createTestDatabaseService({
+        getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMemberAuditLog('user_123');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return audit entries ordered by timestamp', async () => {
+      const mockEntries = [
+        {
+          id: 'audit_1',
+          action: 'MEMBER_UPDATED',
+          performedBy: 'admin_456',
+          performedByEmail: 'admin@example.com',
+          details: {reason: 'Plan upgrade'},
+          timestamp: '2026-02-15T10:00:00.000Z',
+        },
+        {
+          id: 'audit_2',
+          action: 'MEMBER_CREATED',
+          performedBy: 'system',
+          performedByEmail: null,
+          details: {},
+          timestamp: '2026-02-14T08:00:00.000Z',
+        },
+      ];
+      const mockService = createTestDatabaseService({
+        getMemberAuditLog: vi.fn(() => Effect.succeed(mockEntries)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMemberAuditLog('user_123');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].action).toBe('MEMBER_UPDATED');
+      expect(result[1].action).toBe('MEMBER_CREATED');
+    });
+
+    it('should fail with DatabaseError on query failure', async () => {
+      const mockService = createTestDatabaseService({
+        getMemberAuditLog: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'GET_AUDIT_LOG_FAILED',
+              message: 'Query timeout',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMemberAuditLog('user_123');
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('GET_AUDIT_LOG_FAILED');
       }
     });
   });

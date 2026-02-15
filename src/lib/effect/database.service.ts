@@ -4,16 +4,21 @@ import {Context, Effect, Layer} from 'effect';
 import {db} from '@/src/db/client';
 import {users} from '@/src/db/schema/tables';
 
+import {type AuditEntryDocument, createAuditMethods} from './database-audit.methods';
 import {createCardMethods} from './database-card.methods';
 import {createMembershipMethods} from './database-membership.methods';
+import {createStatsMethods} from './database-stats.methods';
 import {DatabaseError} from './errors';
 import type {
   MemberSearchParams,
   MembershipCard,
+  MembershipStats,
   MemberWithMembership,
   MembershipDocument,
   UserDocument,
 } from './schemas';
+
+export type {AuditEntryDocument} from './database-audit.methods';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -160,6 +165,31 @@ export interface DatabaseService {
   ) => Effect.Effect<{userId: string; card: MembershipCard} | null, DatabaseError>;
 
   readonly getNextMembershipNumber: (year: number) => Effect.Effect<string, DatabaseError>;
+
+  // Stats & dashboard
+  readonly getStats: () => Effect.Effect<MembershipStats | null, DatabaseError>;
+
+  readonly updateStats: (stats: Partial<MembershipStats>) => Effect.Effect<void, DatabaseError>;
+
+  // Audit logging
+  readonly logAuditEntry: (
+    userId: string,
+    action: string,
+    details: Record<string, unknown>,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly getMemberAuditLog: (
+    userId: string,
+  ) => Effect.Effect<AuditEntryDocument[], DatabaseError>;
+
+  // Admin operations
+  readonly getAllUsers: () => Effect.Effect<UserDocument[], DatabaseError>;
+
+  readonly softDeleteMember: (
+    userId: string,
+    deletedBy: string,
+    reason: string,
+  ) => Effect.Effect<void, DatabaseError>;
 }
 
 // Service tag
@@ -172,6 +202,8 @@ export const DatabaseService = Context.GenericTag<DatabaseService>('DatabaseServ
 const make = Effect.sync(() => {
   const membershipMethods = createMembershipMethods();
   const cardMethods = createCardMethods();
+  const statsMethods = createStatsMethods();
+  const auditMethods = createAuditMethods();
 
   return DatabaseService.of({
     getUser: (userId) =>
@@ -445,6 +477,12 @@ const make = Effect.sync(() => {
 
     // Membership card methods
     ...cardMethods,
+
+    // Stats & admin methods
+    ...statsMethods,
+
+    // Audit methods
+    ...auditMethods,
   });
 });
 
