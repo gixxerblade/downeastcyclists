@@ -30,13 +30,13 @@ This phase builds the core `DatabaseService` that will replace `FirestoreService
   - Implement atomic `getNextMembershipNumber` using ON CONFLICT DO UPDATE RETURNING
   - Ensure membership number generation is thread-safe and produces no duplicates
 
-- [ ] Implement statistics and audit methods:
+- [x] Implement statistics and audit methods:
   - Add `getStats`, `updateStats` for dashboard metrics
   - Add `logAuditEntry`, `getMemberAuditLog` with proper user FK resolution
   - Implement `getAllUsers` for admin operations
   - Add `softDeleteMember` with transaction support for membership + card + audit updates
 
-- [ ] Rewrite WebhookIdempotencyService for Postgres:
+- [x] Rewrite WebhookIdempotencyService for Postgres:
   - Update `src/lib/effect/webhook-idempotency.service.ts` to use Drizzle
   - Implement `claimEvent` with INSERT ON CONFLICT for atomic event claiming
   - Implement `completeEvent`, `failEvent` with proper status and timestamp updates
