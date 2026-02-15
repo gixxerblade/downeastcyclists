@@ -1,7 +1,6 @@
 import {eq} from 'drizzle-orm';
 import {Context, Effect, Layer} from 'effect';
 
-import {db} from '@/src/db/client';
 import {users} from '@/src/db/schema/tables';
 
 import {type AuditEntryDocument, createAuditMethods} from './database-audit.methods';
@@ -19,6 +18,11 @@ import type {
 } from './schemas';
 
 export type {AuditEntryDocument} from './database-audit.methods';
+
+// Lazy db loader — avoids triggering Neon connection at import time
+function getDb() {
+  return (require('@/src/db/client') as typeof import('@/src/db/client')).db;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +59,7 @@ export const resolveUserId = (
 ): Effect.Effect<typeof users.$inferSelect, DatabaseError> =>
   Effect.tryPromise({
     try: async () => {
+      const db = getDb();
       const row = await db
         .select()
         .from(users)
@@ -200,6 +205,7 @@ export const DatabaseService = Context.GenericTag<DatabaseService>('DatabaseServ
 // ---------------------------------------------------------------------------
 
 const make = Effect.sync(() => {
+  const db = getDb();
   const membershipMethods = createMembershipMethods();
   const cardMethods = createCardMethods();
   const statsMethods = createStatsMethods();

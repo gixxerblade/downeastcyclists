@@ -1,11 +1,15 @@
 import {desc, eq} from 'drizzle-orm';
 import {Effect} from 'effect';
 
-import {db} from '@/src/db/client';
 import {auditLog, users} from '@/src/db/schema/tables';
 
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
+
+// Lazy db loader — avoids triggering Neon connection at import time
+function getDb() {
+  return (require('@/src/db/client') as typeof import('@/src/db/client')).db;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,7 +20,7 @@ export interface AuditEntryDocument {
   action: string;
   performedBy: string;
   performedByEmail: string | null;
-  details: Record<string, unknown> | null;
+  details: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -25,6 +29,7 @@ export interface AuditEntryDocument {
 // ---------------------------------------------------------------------------
 
 export function createAuditMethods() {
+  const db = getDb();
   return {
     logAuditEntry: (userId: string, action: string, details: Record<string, unknown>) =>
       Effect.gen(function* () {
@@ -77,7 +82,7 @@ export function createAuditMethods() {
                 action: row.audit.action,
                 performedBy: row.audit.performedBy,
                 performedByEmail: row.audit.performedByEmail ?? null,
-                details: row.audit.details ?? null,
+                details: (row.audit.details as Record<string, unknown>) ?? {},
                 timestamp: row.audit.createdAt.toISOString(),
               }),
             );

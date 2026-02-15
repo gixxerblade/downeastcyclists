@@ -1,7 +1,6 @@
 import {eq} from 'drizzle-orm';
 import {Effect} from 'effect';
 
-import {db} from '@/src/db/client';
 import {
   auditLog,
   membershipCards,
@@ -13,6 +12,11 @@ import {
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
 import type {MembershipStats, UserDocument} from './schemas';
+
+// Lazy db loader — avoids triggering Neon connection at import time
+function getDb() {
+  return (require('@/src/db/client') as typeof import('@/src/db/client')).db;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,6 +45,7 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
 // ---------------------------------------------------------------------------
 
 export function createStatsMethods() {
+  const db = getDb();
   return {
     getStats: () =>
       Effect.tryPromise({
