@@ -16,7 +16,7 @@ import {
   createMockUserDocument,
   createMockMembershipDocument,
   createMockMembershipCard,
-} from '../mocks/firestore.mock';
+} from '../mocks/database.mock';
 
 // ---------------------------------------------------------------------------
 // Test helpers

@@ -99,9 +99,6 @@ export const createTestDatabaseService = (
   ...overrides,
 });
 
-// Backwards-compatible alias — tests that still reference "Firestore" will work
-export const createTestFirestoreService = createTestDatabaseService;
-
 export const createTestAuthService = (
   overrides: Partial<AuthServiceType> = {},
 ): AuthServiceType => ({
@@ -214,9 +211,6 @@ export const TestStripeLayer = (service: StripeServiceType) =>
 
 export const TestDatabaseLayer = (service: DatabaseServiceType) =>
   Layer.succeed(DatabaseService, service);
-
-// Backwards-compatible alias — tests that still reference "Firestore" will work
-export const TestFirestoreLayer = TestDatabaseLayer;
 
 export const TestAuthLayer = (service: AuthServiceType) => Layer.succeed(AuthService, service);
 

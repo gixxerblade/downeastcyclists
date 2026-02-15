@@ -9,13 +9,13 @@ import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.se
 
 import {
   createTestStripeService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   createTestWebhookService,
   TestStripeLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
   TestWebhookLayer,
 } from '../layers/test-layers';
-import {createMockUserDocument} from '../mocks/firestore.mock';
+import {createMockUserDocument} from '../mocks/database.mock';
 import {
   createMockCheckoutSession,
   createMockSubscription,
@@ -173,7 +173,7 @@ describe('Webhook Processing Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -181,7 +181,7 @@ describe('Webhook Processing Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -198,7 +198,7 @@ describe('Webhook Processing Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setMembership).toHaveBeenCalled();
+      expect(databaseService.setMembership).toHaveBeenCalled();
     });
 
     it('should skip membership for incomplete subscription', async () => {
@@ -208,11 +208,11 @@ describe('Webhook Processing Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -226,7 +226,7 @@ describe('Webhook Processing Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
 
     it('should add processing fee when metadata present', async () => {
@@ -236,7 +236,7 @@ describe('Webhook Processing Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -244,7 +244,7 @@ describe('Webhook Processing Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -270,14 +270,14 @@ describe('Webhook Processing Integration', () => {
       const mockUser = createMockUserDocument({stripeCustomerId: 'cus_123'});
 
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription({
@@ -295,20 +295,20 @@ describe('Webhook Processing Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).toHaveBeenCalled();
-      const updateCall = (firestoreService.updateMembership as any).mock.calls[0];
+      expect(databaseService.updateMembership).toHaveBeenCalled();
+      const updateCall = (databaseService.updateMembership as any).mock.calls[0];
       expect(updateCall[2].status).toBe('past_due');
     });
 
     it('should handle unknown customer gracefully', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription({
@@ -325,7 +325,7 @@ describe('Webhook Processing Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).not.toHaveBeenCalled();
+      expect(databaseService.updateMembership).not.toHaveBeenCalled();
     });
   });
 
@@ -334,14 +334,14 @@ describe('Webhook Processing Integration', () => {
       const mockUser = createMockUserDocument({stripeCustomerId: 'cus_cancel'});
 
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription({
@@ -358,8 +358,8 @@ describe('Webhook Processing Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).toHaveBeenCalled();
-      const updateCall = (firestoreService.updateMembership as any).mock.calls[0];
+      expect(databaseService.updateMembership).toHaveBeenCalled();
+      const updateCall = (databaseService.updateMembership as any).mock.calls[0];
       expect(updateCall[2].status).toBe('canceled');
       expect(updateCall[2].autoRenew).toBe(false);
     });
@@ -435,7 +435,7 @@ describe('Webhook Processing Integration', () => {
       });
 
       let setMembershipCallCount = 0;
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(mockUser)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => {
@@ -446,7 +446,7 @@ describe('Webhook Processing Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -479,7 +479,7 @@ describe('Webhook Processing Integration', () => {
       // setMembership uses subscription ID as doc ID, so retry would overwrite not duplicate
       expect(setMembershipCallCount).toBe(2);
       // Both calls should use the same user ID (existing user)
-      const calls = (firestoreService.setMembership as any).mock.calls;
+      const calls = (databaseService.setMembership as any).mock.calls;
       expect(calls[0][0]).toBe('user_existing');
       expect(calls[1][0]).toBe('user_existing');
     });

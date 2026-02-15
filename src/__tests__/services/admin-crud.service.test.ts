@@ -8,10 +8,10 @@ import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/sr
 
 import {
   createTestAuthService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   createTestStripeService,
   TestAuthLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
 
@@ -27,7 +27,7 @@ describe('AdminService CRUD Operations', () => {
         createAuthUser: vi.fn((email) => Effect.succeed({uid: userId, email})),
       });
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         createUser: vi.fn(() =>
           Effect.succeed({
@@ -178,7 +178,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -207,9 +207,9 @@ describe('AdminService CRUD Operations', () => {
       expect(result.userId).toBe(userId);
       expect(result.membershipNumber).toBe(membershipNumber);
       expect(authService.createAuthUser).toHaveBeenCalledWith('new@example.com', 'New Member');
-      expect(firestoreService.createUser).toHaveBeenCalled();
-      expect(firestoreService.setMembership).toHaveBeenCalled();
-      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+      expect(databaseService.createUser).toHaveBeenCalled();
+      expect(databaseService.setMembership).toHaveBeenCalled();
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
         'MEMBER_CREATED',
         expect.objectContaining({
@@ -222,7 +222,7 @@ describe('AdminService CRUD Operations', () => {
     it('should fail with EmailConflictError if email already exists', async () => {
       const authService = createTestAuthService({});
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() =>
           Effect.succeed({
             id: 'existing_123',
@@ -330,7 +330,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -366,7 +366,7 @@ describe('AdminService CRUD Operations', () => {
       const authService = createTestAuthService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
       const cardService = {
         createCard: vi.fn(() =>
           Effect.succeed({
@@ -464,7 +464,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -508,7 +508,7 @@ describe('AdminService CRUD Operations', () => {
         updatedAt: new Date(),
       };
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(existingUser)),
         updateUser: vi.fn(() => Effect.void),
         getMembership: vi.fn((uid, membershipId) =>
@@ -624,7 +624,7 @@ describe('AdminService CRUD Operations', () => {
       };
 
       const testLayer = Layer.mergeAll(
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
@@ -648,14 +648,14 @@ describe('AdminService CRUD Operations', () => {
 
       expect(result.emailSyncedToStripe).toBe(false);
       expect(result.emailSyncedToAuth).toBe(false);
-      expect(firestoreService.updateUser).toHaveBeenCalledWith(
+      expect(databaseService.updateUser).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({
           name: 'New Name',
           phone: '207-555-9999',
         }),
       );
-      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
         'MEMBER_UPDATED',
         expect.objectContaining({
@@ -678,7 +678,7 @@ describe('AdminService CRUD Operations', () => {
         updatedAt: new Date(),
       };
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(existingUser)),
         updateUser: vi.fn(() => Effect.void),
         getMembership: vi.fn((uid, membershipId) =>
@@ -725,7 +725,7 @@ describe('AdminService CRUD Operations', () => {
       };
 
       const testLayer = Layer.mergeAll(
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         TestAuthLayer(authService),
         Layer.succeed(MembershipCardService, cardService),
@@ -753,7 +753,7 @@ describe('AdminService CRUD Operations', () => {
     });
 
     it('should fail with MemberNotFoundError if user does not exist', async () => {
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
@@ -829,7 +829,7 @@ describe('AdminService CRUD Operations', () => {
       };
 
       const testLayer = Layer.mergeAll(
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
@@ -872,7 +872,7 @@ describe('AdminService CRUD Operations', () => {
         updatedAt: new Date(),
       };
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(existingUser)),
         getMembership: vi.fn((uid, membershipId) =>
           Effect.succeed({
@@ -978,7 +978,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -1000,12 +1000,12 @@ describe('AdminService CRUD Operations', () => {
 
       expect(result.stripeSubscriptionCanceled).toBe(true);
       expect(stripeService.cancelSubscription).toHaveBeenCalledWith('sub_123', input.reason);
-      expect(firestoreService.softDeleteMember).toHaveBeenCalledWith(
+      expect(databaseService.softDeleteMember).toHaveBeenCalledWith(
         userId,
         'admin_123',
         input.reason,
       );
-      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
         'MEMBER_DELETED',
         expect.objectContaining({
@@ -1016,7 +1016,7 @@ describe('AdminService CRUD Operations', () => {
     });
 
     it('should fail with MemberNotFoundError if user does not exist', async () => {
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
@@ -1063,7 +1063,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -1100,7 +1100,7 @@ describe('AdminService CRUD Operations', () => {
         createAuthUser: vi.fn((email) => Effect.succeed({uid: `user_${email}`, email})),
       });
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         createUser: vi.fn((userId, data) =>
           Effect.succeed({
@@ -1249,7 +1249,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -1284,7 +1284,7 @@ describe('AdminService CRUD Operations', () => {
       expect(result.created).toBe(2);
       expect(result.errors).toEqual([]);
       expect(authService.createAuthUser).toHaveBeenCalledTimes(2);
-      expect(firestoreService.createUser).toHaveBeenCalledTimes(2);
+      expect(databaseService.createUser).toHaveBeenCalledTimes(2);
     });
 
     it('should handle partial failures and return error details', async () => {
@@ -1298,7 +1298,7 @@ describe('AdminService CRUD Operations', () => {
         createAuthUser: vi.fn((email) => Effect.succeed({uid: `user_${email}`, email})),
       });
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn((email) => {
           if (email === 'existing@example.com') {
             return Effect.succeed({
@@ -1457,7 +1457,7 @@ describe('AdminService CRUD Operations', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),

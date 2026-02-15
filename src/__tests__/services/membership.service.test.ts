@@ -7,11 +7,11 @@ import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/members
 
 import {
   createTestStripeService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   TestStripeLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
 } from '../layers/test-layers';
-import {createMockUserDocument, createMockMembershipDocument} from '../mocks/firestore.mock';
+import {createMockUserDocument, createMockMembershipDocument} from '../mocks/database.mock';
 import {
   createMockCheckoutSession,
   createMockSubscription,
@@ -29,13 +29,13 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService({
         createCheckoutSession: vi.fn(() => Effect.succeed(mockSession)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -54,7 +54,7 @@ describe('MembershipService', () => {
 
       expect(result).toBeDefined();
       expect(result.sessionId).toBe(mockSession.id);
-      expect(firestoreService.getUser).toHaveBeenCalledWith('user_123');
+      expect(databaseService.getUser).toHaveBeenCalledWith('user_123');
     });
 
     it('should use email directly when no userId', async () => {
@@ -63,11 +63,11 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService({
         createCheckoutSession: vi.fn(() => Effect.succeed(mockSession)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -86,7 +86,7 @@ describe('MembershipService', () => {
 
       expect(result).toBeDefined();
       // Should not call getUser since no userId provided
-      expect(firestoreService.getUser).not.toHaveBeenCalled();
+      expect(databaseService.getUser).not.toHaveBeenCalled();
     });
 
     it('should pass stripeCustomerId to Stripe if user has one', async () => {
@@ -98,13 +98,13 @@ describe('MembershipService', () => {
       const stripeService = createTestStripeService({
         createCheckoutSession: vi.fn(() => Effect.succeed(mockSession)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -136,11 +136,11 @@ describe('MembershipService', () => {
           ),
         ),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -169,7 +169,7 @@ describe('MembershipService', () => {
 
     it('should propagate DatabaseError from user lookup', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() =>
           Effect.fail(
             new DatabaseError({
@@ -182,7 +182,7 @@ describe('MembershipService', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -220,11 +220,11 @@ describe('MembershipService', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -241,7 +241,7 @@ describe('MembershipService', () => {
       );
 
       // setMembership should NOT be called for incomplete subscriptions
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
 
     it('should skip membership creation for incomplete_expired subscription', async () => {
@@ -253,11 +253,11 @@ describe('MembershipService', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -271,7 +271,7 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
 
     it('should fail with StripeError when subscription retrieval fails', async () => {
@@ -286,11 +286,11 @@ describe('MembershipService', () => {
         ),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -314,7 +314,7 @@ describe('MembershipService', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -322,7 +322,7 @@ describe('MembershipService', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -339,8 +339,8 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setUser).toHaveBeenCalled();
-      expect(firestoreService.setMembership).toHaveBeenCalled();
+      expect(databaseService.setUser).toHaveBeenCalled();
+      expect(databaseService.setMembership).toHaveBeenCalled();
     });
 
     it('should add processing fee invoice item when present', async () => {
@@ -350,7 +350,7 @@ describe('MembershipService', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -358,7 +358,7 @@ describe('MembershipService', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -381,13 +381,13 @@ describe('MembershipService', () => {
   describe('processSubscriptionUpdated', () => {
     it('should log warning and return when user not found', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription();
@@ -402,20 +402,20 @@ describe('MembershipService', () => {
       );
 
       // Should not throw, just log warning
-      expect(firestoreService.updateMembership).not.toHaveBeenCalled();
+      expect(databaseService.updateMembership).not.toHaveBeenCalled();
     });
 
     it('should update membership status', async () => {
       const mockUser = createMockUserDocument();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription({
@@ -431,20 +431,20 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).toHaveBeenCalled();
+      expect(databaseService.updateMembership).toHaveBeenCalled();
     });
 
     it('should update autoRenew based on cancel_at_period_end', async () => {
       const mockUser = createMockUserDocument();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription({
@@ -461,8 +461,8 @@ describe('MembershipService', () => {
       );
 
       // The updateMembership should be called with autoRenew: false
-      expect(firestoreService.updateMembership).toHaveBeenCalled();
-      const call = (firestoreService.updateMembership as any).mock.calls[0];
+      expect(databaseService.updateMembership).toHaveBeenCalled();
+      const call = (databaseService.updateMembership as any).mock.calls[0];
       expect(call[2].autoRenew).toBe(false);
     });
   });
@@ -470,13 +470,13 @@ describe('MembershipService', () => {
   describe('processSubscriptionDeleted', () => {
     it('should log warning and return when user not found', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription();
@@ -490,20 +490,20 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).not.toHaveBeenCalled();
+      expect(databaseService.updateMembership).not.toHaveBeenCalled();
     });
 
     it('should mark membership as canceled', async () => {
       const mockUser = createMockUserDocument();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSubscription = createMockSubscription();
@@ -517,8 +517,8 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.updateMembership).toHaveBeenCalled();
-      const call = (firestoreService.updateMembership as any).mock.calls[0];
+      expect(databaseService.updateMembership).toHaveBeenCalled();
+      const call = (databaseService.updateMembership as any).mock.calls[0];
       expect(call[2].status).toBe('canceled');
       expect(call[2].autoRenew).toBe(false);
     });
@@ -527,13 +527,13 @@ describe('MembershipService', () => {
   describe('getMembershipStatus', () => {
     it('should fail with NotFoundError when user not found', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -558,14 +558,14 @@ describe('MembershipService', () => {
     it('should return isActive=false when no membership', async () => {
       const mockUser = createMockUserDocument();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
         getActiveMembership: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -588,14 +588,14 @@ describe('MembershipService', () => {
         planType: 'individual',
       });
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
         getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -626,11 +626,11 @@ describe('MembershipService', () => {
           ),
         ),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -660,11 +660,11 @@ describe('MembershipService', () => {
           Effect.succeed([{price: mockPrice, product: mockPrice.product as any}]),
         ),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {

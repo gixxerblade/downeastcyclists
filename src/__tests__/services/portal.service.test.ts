@@ -12,10 +12,7 @@ import {
   TestStripeLayer,
   TestDatabaseLayer,
 } from '../layers/test-layers';
-import {
-  createMockUserDocument,
-  createMockMembershipDocument,
-} from '../mocks/database.mock';
+import {createMockUserDocument, createMockMembershipDocument} from '../mocks/database.mock';
 import {createMockDecodedToken} from '../mocks/firebase-admin.mock';
 import {createMockPortalSession} from '../mocks/stripe.mock';
 

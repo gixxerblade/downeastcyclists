@@ -10,7 +10,7 @@ import {DatabaseError, DuplicateWebhookError} from '@/src/lib/effect/errors';
 import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.service';
 
 import {createTestWebhookService, TestWebhookLayer} from '../layers/test-layers';
-import {createMockWebhookEvent} from '../mocks/firestore.mock';
+import {createMockWebhookEvent} from '../mocks/database.mock';
 
 describe('WebhookIdempotencyService', () => {
   describe('claimEvent', () => {
