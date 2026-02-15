@@ -163,7 +163,7 @@ describe('PortalService', () => {
       futureDate.setDate(futureDate.getDate() + 30);
       const mockMembership = createMockMembershipDocument({
         status: 'active',
-        endDate: createMockTimestamp(futureDate),
+        endDate: futureDate.toISOString(),
       });
 
       const authService = createTestAuthService();

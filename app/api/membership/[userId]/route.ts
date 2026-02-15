@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, {params}: RouteParams) {
         status: 404,
       }),
     ),
-    Effect.catchTag('FirestoreError', (error) =>
+    Effect.catchTag('DatabaseError', (error) =>
       Effect.succeed({
         error: error.message,
         _tag: 'error' as const,

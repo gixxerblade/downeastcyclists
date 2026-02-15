@@ -2,7 +2,7 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {FirestoreError} from '@/src/lib/effect/errors';
+import {DatabaseError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 
 import {
@@ -203,13 +203,13 @@ describe('Checkout Flow Integration', () => {
     });
   });
 
-  describe('Firestore failure during checkout', () => {
+  describe('Database failure during checkout', () => {
     it('should handle user lookup failure gracefully', async () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'GET_USER_FAILED',
               message: 'Database unavailable',
             }),
@@ -241,12 +241,12 @@ describe('Checkout Flow Integration', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
+          expect(error.error).toBeInstanceOf(DatabaseError);
         }
       }
     });
 
-    it('should fail checkout if Firestore write fails after payment', async () => {
+    it('should fail checkout if database write fails after payment', async () => {
       const mockSubscription = createMockSubscription({status: 'active'});
 
       const stripeService = createTestStripeService({
@@ -257,7 +257,7 @@ describe('Checkout Flow Integration', () => {
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'SET_USER_FAILED',
               message: 'Write failed',
             }),
@@ -301,7 +301,7 @@ describe('Checkout Flow Integration', () => {
           callCount++;
           if (callCount === 1) {
             return Effect.fail(
-              new FirestoreError({
+              new DatabaseError({
                 code: 'SET_MEMBERSHIP_FAILED',
                 message: 'Temporary failure',
               }),

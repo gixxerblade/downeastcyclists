@@ -1,10 +1,10 @@
 import {Effect, Exit} from 'effect';
 import {describe, it, expect, vi} from 'vitest';
 
-import {FirestoreError} from '@/src/lib/effect/errors';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {DatabaseService} from '@/src/lib/effect/database.service';
+import {DatabaseError} from '@/src/lib/effect/errors';
 
-import {createTestFirestoreService, TestFirestoreLayer} from '../layers/test-layers';
+import {createTestDatabaseService, TestDatabaseLayer} from '../layers/test-layers';
 import {
   createMockUserDocument,
   createMockMembershipDocument,
@@ -14,30 +14,30 @@ import {
   transactionConflictError,
 } from '../mocks/firestore.mock';
 
-describe('FirestoreService', () => {
+describe('DatabaseService', () => {
   describe('getUser', () => {
     it('should return null when user not found', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUser('nonexistent_user');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
     });
 
-    it('should fail with FirestoreError on permission denied', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on permission denied', async () => {
+      const mockService = createTestDatabaseService({
         getUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'GET_USER_FAILED',
               message: 'Permission denied',
               cause: permissionDeniedError(),
@@ -47,12 +47,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUser('user_123');
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -60,16 +60,16 @@ describe('FirestoreService', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
+          expect(error.error).toBeInstanceOf(DatabaseError);
         }
       }
     });
 
-    it('should fail with FirestoreError on network error', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on network error', async () => {
+      const mockService = createTestDatabaseService({
         getUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'GET_USER_FAILED',
               message: 'Network unavailable',
               cause: networkError(),
@@ -79,12 +79,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUser('user_123');
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -92,17 +92,17 @@ describe('FirestoreService', () => {
 
     it('should return user document on success', async () => {
       const mockUser = createMockUserDocument();
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUser('user_123');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeDefined();
@@ -112,11 +112,11 @@ describe('FirestoreService', () => {
   });
 
   describe('setUser', () => {
-    it('should fail with FirestoreError on permission denied', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on permission denied', async () => {
+      const mockService = createTestDatabaseService({
         setUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'SET_USER_FAILED',
               message: 'Permission denied',
               cause: permissionDeniedError(),
@@ -126,12 +126,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.setUser('user_123', {email: 'test@example.com'});
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -139,17 +139,17 @@ describe('FirestoreService', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
-          expect((error.error as FirestoreError).code).toBe('SET_USER_FAILED');
+          expect(error.error).toBeInstanceOf(DatabaseError);
+          expect((error.error as DatabaseError).code).toBe('SET_USER_FAILED');
         }
       }
     });
 
-    it('should fail with FirestoreError on network error', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on network error', async () => {
+      const mockService = createTestDatabaseService({
         setUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'SET_USER_FAILED',
               message: 'Network unavailable',
               cause: networkError(),
@@ -159,29 +159,29 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.setUser('user_123', {email: 'test@example.com'});
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
     });
 
     it('should succeed with valid data', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         setUser: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.setUser('user_123', {email: 'test@example.com'}, true);
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeUndefined();
@@ -194,11 +194,11 @@ describe('FirestoreService', () => {
   });
 
   describe('getNextMembershipNumber', () => {
-    it('should fail with FirestoreError on transaction conflict', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on transaction conflict', async () => {
+      const mockService = createTestDatabaseService({
         getNextMembershipNumber: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'COUNTER_INCREMENT_FAILED',
               message: 'Transaction conflict',
               cause: transactionConflictError(),
@@ -208,12 +208,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getNextMembershipNumber(2025);
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -221,24 +221,24 @@ describe('FirestoreService', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
-          expect((error.error as FirestoreError).code).toBe('COUNTER_INCREMENT_FAILED');
+          expect(error.error).toBeInstanceOf(DatabaseError);
+          expect((error.error as DatabaseError).code).toBe('COUNTER_INCREMENT_FAILED');
         }
       }
     });
 
     it('should format number correctly (DEC-YYYY-NNNNNN)', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2025-000001')),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getNextMembershipNumber(2025);
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBe('DEC-2025-000001');
@@ -247,7 +247,7 @@ describe('FirestoreService', () => {
 
     it('should increment counter atomically', async () => {
       let counter = 0;
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getNextMembershipNumber: vi.fn(() => {
           counter++;
           return Effect.succeed(`DEC-2025-${String(counter).padStart(6, '0')}`);
@@ -255,14 +255,14 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         const first = yield* service.getNextMembershipNumber(2025);
         const second = yield* service.getNextMembershipNumber(2025);
         return {first, second};
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result.first).toBe('DEC-2025-000001');
@@ -275,17 +275,17 @@ describe('FirestoreService', () => {
       const existingUser = createMockUserDocument({
         stripeCustomerId: 'cus_existing',
       });
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         upsertUserByStripeCustomer: vi.fn(() => Effect.succeed(existingUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.upsertUserByStripeCustomer('cus_existing', 'new@example.com', {});
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeDefined();
@@ -297,17 +297,17 @@ describe('FirestoreService', () => {
         email: 'existing@example.com',
         stripeCustomerId: 'cus_new',
       });
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         upsertUserByStripeCustomer: vi.fn(() => Effect.succeed(linkedUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.upsertUserByStripeCustomer('cus_new', 'existing@example.com', {});
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result.email).toBe('existing@example.com');
@@ -320,12 +320,12 @@ describe('FirestoreService', () => {
         email: 'newuser@example.com',
         stripeCustomerId: 'cus_brand_new',
       });
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         upsertUserByStripeCustomer: vi.fn(() => Effect.succeed(newUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.upsertUserByStripeCustomer(
           'cus_brand_new',
           'newuser@example.com',
@@ -334,18 +334,18 @@ describe('FirestoreService', () => {
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result.id).toBe('cus_brand_new');
       expect(result.email).toBe('newuser@example.com');
     });
 
-    it('should fail with FirestoreError on network error', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on network error', async () => {
+      const mockService = createTestDatabaseService({
         upsertUserByStripeCustomer: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'UPSERT_USER_BY_STRIPE_CUSTOMER_FAILED',
               message: 'Network error',
               cause: networkError(),
@@ -355,12 +355,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.upsertUserByStripeCustomer('cus_123', 'test@example.com', {});
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -369,17 +369,17 @@ describe('FirestoreService', () => {
 
   describe('getActiveMembership', () => {
     it('should return null when no memberships exist', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getActiveMembership: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getActiveMembership('user_123');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
@@ -388,19 +388,19 @@ describe('FirestoreService', () => {
     it('should return active membership with latest endDate', async () => {
       const activeMembership = createMockMembershipDocument({
         status: 'active',
-        endDate: createMockTimestamp(new Date('2025-12-31')),
+        endDate: new Date('2025-12-31').toISOString(),
       });
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getActiveMembership: vi.fn(() => Effect.succeed(activeMembership)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getActiveMembership('user_123');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeDefined();
@@ -412,17 +412,17 @@ describe('FirestoreService', () => {
       const activeMembership = createMockMembershipDocument({
         status: 'active',
       });
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getActiveMembership: vi.fn(() => Effect.succeed(activeMembership)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getActiveMembership('user_123');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result?.status).toBe('active');
@@ -431,17 +431,17 @@ describe('FirestoreService', () => {
 
   describe('getUserByEmail', () => {
     it('should return null when user not found by email', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUserByEmail('notfound@example.com');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
@@ -449,17 +449,17 @@ describe('FirestoreService', () => {
 
     it('should return user when found by email', async () => {
       const mockUser = createMockUserDocument({email: 'found@example.com'});
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUserByEmail('found@example.com');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeDefined();
@@ -469,17 +469,17 @@ describe('FirestoreService', () => {
 
   describe('getUserByStripeCustomerId', () => {
     it('should return null when user not found by customer ID', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUserByStripeCustomerId('cus_notfound');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
@@ -487,17 +487,17 @@ describe('FirestoreService', () => {
 
     it('should return user when found by customer ID', async () => {
       const mockUser = createMockUserDocument({stripeCustomerId: 'cus_found'});
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getUserByStripeCustomerId('cus_found');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeDefined();
@@ -507,7 +507,7 @@ describe('FirestoreService', () => {
 
   describe('setMembership', () => {
     it('should succeed when setting membership', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         setMembership: vi.fn(() => Effect.void),
       });
 
@@ -515,29 +515,29 @@ describe('FirestoreService', () => {
         stripeSubscriptionId: 'sub_123',
         planType: 'individual' as const,
         status: 'active' as const,
-        startDate: createMockTimestamp(),
-        endDate: createMockTimestamp(),
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
         autoRenew: true,
       };
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.setMembership('user_123', 'sub_123', membershipData as any);
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeUndefined();
       expect(mockService.setMembership).toHaveBeenCalled();
     });
 
-    it('should fail with FirestoreError on failure', async () => {
-      const mockService = createTestFirestoreService({
+    it('should fail with DatabaseError on failure', async () => {
+      const mockService = createTestDatabaseService({
         setMembership: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'SET_MEMBERSHIP_FAILED',
               message: 'Failed to set membership',
             }),
@@ -546,12 +546,12 @@ describe('FirestoreService', () => {
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.setMembership('user_123', 'sub_123', {} as any);
       });
 
       const result = await Effect.runPromiseExit(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(Exit.isFailure(result)).toBe(true);
@@ -560,12 +560,12 @@ describe('FirestoreService', () => {
 
   describe('updateMembership', () => {
     it('should succeed when updating membership', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         updateMembership: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.updateMembership('user_123', 'sub_123', {
           status: 'canceled',
           autoRenew: false,
@@ -573,7 +573,7 @@ describe('FirestoreService', () => {
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeUndefined();
@@ -582,17 +582,17 @@ describe('FirestoreService', () => {
 
   describe('getMembershipCard', () => {
     it('should return null when no card exists', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getMembershipCard: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getMembershipCard('user_123');
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
@@ -601,17 +601,17 @@ describe('FirestoreService', () => {
 
   describe('getStats', () => {
     it('should return null when no stats exist', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         getStats: vi.fn(() => Effect.succeed(null)),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.getStats();
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeNull();
@@ -620,17 +620,17 @@ describe('FirestoreService', () => {
 
   describe('updateStats', () => {
     it('should succeed when updating stats', async () => {
-      const mockService = createTestFirestoreService({
+      const mockService = createTestDatabaseService({
         updateStats: vi.fn(() => Effect.void),
       });
 
       const program = Effect.gen(function* () {
-        const service = yield* FirestoreService;
+        const service = yield* DatabaseService;
         return yield* service.updateStats({activeMembers: 100});
       });
 
       const result = await Effect.runPromise(
-        Effect.provide(program, TestFirestoreLayer(mockService)),
+        Effect.provide(program, TestDatabaseLayer(mockService)),
       );
 
       expect(result).toBeUndefined();

@@ -3,8 +3,8 @@ import {Context, Effect, Layer, pipe} from 'effect';
 import {getPlanNameForType} from '../membership-plans-config';
 
 import {AuthService} from './auth.service';
-import {AuthError, SessionError, StripeError, FirestoreError, NotFoundError} from './errors';
-import {FirestoreService} from './firestore.service';
+import {DatabaseService} from './database.service';
+import {AuthError, SessionError, StripeError, DatabaseError, NotFoundError} from './errors';
 import type {MemberDashboardResponse} from './schemas';
 import {StripeService} from './stripe.service';
 
@@ -16,17 +16,17 @@ export interface PortalService {
 
   readonly getMemberDashboard: (
     userId: string,
-  ) => Effect.Effect<MemberDashboardResponse, FirestoreError | NotFoundError>;
+  ) => Effect.Effect<MemberDashboardResponse, DatabaseError | NotFoundError>;
 
   readonly createPortalSession: (
     userId: string,
     returnUrl: string,
-  ) => Effect.Effect<{url: string}, StripeError | FirestoreError | NotFoundError>;
+  ) => Effect.Effect<{url: string}, StripeError | DatabaseError | NotFoundError>;
 
   readonly linkFirebaseToStripe: (
     firebaseUid: string,
     stripeCustomerId: string,
-  ) => Effect.Effect<void, FirestoreError>;
+  ) => Effect.Effect<void, DatabaseError>;
 }
 
 // Service tag
@@ -36,7 +36,7 @@ export const PortalService = Context.GenericTag<PortalService>('PortalService');
 const make = Effect.gen(function* () {
   const auth = yield* AuthService;
   const stripe = yield* StripeService;
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
 
   return PortalService.of({
     // Session verification - simple transform, use Effect.pipe
@@ -53,21 +53,20 @@ const make = Effect.gen(function* () {
     getMemberDashboard: (userId) =>
       Effect.gen(function* () {
         // Fetch user
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
         if (!user) {
           return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
         // Fetch membership
-        const membership = yield* firestore.getActiveMembership(userId);
+        const membership = yield* db.getActiveMembership(userId);
 
         let membershipData: MemberDashboardResponse['membership'] = null;
         let canManageSubscription = false;
 
         if (membership) {
-          // Calculate days remaining
-          const endDate =
-            membership.endDate.toDate?.() || new Date(membership.endDate as unknown as string);
+          // Dates are ISO strings from Postgres
+          const endDate = new Date(membership.endDate as string);
           const now = new Date();
           const daysRemaining = Math.max(
             0,
@@ -76,8 +75,7 @@ const make = Effect.gen(function* () {
 
           const planName = getPlanNameForType(membership.planType);
 
-          const startDate =
-            membership.startDate.toDate?.() || new Date(membership.startDate as unknown as string);
+          const startDate = new Date(membership.startDate as string);
 
           membershipData = {
             planType: membership.planType,
@@ -107,7 +105,7 @@ const make = Effect.gen(function* () {
     createPortalSession: (userId, returnUrl) =>
       Effect.gen(function* () {
         // Get user to find Stripe customer ID
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
 
         if (!user) {
           return yield* new NotFoundError({resource: 'user', id: userId});
@@ -130,9 +128,9 @@ const make = Effect.gen(function* () {
 
     // Simple delegation, use Effect.pipe
     linkFirebaseToStripe: (firebaseUid, stripeCustomerId) =>
-      firestore.setUser(firebaseUid, {stripeCustomerId}),
+      db.setUser(firebaseUid, {stripeCustomerId}),
   });
 });
 
-// Live layer - requires AuthService, StripeService, FirestoreService
+// Live layer - requires AuthService, StripeService, DatabaseService
 export const PortalServiceLive = Layer.effect(PortalService, make);

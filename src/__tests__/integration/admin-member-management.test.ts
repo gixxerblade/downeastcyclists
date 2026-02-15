@@ -106,10 +106,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_1',
               action: 'MEMBER_CREATED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 newValues: {
                   email: 'test@example.com',
                   planType: 'individual',
@@ -119,10 +119,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_2',
               action: 'MEMBER_UPDATED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 previousValues: {email: 'test@example.com'},
                 newValues: {email: 'newemail@example.com'},
                 reason: 'Email change',
@@ -131,10 +131,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_3',
               action: 'MEMBER_DELETED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 reason: 'User requested deletion',
               },
             },

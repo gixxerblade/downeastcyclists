@@ -1,18 +1,18 @@
 import {Context, Effect, Layer, pipe} from 'effect';
 
-import {ExportError, FirestoreError} from './errors';
-import {FirestoreService} from './firestore.service';
+import {DatabaseService} from './database.service';
+import {ExportError, DatabaseError} from './errors';
 import type {ExportOptions, MemberWithMembership} from './schemas';
 
 // Service interface
 export interface ExportService {
   readonly generateCSV: (
     options: ExportOptions,
-  ) => Effect.Effect<string, ExportError | FirestoreError>;
+  ) => Effect.Effect<string, ExportError | DatabaseError>;
 
   readonly generateJSON: (
     options: ExportOptions,
-  ) => Effect.Effect<string, ExportError | FirestoreError>;
+  ) => Effect.Effect<string, ExportError | DatabaseError>;
 }
 
 // Service tag
@@ -35,11 +35,11 @@ const serializeJSON = (data: unknown): string =>
 
 // Implementation
 const make = Effect.gen(function* () {
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
 
   const fetchMembers = (options: ExportOptions) =>
     pipe(
-      firestore.getAllMemberships({
+      db.getAllMemberships({
         status: options.statusFilter,
         pageSize: 1000, // Large batch for export
       }),
@@ -67,24 +67,12 @@ const make = Effect.gen(function* () {
     row.push(member.membership?.planType || '');
     row.push(member.membership?.status || '');
 
-    // Handle Firestore timestamps
-    const startDate = member.membership?.startDate;
-    const endDate = member.membership?.endDate;
+    // Dates are ISO strings from Postgres
+    const startDate = member.membership?.startDate as string | undefined;
+    const endDate = member.membership?.endDate as string | undefined;
 
-    row.push(
-      startDate
-        ? (startDate.toDate?.() ? startDate.toDate() : new Date(startDate as unknown as string))
-            .toISOString()
-            .split('T')[0]
-        : '',
-    );
-    row.push(
-      endDate
-        ? (endDate.toDate?.() ? endDate.toDate() : new Date(endDate as unknown as string))
-            .toISOString()
-            .split('T')[0]
-        : '',
-    );
+    row.push(startDate ? new Date(startDate).toISOString().split('T')[0] : '');
+    row.push(endDate ? new Date(endDate).toISOString().split('T')[0] : '');
     row.push(member.membership?.autoRenew ? 'Yes' : 'No');
 
     return row;
@@ -120,26 +108,17 @@ const make = Effect.gen(function* () {
         const members = yield* fetchMembers(options);
 
         const exportData = members.map((member) => {
-          const startDate = member.membership?.startDate;
-          const endDate = member.membership?.endDate;
+          // Dates are ISO strings from Postgres
+          const startDate = member.membership?.startDate as string | undefined;
+          const endDate = member.membership?.endDate as string | undefined;
 
           const data: Record<string, unknown> = {
             membershipNumber: member.card?.membershipNumber,
             name: member.user?.name,
             planType: member.membership?.planType,
             status: member.membership?.status,
-            startDate: startDate
-              ? (startDate.toDate?.()
-                  ? startDate.toDate()
-                  : new Date(startDate as unknown as string)
-                ).toISOString()
-              : null,
-            endDate: endDate
-              ? (endDate.toDate?.()
-                  ? endDate.toDate()
-                  : new Date(endDate as unknown as string)
-                ).toISOString()
-              : null,
+            startDate: startDate ? new Date(startDate).toISOString() : null,
+            endDate: endDate ? new Date(endDate).toISOString() : null,
             autoRenew: member.membership?.autoRenew,
           };
 

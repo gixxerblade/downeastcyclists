@@ -113,14 +113,14 @@ export const createMockTimestamp = (date: Date = new Date()) => ({
   nanoseconds: 0,
 });
 
-// Mock data factories
+// Mock data factories — dates are ISO strings to match Postgres/Drizzle output
 export const createMockUserDocument = (overrides: Partial<UserDocument> = {}): UserDocument => ({
   id: 'user_123',
   email: 'test@example.com',
   name: 'Test User',
   stripeCustomerId: 'cus_test_123',
-  createdAt: createMockTimestamp(),
-  updatedAt: createMockTimestamp(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
   ...overrides,
 });
 
@@ -131,11 +131,11 @@ export const createMockMembershipDocument = (
   stripeSubscriptionId: 'sub_test_123',
   planType: 'individual',
   status: 'active',
-  startDate: createMockTimestamp(),
-  endDate: createMockTimestamp(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
+  startDate: new Date().toISOString(),
+  endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
   autoRenew: true,
-  createdAt: createMockTimestamp(),
-  updatedAt: createMockTimestamp(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
   ...overrides,
 });
 
@@ -176,7 +176,7 @@ export const createMockWebhookEvent = (
 ): WebhookEventDocument => ({
   id: 'evt_test_123',
   type: 'checkout.session.completed',
-  processedAt: createMockTimestamp(),
+  processedAt: new Date().toISOString(),
   status: 'completed',
   retryCount: 0,
   ...overrides,

@@ -2,7 +2,7 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {StripeError, FirestoreError, NotFoundError} from '@/src/lib/effect/errors';
+import {StripeError, DatabaseError, NotFoundError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 
 import {
@@ -167,12 +167,12 @@ describe('MembershipService', () => {
       }
     });
 
-    it('should propagate FirestoreError from user lookup', async () => {
+    it('should propagate DatabaseError from user lookup', async () => {
       const stripeService = createTestStripeService();
       const firestoreService = createTestFirestoreService({
         getUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'GET_USER_FAILED',
               message: 'Permission denied',
             }),
@@ -204,7 +204,7 @@ describe('MembershipService', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
+          expect(error.error).toBeInstanceOf(DatabaseError);
         }
       }
     });
