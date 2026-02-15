@@ -4,10 +4,12 @@ import {Context, Effect, Layer} from 'effect';
 import {db} from '@/src/db/client';
 import {users} from '@/src/db/schema/tables';
 
+import {createCardMethods} from './database-card.methods';
 import {createMembershipMethods} from './database-membership.methods';
 import {DatabaseError} from './errors';
 import type {
   MemberSearchParams,
+  MembershipCard,
   MemberWithMembership,
   MembershipDocument,
   UserDocument,
@@ -137,6 +139,27 @@ export interface DatabaseService {
   readonly getExpiringMemberships: (
     withinDays: number,
   ) => Effect.Effect<MemberWithMembership[], DatabaseError>;
+
+  // Membership card management
+  readonly getMembershipCard: (
+    userId: string,
+  ) => Effect.Effect<MembershipCard | null, DatabaseError>;
+
+  readonly setMembershipCard: (
+    userId: string,
+    card: Omit<MembershipCard, 'id'>,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly updateMembershipCard: (
+    userId: string,
+    data: Partial<MembershipCard>,
+  ) => Effect.Effect<void, DatabaseError>;
+
+  readonly getMembershipByNumber: (
+    membershipNumber: string,
+  ) => Effect.Effect<{userId: string; card: MembershipCard} | null, DatabaseError>;
+
+  readonly getNextMembershipNumber: (year: number) => Effect.Effect<string, DatabaseError>;
 }
 
 // Service tag
@@ -148,6 +171,7 @@ export const DatabaseService = Context.GenericTag<DatabaseService>('DatabaseServ
 
 const make = Effect.sync(() => {
   const membershipMethods = createMembershipMethods();
+  const cardMethods = createCardMethods();
 
   return DatabaseService.of({
     getUser: (userId) =>
@@ -418,6 +442,9 @@ const make = Effect.sync(() => {
 
     // Membership management methods
     ...membershipMethods,
+
+    // Membership card methods
+    ...cardMethods,
   });
 });
 

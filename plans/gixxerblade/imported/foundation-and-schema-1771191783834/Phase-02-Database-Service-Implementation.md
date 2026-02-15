@@ -24,7 +24,7 @@ This phase builds the core `DatabaseService` that will replace `FirestoreService
   - Add search, filtering, and pagination support with ILIKE and proper indexing
   - Implement `getExpiringMemberships` with single SQL query and date range filtering
 
-- [ ] Implement membership card and numbering methods:
+- [x] Implement membership card and numbering methods:
   - Add `getMembershipCard`, `setMembershipCard`, `updateMembershipCard`
   - Add `getMembershipByNumber` with user JOIN for QR code verification
   - Implement atomic `getNextMembershipNumber` using ON CONFLICT DO UPDATE RETURNING

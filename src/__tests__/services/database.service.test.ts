@@ -41,6 +41,11 @@ const createTestDatabaseService = (
   deleteMembership: vi.fn(() => Effect.void),
   getAllMemberships: vi.fn(() => Effect.succeed({members: [], total: 0})),
   getExpiringMemberships: vi.fn(() => Effect.succeed([])),
+  getMembershipCard: vi.fn(() => Effect.succeed(null)),
+  setMembershipCard: vi.fn(() => Effect.void),
+  updateMembershipCard: vi.fn(() => Effect.void),
+  getMembershipByNumber: vi.fn(() => Effect.succeed(null)),
+  getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2025-000001')),
   ...overrides,
 });
 
@@ -928,6 +933,314 @@ describe('DatabaseService', () => {
       expect(Exit.isFailure(result)).toBe(true);
       if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
         expect((result.cause.error as DatabaseError).code).toBe('GET_EXPIRING_MEMBERSHIPS_FAILED');
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Membership card methods
+  // -------------------------------------------------------------------------
+
+  describe('getMembershipCard', () => {
+    it('should return null when no card exists', async () => {
+      const mockService = createTestDatabaseService({
+        getMembershipCard: vi.fn(() => Effect.succeed(null)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipCard('user_123');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return membership card on success', async () => {
+      const mockCard = createMockMembershipCard();
+      const mockService = createTestDatabaseService({
+        getMembershipCard: vi.fn(() => Effect.succeed(mockCard)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipCard('user_123');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.membershipNumber).toBe('DEC-2025-000001');
+      expect(result?.status).toBe('active');
+    });
+
+    it('should fail with DatabaseError on query failure', async () => {
+      const mockService = createTestDatabaseService({
+        getMembershipCard: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'GET_CARD_FAILED',
+              message: 'Connection refused',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipCard('user_123');
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('GET_CARD_FAILED');
+      }
+    });
+  });
+
+  describe('setMembershipCard', () => {
+    it('should succeed when setting a card', async () => {
+      const mockService = createTestDatabaseService({
+        setMembershipCard: vi.fn(() => Effect.void),
+      });
+
+      const mockCard = createMockMembershipCard();
+      const {id: _id, ...cardWithoutId} = mockCard;
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.setMembershipCard('user_123', cardWithoutId);
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockService.setMembershipCard).toHaveBeenCalledWith('user_123', cardWithoutId);
+    });
+
+    it('should fail with DatabaseError on set failure', async () => {
+      const mockService = createTestDatabaseService({
+        setMembershipCard: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'SET_CARD_FAILED',
+              message: 'Database unavailable',
+            }),
+          ),
+        ),
+      });
+
+      const mockCard = createMockMembershipCard();
+      const {id: _id, ...cardWithoutId} = mockCard;
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.setMembershipCard('user_123', cardWithoutId);
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('SET_CARD_FAILED');
+      }
+    });
+  });
+
+  describe('updateMembershipCard', () => {
+    it('should succeed when updating a card', async () => {
+      const mockService = createTestDatabaseService({
+        updateMembershipCard: vi.fn(() => Effect.void),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.updateMembershipCard('user_123', {status: 'canceled'});
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockService.updateMembershipCard).toHaveBeenCalledWith('user_123', {
+        status: 'canceled',
+      });
+    });
+
+    it('should fail with DatabaseError on update failure', async () => {
+      const mockService = createTestDatabaseService({
+        updateMembershipCard: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'UPDATE_CARD_FAILED',
+              message: 'Connection lost',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.updateMembershipCard('user_123', {status: 'active'});
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('UPDATE_CARD_FAILED');
+      }
+    });
+  });
+
+  describe('getMembershipByNumber', () => {
+    it('should return null when no membership found by number', async () => {
+      const mockService = createTestDatabaseService({
+        getMembershipByNumber: vi.fn(() => Effect.succeed(null)),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipByNumber('DEC-2025-999999');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return userId and card when found', async () => {
+      const mockCard = createMockMembershipCard();
+      const mockService = createTestDatabaseService({
+        getMembershipByNumber: vi.fn(() => Effect.succeed({userId: 'user_123', card: mockCard})),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipByNumber('DEC-2025-000001');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.userId).toBe('user_123');
+      expect(result?.card.membershipNumber).toBe('DEC-2025-000001');
+    });
+
+    it('should fail with DatabaseError on query failure', async () => {
+      const mockService = createTestDatabaseService({
+        getMembershipByNumber: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'GET_BY_NUMBER_FAILED',
+              message: 'Query timeout',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getMembershipByNumber('DEC-2025-000001');
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('GET_BY_NUMBER_FAILED');
+      }
+    });
+  });
+
+  describe('getNextMembershipNumber', () => {
+    it('should return formatted membership number', async () => {
+      const mockService = createTestDatabaseService({
+        getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2026-000001')),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getNextMembershipNumber(2026);
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result).toBe('DEC-2026-000001');
+    });
+
+    it('should produce sequential numbers', async () => {
+      let counter = 0;
+      const mockService = createTestDatabaseService({
+        getNextMembershipNumber: vi.fn(() => {
+          counter++;
+          return Effect.succeed(`DEC-2026-${String(counter).padStart(6, '0')}`);
+        }),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        const first = yield* service.getNextMembershipNumber(2026);
+        const second = yield* service.getNextMembershipNumber(2026);
+        return {first, second};
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(result.first).toBe('DEC-2026-000001');
+      expect(result.second).toBe('DEC-2026-000002');
+    });
+
+    it('should fail with DatabaseError on counter failure', async () => {
+      const mockService = createTestDatabaseService({
+        getNextMembershipNumber: vi.fn(() =>
+          Effect.fail(
+            new DatabaseError({
+              code: 'COUNTER_INCREMENT_FAILED',
+              message: 'Database unavailable',
+            }),
+          ),
+        ),
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* DatabaseService;
+        return yield* service.getNextMembershipNumber(2026);
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(program, TestDatabaseLayer(mockService)),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect((result.cause.error as DatabaseError).code).toBe('COUNTER_INCREMENT_FAILED');
       }
     });
   });
