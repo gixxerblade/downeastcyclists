@@ -449,7 +449,6 @@ const make = Effect.sync(() => {
           }
 
           // Create new user with stripeCustomerId as the firebase UID
-          // (mirrors Firestore behavior where document ID = stripeCustomerId)
           const now = new Date();
           const inserted = await db
             .insert(users)

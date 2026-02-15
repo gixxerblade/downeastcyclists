@@ -205,7 +205,7 @@ const make = Effect.gen(function* () {
           userDocId = existingUser?.id || subscriptionId;
         }
 
-        // Update user document — Postgres uses ISO strings, not Firestore Timestamps
+        // Update user document with ISO date strings
         yield* db.setUser(userDocId, {
           id: userDocId,
           email: customerEmail || '',

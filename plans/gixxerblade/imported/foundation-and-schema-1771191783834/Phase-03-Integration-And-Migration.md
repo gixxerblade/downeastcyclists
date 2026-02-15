@@ -30,7 +30,7 @@ This phase swaps the application from Firestore to Postgres by updating layer co
   - Ensure admin dashboard queries use the new efficient SQL-based methods
   - Verify search functionality uses SQL ILIKE instead of client-side filtering
 
-- [ ] Create comprehensive data migration script:
+- [x] Create comprehensive data migration script:
   - Create `scripts/migrate-firestore-to-neon.ts` for one-time data transfer
   - Implement Firebase Admin SDK reading of all 8 Firestore collections
   - Transform Firestore Timestamps to ISO strings for Postgres timestamptz
@@ -39,7 +39,7 @@ This phase swaps the application from Firestore to Postgres by updating layer co
   - Include batch processing, progress logging, and error handling
   - Make migration idempotent using ON CONFLICT for upserts
 
-- [ ] Execute migration and perform cleanup:
+- [x] Execute migration and perform cleanup:
   - Run the migration script against production Firestore data
   - Verify row counts match between source and target databases
   - Validate all Stripe IDs and membership numbers are preserved exactly

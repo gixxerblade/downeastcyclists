@@ -20,8 +20,8 @@ export interface JoinResult {
   checkoutUrl: string;
 }
 
-// Create Firestore user document via API
-const createFirestoreUser = (
+// Create user document via API
+const createDatabaseUser = (
   idToken: string,
   name?: string,
 ): Effect.Effect<{success: boolean; userId: string}, AuthError> =>
@@ -35,15 +35,15 @@ const createFirestoreUser = (
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create user in Firestore');
+        throw new Error(data.error || 'Failed to create user');
       }
 
       return response.json();
     },
     catch: (error) =>
       new AuthError({
-        code: 'FIRESTORE_USER_CREATE_FAILED',
-        message: error instanceof Error ? error.message : 'Failed to create user in Firestore',
+        code: 'USER_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create user',
         cause: error,
       }),
   });
@@ -89,7 +89,7 @@ const createCheckoutSession = (params: {
       }),
   });
 
-// Complete join flow: create account + Firestore doc + checkout session
+// Complete join flow: create account + database user + checkout session
 export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult, AuthError> =>
   Effect.gen(function* () {
     // Step 1: Create Firebase Auth account
@@ -99,7 +99,7 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
       name: request.name,
     });
 
-    // Step 2: Get ID token for Firestore user creation
+    // Step 2: Get ID token for user creation
     const idToken = yield* Effect.tryPromise({
       try: async () => {
         const currentUser = auth.currentUser;
@@ -116,8 +116,8 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
         }),
     });
 
-    // Step 3: Create Firestore user document
-    yield* createFirestoreUser(idToken, request.name);
+    // Step 3: Create user document
+    yield* createDatabaseUser(idToken, request.name);
 
     // Step 4: Create Stripe checkout session
     const checkout = yield* createCheckoutSession({

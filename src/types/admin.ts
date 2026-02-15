@@ -90,7 +90,7 @@ export type AuditAction =
   | 'MEMBERSHIP_ADJUSTMENT'
   | 'RECONCILIATION';
 
-// Audit entry from Firestore
+// Audit entry from database
 export interface AuditEntry {
   id: string;
   action: AuditAction;

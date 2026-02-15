@@ -117,7 +117,7 @@ export function getMembershipAccessConfig(status: MembershipStatus): MembershipA
 
 /**
  * Check if a subscription status indicates a completed initial payment
- * Used to decide whether to create a Firestore membership record
+ * Used to decide whether to create a membership record
  */
 export function isPaymentCompleted(status: string): boolean {
   // Only create membership records for these statuses
