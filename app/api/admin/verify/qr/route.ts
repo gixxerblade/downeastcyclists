@@ -35,6 +35,6 @@ export async function POST(request: NextRequest) {
           }),
         ),
       ),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 }

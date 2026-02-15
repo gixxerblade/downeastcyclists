@@ -31,6 +31,6 @@ export async function GET(_request: NextRequest, {params}: RouteParams) {
           }),
         ),
       ),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 }

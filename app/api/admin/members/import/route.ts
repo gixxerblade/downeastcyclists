@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       'UnauthorizedError',
       'SessionError',
       'AuthError',
-      'FirestoreError',
+      'DatabaseError',
       'ImportError',
       'CardError',
       'QRError',

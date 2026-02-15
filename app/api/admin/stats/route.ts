@@ -11,7 +11,7 @@ export async function GET() {
         yield* admin.verifyAdmin(sessionCookie);
         return yield* stats.getStats();
       }),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 }
 
@@ -24,6 +24,6 @@ export async function POST() {
         yield* admin.verifyAdmin(sessionCookie);
         return yield* stats.refreshStats();
       }),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 }

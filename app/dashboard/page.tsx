@@ -27,7 +27,7 @@ import {useAuth} from '@/src/components/auth/AuthProvider';
 import TrailStatus from '@/src/components/TrailStatus';
 import TrailStatusEditor from '@/src/components/TrailStatusEditor';
 import {refreshStats} from '@/src/lib/effect/client-admin';
-import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
+import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
 import type {MembershipStats} from '@/src/lib/effect/schemas';
 
 interface DashboardStats {
@@ -79,7 +79,7 @@ export default function DashboardPage() {
   // TanStack Query mutation for refreshing stats (following Effect-TS architecture)
   const refreshStatsMutation = useMutation<
     MembershipStats,
-    FirestoreError | UnauthorizedError,
+    DatabaseError | UnauthorizedError,
     void
   >({
     mutationFn: () => Effect.runPromise(refreshStats()),

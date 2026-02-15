@@ -17,7 +17,7 @@ export async function GET(_request: NextRequest, {params}: {params: Promise<{use
       'UnauthorizedError',
       'SessionError',
       'AuthError',
-      'FirestoreError',
+      'DatabaseError',
       'MemberNotFoundError',
     ],
   });

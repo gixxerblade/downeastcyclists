@@ -183,9 +183,9 @@ export const createTestAdminService = (
     Effect.fail(new NotFoundError({resource: 'user', id: ''})),
   ) as unknown as AdminServiceType['getMember'],
   adjustMembership: vi.fn(() => Effect.void),
-  validateStripeVsFirebase: vi.fn(() =>
+  validateStripeVsDatabase: vi.fn(() =>
     Effect.die('Not mocked'),
-  ) as unknown as AdminServiceType['validateStripeVsFirebase'],
+  ) as unknown as AdminServiceType['validateStripeVsDatabase'],
   reconcileMembership: vi.fn((_email: string, _adminUid?: string) =>
     Effect.die('Not mocked'),
   ) as unknown as AdminServiceType['reconcileMembership'],

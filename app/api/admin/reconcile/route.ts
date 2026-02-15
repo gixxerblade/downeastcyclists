@@ -3,7 +3,7 @@ import {NextRequest, NextResponse} from 'next/server';
 
 import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
 
-// GET: Validate Stripe vs Firebase for given email
+// GET: Validate Stripe vs database for given email
 export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get('email');
 
@@ -15,14 +15,14 @@ export async function GET(request: NextRequest) {
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
         yield* admin.verifyAdmin(sessionCookie);
-        return yield* admin.validateStripeVsFirebase(email);
+        return yield* admin.validateStripeVsDatabase(email);
       }),
     errorTags: [
       'UnauthorizedError',
       'SessionError',
       'AuthError',
       'StripeError',
-      'FirestoreError',
+      'DatabaseError',
       'AdminError',
     ],
   });
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       'SessionError',
       'AuthError',
       'StripeError',
-      'FirestoreError',
+      'DatabaseError',
       'CardError',
       'QRError',
       'AdminError',

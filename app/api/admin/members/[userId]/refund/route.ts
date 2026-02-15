@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, {params}: {params: Promise<{use
       'UnauthorizedError',
       'SessionError',
       'AuthError',
-      'FirestoreError',
+      'DatabaseError',
       'StripeError',
       'MemberNotFoundError',
     ],

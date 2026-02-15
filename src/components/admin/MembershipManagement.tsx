@@ -20,7 +20,7 @@ import {Effect} from 'effect';
 import {useState} from 'react';
 
 import {refreshStats, getStats, getMembers} from '@/src/lib/effect/client-admin';
-import type {FirestoreError, UnauthorizedError} from '@/src/lib/effect/errors';
+import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
 import type {MembershipStats, MemberWithMembership} from '@/src/lib/effect/schemas';
 
 import {BulkImportModal} from './BulkImportModal';
@@ -98,7 +98,7 @@ export function MembershipManagement() {
   // TanStack Query mutation for refreshing stats (following Effect-TS architecture)
   const refreshStatsMutation = useMutation<
     MembershipStats,
-    FirestoreError | UnauthorizedError,
+    DatabaseError | UnauthorizedError,
     void
   >({
     mutationFn: () => Effect.runPromise(refreshStats()),

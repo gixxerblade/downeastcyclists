@@ -32,8 +32,8 @@ import {
   ValidationError,
 } from './errors';
 import type {
+  DatabaseDataSnapshot,
   DiscrepancyType,
-  FirebaseDataSnapshot,
   MembershipAdjustment,
   MembershipStatus,
   MemberWithMembership,
@@ -73,7 +73,7 @@ export interface AdminService {
     adjustment: MembershipAdjustment,
   ) => Effect.Effect<void, DatabaseError | NotFoundError | AdminError>;
 
-  readonly validateStripeVsFirebase: (
+  readonly validateStripeVsDatabase: (
     email: string,
   ) => Effect.Effect<ReconciliationReport, AdminError | StripeError | DatabaseError>;
 
@@ -193,7 +193,7 @@ function formatTimestamp(timestamp: unknown): string {
 
 function detectDiscrepancies(
   stripeData: StripeDataSnapshot | null,
-  firebaseData: FirebaseDataSnapshot | null,
+  dbData: DatabaseDataSnapshot | null,
 ): DiscrepancyType[] {
   const discrepancies: DiscrepancyType[] = [];
 
@@ -203,51 +203,51 @@ function detectDiscrepancies(
     return discrepancies;
   }
 
-  // No Firebase user
-  if (!firebaseData) {
-    discrepancies.push('MISSING_FIREBASE_USER');
-    discrepancies.push('MISSING_FIREBASE_MEMBERSHIP');
-    discrepancies.push('MISSING_FIREBASE_CARD');
+  // No database user
+  if (!dbData) {
+    discrepancies.push('MISSING_DB_USER');
+    discrepancies.push('MISSING_DB_MEMBERSHIP');
+    discrepancies.push('MISSING_DB_CARD');
     return discrepancies;
   }
 
   // Missing membership
-  if (!firebaseData.membership) {
-    discrepancies.push('MISSING_FIREBASE_MEMBERSHIP');
+  if (!dbData.membership) {
+    discrepancies.push('MISSING_DB_MEMBERSHIP');
   } else {
     // Status mismatch
-    if (firebaseData.membership.status !== stripeData.subscriptionStatus) {
+    if (dbData.membership.status !== stripeData.subscriptionStatus) {
       discrepancies.push('STATUS_MISMATCH');
     }
 
     // Plan mismatch
-    if (firebaseData.membership.planType !== stripeData.planType) {
+    if (dbData.membership.planType !== stripeData.planType) {
       discrepancies.push('PLAN_MISMATCH');
     }
 
     // Date mismatch (compare dates, allow 1 day tolerance)
     const stripeEnd = new Date(stripeData.currentPeriodEnd).getTime();
-    const firebaseEnd = new Date(firebaseData.membership.endDate).getTime();
-    if (Math.abs(stripeEnd - firebaseEnd) > 86400000) {
+    const dbEnd = new Date(dbData.membership.endDate).getTime();
+    if (Math.abs(stripeEnd - dbEnd) > 86400000) {
       // 1 day in ms
       discrepancies.push('DATE_MISMATCH');
     }
   }
 
   // Missing card
-  if (!firebaseData.card) {
-    discrepancies.push('MISSING_FIREBASE_CARD');
-  } else if (firebaseData.membership) {
+  if (!dbData.card) {
+    discrepancies.push('MISSING_DB_CARD');
+  } else if (dbData.membership) {
     // Card/membership mismatches
-    if (firebaseData.card.status !== firebaseData.membership.status) {
+    if (dbData.card.status !== dbData.membership.status) {
       discrepancies.push('CARD_STATUS_MISMATCH');
     }
-    if (firebaseData.card.planType !== firebaseData.membership.planType) {
+    if (dbData.card.planType !== dbData.membership.planType) {
       discrepancies.push('CARD_STATUS_MISMATCH');
     }
     // Card dates mismatch (compare card validUntil with membership endDate, 1 day tolerance)
-    const cardValidUntil = new Date(firebaseData.card.validUntil).getTime();
-    const membershipEndDate = new Date(firebaseData.membership.endDate).getTime();
+    const cardValidUntil = new Date(dbData.card.validUntil).getTime();
+    const membershipEndDate = new Date(dbData.membership.endDate).getTime();
     if (Math.abs(cardValidUntil - membershipEndDate) > 86400000) {
       discrepancies.push('CARD_DATES_MISMATCH');
     }
@@ -263,7 +263,7 @@ function detectDiscrepancies(
 function generateReconcileActions(
   discrepancies: DiscrepancyType[],
   stripeData: StripeDataSnapshot | null,
-  firebaseData: FirebaseDataSnapshot | null,
+  dbData: DatabaseDataSnapshot | null,
 ): string[] {
   const actions: string[] = [];
 
@@ -271,17 +271,17 @@ function generateReconcileActions(
     return ['No action possible - no Stripe subscription found'];
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_USER')) {
-    actions.push('Create Firebase user linked to Stripe customer');
+  if (discrepancies.includes('MISSING_DB_USER')) {
+    actions.push('Create database user linked to Stripe customer');
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_MEMBERSHIP')) {
-    actions.push(`Create membership document with status: ${stripeData.subscriptionStatus}`);
+  if (discrepancies.includes('MISSING_DB_MEMBERSHIP')) {
+    actions.push(`Create membership record with status: ${stripeData.subscriptionStatus}`);
   }
 
   if (discrepancies.includes('STATUS_MISMATCH')) {
     actions.push(
-      `Update membership status: ${firebaseData?.membership?.status} → ${stripeData.subscriptionStatus}`,
+      `Update membership status: ${dbData?.membership?.status} → ${stripeData.subscriptionStatus}`,
     );
   }
 
@@ -293,11 +293,11 @@ function generateReconcileActions(
 
   if (discrepancies.includes('PLAN_MISMATCH')) {
     actions.push(
-      `Update membership plan type: ${firebaseData?.membership?.planType} → ${stripeData.planType}`,
+      `Update membership plan type: ${dbData?.membership?.planType} → ${stripeData.planType}`,
     );
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_CARD')) {
+  if (discrepancies.includes('MISSING_DB_CARD')) {
     actions.push('Generate new membership card with QR code');
   }
 
@@ -320,7 +320,7 @@ const make = Effect.gen(function* () {
   const cardService = yield* MembershipCardService;
 
   // Shared helper function to build reconciliation report
-  // This avoids code duplication between validateStripeVsFirebase and reconcileMembership
+  // This avoids code duplication between validateStripeVsDatabase and reconcileMembership
   const buildReconciliationReport = (
     email: string,
   ): Effect.Effect<ReconciliationReport, StripeError | DatabaseError> =>
@@ -366,13 +366,13 @@ const make = Effect.gen(function* () {
 
       // Fetch database data
       const dbUser = yield* db.getUserByEmail(email);
-      let firebaseData: FirebaseDataSnapshot | null = null;
+      let databaseData: DatabaseDataSnapshot | null = null;
 
       if (dbUser) {
         const membership = yield* db.getActiveMembership(dbUser.id);
         const card = yield* db.getMembershipCard(dbUser.id);
 
-        firebaseData = {
+        databaseData = {
           userId: dbUser.id,
           userEmail: dbUser.email,
           membership: membership
@@ -399,13 +399,13 @@ const make = Effect.gen(function* () {
       }
 
       // Detect discrepancies
-      const discrepancies = detectDiscrepancies(stripeData, firebaseData);
-      const reconcileActions = generateReconcileActions(discrepancies, stripeData, firebaseData);
+      const discrepancies = detectDiscrepancies(stripeData, databaseData);
+      const reconcileActions = generateReconcileActions(discrepancies, stripeData, databaseData);
 
       return {
         email,
         stripeData,
-        firebaseData,
+        databaseData,
         discrepancies,
         canReconcile:
           stripeData !== null &&
@@ -554,7 +554,7 @@ const make = Effect.gen(function* () {
       }),
 
     // Validate Stripe vs database data
-    validateStripeVsFirebase: (email) => buildReconciliationReport(email),
+    validateStripeVsDatabase: (email) => buildReconciliationReport(email),
 
     // Execute reconciliation
     reconcileMembership: (email, adminUid) =>
@@ -585,7 +585,7 @@ const make = Effect.gen(function* () {
 
         // Step 1: Ensure user exists
         let userId: string;
-        if (!report.firebaseData) {
+        if (!report.databaseData) {
           // Create user
           const newUser = yield* db.upsertUserByStripeCustomer(
             stripeDataValue.customerId,
@@ -596,7 +596,7 @@ const make = Effect.gen(function* () {
           userCreated = true;
           actionsPerformed.push(`Created user: ${userId}`);
         } else {
-          userId = report.firebaseData.userId;
+          userId = report.databaseData.userId;
         }
 
         // Step 2: Create or update membership document
@@ -611,7 +611,7 @@ const make = Effect.gen(function* () {
           updatedAt: null as unknown, // Overwritten by database layer
         };
 
-        if (!report.firebaseData?.membership) {
+        if (!report.databaseData?.membership) {
           yield* db.setMembership(userId, stripeDataValue.subscriptionId, membershipData);
           actionsPerformed.push(`Created membership: ${stripeDataValue.subscriptionId}`);
         } else {
@@ -625,7 +625,7 @@ const make = Effect.gen(function* () {
         const membership = yield* db.getMembership(userId, stripeDataValue.subscriptionId);
 
         if (user && membership) {
-          if (!report.firebaseData?.card) {
+          if (!report.databaseData?.card) {
             // Create new card
             yield* cardService.createCard({userId, user, membership});
             cardCreated = true;

@@ -7,14 +7,14 @@ import type {ReconciliationReport} from '@/src/lib/effect/schemas';
 import {createTestAdminService, TestAdminLayer} from '../layers/test-layers';
 
 describe('AdminService', () => {
-  describe('validateStripeVsFirebase', () => {
+  describe('validateStripeVsDatabase', () => {
     it('should return NO_STRIPE_CUSTOMER when no Stripe customer found', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: null,
-            firebaseData: null,
+            databaseData: null,
             discrepancies: ['NO_STRIPE_CUSTOMER'],
             canReconcile: false,
             reconcileActions: ['No action possible - no Stripe subscription found'],
@@ -26,7 +26,7 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
@@ -36,9 +36,9 @@ describe('AdminService', () => {
       expect(result.canReconcile).toBe(false);
     });
 
-    it('should return MISSING_FIREBASE_USER when Stripe customer exists but no Firebase user', async () => {
+    it('should return MISSING_DB_USER when Stripe customer exists but no database user', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -52,16 +52,12 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: null,
-            discrepancies: [
-              'MISSING_FIREBASE_USER',
-              'MISSING_FIREBASE_MEMBERSHIP',
-              'MISSING_FIREBASE_CARD',
-            ],
+            databaseData: null,
+            discrepancies: ['MISSING_DB_USER', 'MISSING_DB_MEMBERSHIP', 'MISSING_DB_CARD'],
             canReconcile: true,
             reconcileActions: [
-              'Create Firebase user linked to Stripe customer',
-              'Create membership document with status: active',
+              'Create database user linked to Stripe customer',
+              'Create membership record with status: active',
               'Generate new membership card with QR code',
             ],
           } as ReconciliationReport),
@@ -72,22 +68,22 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
 
       expect(result.stripeData).not.toBeNull();
-      expect(result.firebaseData).toBeNull();
-      expect(result.discrepancies).toContain('MISSING_FIREBASE_USER');
-      expect(result.discrepancies).toContain('MISSING_FIREBASE_MEMBERSHIP');
-      expect(result.discrepancies).toContain('MISSING_FIREBASE_CARD');
+      expect(result.databaseData).toBeNull();
+      expect(result.discrepancies).toContain('MISSING_DB_USER');
+      expect(result.discrepancies).toContain('MISSING_DB_MEMBERSHIP');
+      expect(result.discrepancies).toContain('MISSING_DB_CARD');
       expect(result.canReconcile).toBe(true);
     });
 
     it('should return STATUS_MISMATCH when statuses differ', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -101,7 +97,7 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: {
+            databaseData: {
               userId: 'user_123',
               userEmail: 'test@example.com',
               membership: {
@@ -135,7 +131,7 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
@@ -146,7 +142,7 @@ describe('AdminService', () => {
 
     it('should return NO_DISCREPANCY when data is in sync', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -160,7 +156,7 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: {
+            databaseData: {
               userId: 'user_123',
               userEmail: 'test@example.com',
               membership: {
@@ -191,7 +187,7 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
@@ -200,9 +196,9 @@ describe('AdminService', () => {
       expect(result.canReconcile).toBe(false);
     });
 
-    it('should return MISSING_FIREBASE_CARD when card is missing', async () => {
+    it('should return MISSING_DB_CARD when card is missing', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -216,7 +212,7 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: {
+            databaseData: {
               userId: 'user_123',
               userEmail: 'test@example.com',
               membership: {
@@ -230,7 +226,7 @@ describe('AdminService', () => {
               },
               card: null,
             },
-            discrepancies: ['MISSING_FIREBASE_CARD'],
+            discrepancies: ['MISSING_DB_CARD'],
             canReconcile: true,
             reconcileActions: ['Generate new membership card with QR code'],
           } as ReconciliationReport),
@@ -241,12 +237,12 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
 
-      expect(result.discrepancies).toContain('MISSING_FIREBASE_CARD');
+      expect(result.discrepancies).toContain('MISSING_DB_CARD');
       expect(result.canReconcile).toBe(true);
       expect(result.reconcileActions).toContain('Generate new membership card with QR code');
     });
@@ -289,7 +285,7 @@ describe('AdminService', () => {
             success: true,
             email: 'test@example.com',
             actionsPerformed: [
-              'Created Firebase user: user_new_123',
+              'Created user: user_new_123',
               'Created membership: sub_test_123',
               'Created membership card with new number',
             ],
@@ -314,7 +310,7 @@ describe('AdminService', () => {
       expect(result.userCreated).toBe(true);
       expect(result.membershipUpdated).toBe(true);
       expect(result.cardCreated).toBe(true);
-      expect(result.actionsPerformed).toContain('Created Firebase user: user_new_123');
+      expect(result.actionsPerformed).toContain('Created user: user_new_123');
       expect(result.actionsPerformed).toContain('Created membership: sub_test_123');
       expect(result.actionsPerformed).toContain('Created membership card with new number');
     });
@@ -388,7 +384,7 @@ describe('AdminService', () => {
   describe('detectDiscrepancies helper', () => {
     it('should detect PLAN_MISMATCH when plan types differ', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -402,7 +398,7 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: {
+            databaseData: {
               userId: 'user_123',
               userEmail: 'test@example.com',
               membership: {
@@ -436,7 +432,7 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));
@@ -446,7 +442,7 @@ describe('AdminService', () => {
 
     it('should detect DATE_MISMATCH when end dates differ significantly', async () => {
       const adminService = createTestAdminService({
-        validateStripeVsFirebase: vi.fn(() =>
+        validateStripeVsDatabase: vi.fn(() =>
           Effect.succeed({
             email: 'test@example.com',
             stripeData: {
@@ -460,7 +456,7 @@ describe('AdminService', () => {
               currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               cancelAtPeriodEnd: false,
             },
-            firebaseData: {
+            databaseData: {
               userId: 'user_123',
               userEmail: 'test@example.com',
               membership: {
@@ -495,7 +491,7 @@ describe('AdminService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* AdminService;
-        return yield* service.validateStripeVsFirebase('test@example.com');
+        return yield* service.validateStripeVsDatabase('test@example.com');
       });
 
       const result = await Effect.runPromise(Effect.provide(program, testLayer));

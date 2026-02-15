@@ -24,7 +24,7 @@ This phase swaps the application from Firestore to Postgres by updating layer co
   - Ensure webhook processing uses the new Postgres-backed idempotency service
   - Verify all route handlers maintain identical response shapes
 
-- [ ] Update reconciliation schemas and admin features:
+- [x] Update reconciliation schemas and admin features:
   - Update `src/lib/effect/schemas.ts` to rename `FirebaseDataSnapshot` to `DatabaseDataSnapshot`
   - Update admin reconciliation service to compare Stripe data against Postgres
   - Ensure admin dashboard queries use the new efficient SQL-based methods
