@@ -32,6 +32,9 @@ jobs:
       - name: TypeScript check
         run: pnpm tsc
 
+      - name: TS GO check
+        run: pnpm tsgo
+
       - name: Run tests
         run: pnpm test:run
         # env:

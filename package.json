@@ -17,6 +17,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "tsc": "tsc --noEmit -p tsconfig.json",
+    "tsgo": "tsgo --noEmit -p tsconfig.json",
     "types:contentful": "export $(cat .env.local | awk '!/^\\s*#/' | awk '!/^\\s*$/'); cf-content-types-generator --spaceId $CONTENTFUL_SPACE_ID --token $CONTENTFUL_MANAGEMENT_TOKEN -o src/contentful/types -X && prettier --write src/contentful/types"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@tanstack/pacer": "^0.17.3",
     "@tanstack/react-pacer": "^0.19.3",
     "@tanstack/react-query": "5.66.11",
+    "@typescript/native-preview": "7.0.0-dev.20260131.1",
     "clsx": "2.1.1",
     "contentful": "^10.15.2",
     "effect": "^3.19.14",
