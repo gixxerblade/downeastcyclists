@@ -1,12 +1,10 @@
-import {FieldValue, Timestamp} from '@google-cloud/firestore';
+import {eq, lt, sql} from 'drizzle-orm';
 import {Context, Effect, Layer} from 'effect';
 
-import {getFirestoreClient} from '@/src/lib/firestore-client';
+import {webhookEvents} from '@/src/db/schema/tables';
 
-import {FirestoreError, DuplicateWebhookError} from './errors';
+import {DatabaseError, DuplicateWebhookError} from './errors';
 import type {WebhookEventDocument} from './schemas';
-
-export const WEBHOOK_EVENTS_COLLECTION = 'webhookEvents';
 
 // Service interface
 export interface WebhookIdempotencyService {
@@ -15,7 +13,7 @@ export interface WebhookIdempotencyService {
    */
   readonly checkEvent: (
     eventId: string,
-  ) => Effect.Effect<WebhookEventDocument | null, FirestoreError>;
+  ) => Effect.Effect<WebhookEventDocument | null, DatabaseError>;
 
   /**
    * Mark event as processing (claim it)
@@ -24,25 +22,22 @@ export interface WebhookIdempotencyService {
   readonly claimEvent: (
     eventId: string,
     eventType: string,
-  ) => Effect.Effect<void, FirestoreError | DuplicateWebhookError>;
+  ) => Effect.Effect<void, DatabaseError | DuplicateWebhookError>;
 
   /**
    * Mark event as completed
    */
-  readonly completeEvent: (eventId: string) => Effect.Effect<void, FirestoreError>;
+  readonly completeEvent: (eventId: string) => Effect.Effect<void, DatabaseError>;
 
   /**
    * Mark event as failed with error message
    */
-  readonly failEvent: (
-    eventId: string,
-    errorMessage: string,
-  ) => Effect.Effect<void, FirestoreError>;
+  readonly failEvent: (eventId: string, errorMessage: string) => Effect.Effect<void, DatabaseError>;
 
   /**
    * Clean up old webhook events (retention: 30 days)
    */
-  readonly cleanupOldEvents: (olderThanDays: number) => Effect.Effect<number, FirestoreError>;
+  readonly cleanupOldEvents: (olderThanDays: number) => Effect.Effect<number, DatabaseError>;
 }
 
 // Service tag
@@ -50,20 +45,44 @@ export const WebhookIdempotencyService = Context.GenericTag<WebhookIdempotencySe
   'WebhookIdempotencyService',
 );
 
-// Implementation
+// Stale lock threshold: 5 minutes
+const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+
+/**
+ * Maps a Postgres row to the WebhookEventDocument schema shape.
+ */
+function rowToEventDocument(row: typeof webhookEvents.$inferSelect): WebhookEventDocument {
+  return {
+    id: row.id,
+    type: row.type,
+    status: row.status,
+    processedAt: row.processedAt,
+    errorMessage: row.errorMessage ?? undefined,
+    retryCount: row.retryCount,
+  };
+}
+
+// Implementation — db client is loaded lazily to avoid triggering
+// Neon connection at import time (breaks test suites that don't mock it)
 const make = Effect.sync(() => {
-  const db = getFirestoreClient();
+  const {db} = require('@/src/db/client') as typeof import('@/src/db/client');
 
   return WebhookIdempotencyService.of({
     checkEvent: (eventId) =>
       Effect.tryPromise({
         try: async () => {
-          const doc = await db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).get();
-          if (!doc.exists) return null;
-          return {id: doc.id, ...doc.data()} as WebhookEventDocument;
+          const row = await db
+            .select()
+            .from(webhookEvents)
+            .where(eq(webhookEvents.id, eventId))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
+
+          if (!row) return null;
+          return rowToEventDocument(row);
         },
         catch: (error) =>
-          new FirestoreError({
+          new DatabaseError({
             code: 'CHECK_WEBHOOK_EVENT_FAILED',
             message: `Failed to check webhook event ${eventId}`,
             cause: error,
@@ -73,65 +92,81 @@ const make = Effect.sync(() => {
     claimEvent: (eventId, eventType) =>
       Effect.tryPromise({
         try: async () => {
-          const docRef = db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId);
+          // Check for existing event first
+          const existing = await db
+            .select()
+            .from(webhookEvents)
+            .where(eq(webhookEvents.id, eventId))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
 
-          // Use transaction to ensure atomic claim
-          await db.runTransaction(async (transaction) => {
-            const doc = await transaction.get(docRef);
-
-            if (doc.exists) {
-              const data = doc.data() as WebhookEventDocument;
-
-              // Already completed? Reject as duplicate
-              if (data.status === 'completed') {
-                throw {isDuplicate: true, processedAt: data.processedAt};
-              }
-
-              // Failed previously? Allow retry
-              if (data.status === 'failed') {
-                transaction.update(docRef, {
-                  status: 'processing',
-                  retryCount: FieldValue.increment(1),
-                  updatedAt: FieldValue.serverTimestamp(),
-                });
-                return;
-              }
-
-              // Still processing? Check if stale (>5 min)
-              const processingTime = (data.processedAt as any)?.toDate?.() || new Date(0);
-              const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
-
-              if (processingTime > staleThreshold) {
-                // Recent processing, reject as duplicate
-                throw {isDuplicate: true, processedAt: data.processedAt};
-              }
-
-              // Stale lock, reclaim
-              transaction.update(docRef, {
-                status: 'processing',
-                retryCount: FieldValue.increment(1),
-                processedAt: FieldValue.serverTimestamp(),
-              });
-            } else {
-              // New event, claim it
-              transaction.set(docRef, {
-                id: eventId,
-                type: eventType,
-                status: 'processing',
-                processedAt: FieldValue.serverTimestamp(),
-                retryCount: 0,
-              });
+          if (existing) {
+            // Already completed — reject as duplicate
+            if (existing.status === 'completed') {
+              throw {isDuplicate: true, processedAt: existing.processedAt};
             }
-          });
+
+            // Failed previously — allow retry by resetting to processing
+            if (existing.status === 'failed') {
+              await db
+                .update(webhookEvents)
+                .set({
+                  status: 'processing',
+                  retryCount: sql`${webhookEvents.retryCount} + 1`,
+                  processedAt: new Date(),
+                })
+                .where(eq(webhookEvents.id, eventId));
+              return;
+            }
+
+            // Still processing — check if stale (>5 min)
+            const processingTime = existing.processedAt;
+            const staleThreshold = new Date(Date.now() - STALE_THRESHOLD_MS);
+
+            if (processingTime > staleThreshold) {
+              // Recent processing, reject as duplicate
+              throw {isDuplicate: true, processedAt: existing.processedAt};
+            }
+
+            // Stale lock, reclaim
+            await db
+              .update(webhookEvents)
+              .set({
+                status: 'processing',
+                retryCount: sql`${webhookEvents.retryCount} + 1`,
+                processedAt: new Date(),
+              })
+              .where(eq(webhookEvents.id, eventId));
+            return;
+          }
+
+          // New event — insert with ON CONFLICT DO NOTHING for atomicity
+          const result = await db
+            .insert(webhookEvents)
+            .values({
+              id: eventId,
+              type: eventType,
+              status: 'processing',
+              retryCount: 0,
+              processedAt: new Date(),
+            })
+            .onConflictDoNothing({target: webhookEvents.id})
+            .returning();
+
+          // If INSERT returned nothing, another process claimed it first
+          if (result.length === 0) {
+            throw {isDuplicate: true, processedAt: new Date()};
+          }
         },
-        catch: (error: any) => {
-          if (error.isDuplicate) {
+        catch: (error: unknown) => {
+          const err = error as Record<string, unknown> | null;
+          if (typeof err === 'object' && err !== null && err.isDuplicate === true) {
             return new DuplicateWebhookError({
               eventId,
-              processedAt: error.processedAt?.toDate?.() || new Date(),
+              processedAt: err.processedAt instanceof Date ? err.processedAt : new Date(),
             });
           }
-          return new FirestoreError({
+          return new DatabaseError({
             code: 'CLAIM_WEBHOOK_EVENT_FAILED',
             message: `Failed to claim webhook event ${eventId}`,
             cause: error,
@@ -142,12 +177,16 @@ const make = Effect.sync(() => {
     completeEvent: (eventId) =>
       Effect.tryPromise({
         try: () =>
-          db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: 'completed',
-            completedAt: FieldValue.serverTimestamp(),
-          }),
+          db
+            .update(webhookEvents)
+            .set({
+              status: 'completed',
+              completedAt: new Date(),
+            })
+            .where(eq(webhookEvents.id, eventId))
+            .then(() => undefined),
         catch: (error) =>
-          new FirestoreError({
+          new DatabaseError({
             code: 'COMPLETE_WEBHOOK_EVENT_FAILED',
             message: `Failed to complete webhook event ${eventId}`,
             cause: error,
@@ -157,13 +196,17 @@ const make = Effect.sync(() => {
     failEvent: (eventId, errorMessage) =>
       Effect.tryPromise({
         try: () =>
-          db.collection(WEBHOOK_EVENTS_COLLECTION).doc(eventId).update({
-            status: 'failed',
-            errorMessage,
-            failedAt: FieldValue.serverTimestamp(),
-          }),
+          db
+            .update(webhookEvents)
+            .set({
+              status: 'failed',
+              errorMessage,
+              failedAt: new Date(),
+            })
+            .where(eq(webhookEvents.id, eventId))
+            .then(() => undefined),
         catch: (error) =>
-          new FirestoreError({
+          new DatabaseError({
             code: 'FAIL_WEBHOOK_EVENT_FAILED',
             message: `Failed to mark webhook event ${eventId} as failed`,
             cause: error,
@@ -176,22 +219,15 @@ const make = Effect.sync(() => {
           const cutoff = new Date();
           cutoff.setDate(cutoff.getDate() - olderThanDays);
 
-          const snapshot = await db
-            .collection(WEBHOOK_EVENTS_COLLECTION)
-            .where('processedAt', '<', Timestamp.fromDate(cutoff))
-            .limit(500)
-            .get();
+          const deleted = await db
+            .delete(webhookEvents)
+            .where(lt(webhookEvents.processedAt, cutoff))
+            .returning({id: webhookEvents.id});
 
-          if (snapshot.empty) return 0;
-
-          const batch = db.batch();
-          snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-          await batch.commit();
-
-          return snapshot.size;
+          return deleted.length;
         },
         catch: (error) =>
-          new FirestoreError({
+          new DatabaseError({
             code: 'CLEANUP_WEBHOOK_EVENTS_FAILED',
             message: 'Failed to cleanup old webhook events',
             cause: error,

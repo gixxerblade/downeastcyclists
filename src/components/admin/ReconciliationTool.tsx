@@ -31,7 +31,7 @@ interface ReconciliationReport {
     currentPeriodEnd: string;
     cancelAtPeriodEnd: boolean;
   } | null;
-  firebaseData: {
+  databaseData: {
     userId: string;
     userEmail: string;
     membership: {
@@ -121,10 +121,10 @@ export function ReconciliationTool() {
       <CardContent>
         <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 1}}>
           <SyncAlt color="primary" />
-          <Typography variant="h6">Stripe/Firebase Reconciliation</Typography>
+          <Typography variant="h6">Stripe/Database Reconciliation</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
-          Validate and sync membership data between Stripe and Firebase. Use this tool when a
+          Validate and sync membership data between Stripe and the database. Use this tool when a
           customer reports they paid but don&apos;t have access to their member dashboard.
         </Typography>
 
@@ -227,12 +227,12 @@ export function ReconciliationTool() {
                 )}
               </Box>
 
-              {/* Firebase Data */}
+              {/* Database Data */}
               <Box flex={1}>
                 <Typography variant="subtitle2" color="secondary" sx={{mb: 1}}>
-                  Firebase Data
+                  Database Data
                 </Typography>
-                {report.firebaseData ? (
+                {report.databaseData ? (
                   <Box
                     sx={{
                       fontSize: '0.875rem',
@@ -243,28 +243,28 @@ export function ReconciliationTool() {
                     }}
                   >
                     <div>
-                      <strong>User ID:</strong> {report.firebaseData.userId}
+                      <strong>User ID:</strong> {report.databaseData.userId}
                     </div>
-                    {report.firebaseData.membership ? (
+                    {report.databaseData.membership ? (
                       <>
                         <div>
                           <strong>Status:</strong>{' '}
                           <Chip
-                            label={report.firebaseData.membership.status}
+                            label={report.databaseData.membership.status}
                             size="small"
                             color={
-                              report.firebaseData.membership.status === 'active'
+                              report.databaseData.membership.status === 'active'
                                 ? 'success'
                                 : 'default'
                             }
                           />
                         </div>
                         <div>
-                          <strong>Plan:</strong> {report.firebaseData.membership.planType}
+                          <strong>Plan:</strong> {report.databaseData.membership.planType}
                         </div>
                         <div>
                           <strong>End Date:</strong>{' '}
-                          {new Date(report.firebaseData.membership.endDate).toLocaleDateString()}
+                          {new Date(report.databaseData.membership.endDate).toLocaleDateString()}
                         </div>
                       </>
                     ) : (
@@ -272,9 +272,9 @@ export function ReconciliationTool() {
                         No membership document
                       </Alert>
                     )}
-                    {report.firebaseData.card ? (
+                    {report.databaseData.card ? (
                       <div style={{marginTop: 8}}>
-                        <strong>Card:</strong> {report.firebaseData.card.membershipNumber}
+                        <strong>Card:</strong> {report.databaseData.card.membershipNumber}
                       </div>
                     ) : (
                       <Alert severity="error" variant="outlined" sx={{mt: 1}}>
@@ -284,7 +284,7 @@ export function ReconciliationTool() {
                   </Box>
                 ) : (
                   <Alert severity="error" variant="outlined">
-                    No Firebase user found
+                    No user found in database
                   </Alert>
                 )}
               </Box>

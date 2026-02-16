@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         // Search members
         return yield* admin.searchMembers(params);
       }),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 
   // If response is an error JSON, return it as is
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       'UnauthorizedError',
       'SessionError',
       'AuthError',
-      'FirestoreError',
+      'DatabaseError',
       'ValidationError',
       'EmailConflictError',
       'CardError',

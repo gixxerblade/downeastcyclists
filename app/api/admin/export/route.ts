@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
           }),
         ),
       ),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError', 'AdminError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError', 'AdminError'],
   });
 
   // If response is an error JSON, return it as is

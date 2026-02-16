@@ -41,7 +41,7 @@ export async function getMemberDashboard(): Promise<MemberDashboardResponse | {e
       if (failure._tag === 'NotFoundError' && 'resource' in failure) {
         return {error: `${failure.resource} not found`};
       }
-      if (failure._tag === 'FirestoreError' && 'message' in failure) {
+      if (failure._tag === 'DatabaseError' && 'message' in failure) {
         return {error: failure.message as string};
       }
     }

@@ -2,16 +2,16 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {FirestoreError} from '@/src/lib/effect/errors';
+import {DatabaseError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 
 import {
   createTestStripeService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   TestStripeLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
 } from '../layers/test-layers';
-import {createMockUserDocument} from '../mocks/firestore.mock';
+import {createMockUserDocument} from '../mocks/database.mock';
 import {createMockCheckoutSession, createMockSubscription} from '../mocks/stripe.mock';
 
 describe('Checkout Flow Integration', () => {
@@ -29,13 +29,13 @@ describe('Checkout Flow Integration', () => {
       const stripeService = createTestStripeService({
         createCheckoutSession: vi.fn(() => Effect.succeed(mockSession)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -54,7 +54,7 @@ describe('Checkout Flow Integration', () => {
 
       expect(result.sessionId).toBe('cs_success_123');
       expect(result.url).toBe('https://checkout.stripe.com/success');
-      expect(firestoreService.getUser).toHaveBeenCalledWith('user_123');
+      expect(databaseService.getUser).toHaveBeenCalledWith('user_123');
     });
 
     it('should process webhook and create membership', async () => {
@@ -67,7 +67,7 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -76,7 +76,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -94,11 +94,11 @@ describe('Checkout Flow Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setUser).toHaveBeenCalled();
-      expect(firestoreService.setMembership).toHaveBeenCalled();
+      expect(databaseService.setUser).toHaveBeenCalled();
+      expect(databaseService.setMembership).toHaveBeenCalled();
 
       // Verify membership was created with correct subscription ID
-      const setMembershipCall = (firestoreService.setMembership as any).mock.calls[0];
+      const setMembershipCall = (databaseService.setMembership as any).mock.calls[0];
       expect(setMembershipCall[1]).toBe('sub_new_123'); // membershipId = subscriptionId
     });
   });
@@ -113,11 +113,11 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -134,7 +134,7 @@ describe('Checkout Flow Integration', () => {
       );
 
       // Membership should NOT be created for incomplete subscription
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
 
     it('should not create membership on insufficient_funds', async () => {
@@ -146,11 +146,11 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -164,7 +164,7 @@ describe('Checkout Flow Integration', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
 
     it('should leave user in consistent state after payment failure', async () => {
@@ -176,14 +176,14 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -198,18 +198,18 @@ describe('Checkout Flow Integration', () => {
       );
 
       // User document should NOT be created/updated for failed payments
-      expect(firestoreService.setUser).not.toHaveBeenCalled();
-      expect(firestoreService.setMembership).not.toHaveBeenCalled();
+      expect(databaseService.setUser).not.toHaveBeenCalled();
+      expect(databaseService.setMembership).not.toHaveBeenCalled();
     });
   });
 
-  describe('Firestore failure during checkout', () => {
+  describe('Database failure during checkout', () => {
     it('should handle user lookup failure gracefully', async () => {
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'GET_USER_FAILED',
               message: 'Database unavailable',
             }),
@@ -219,7 +219,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -241,23 +241,23 @@ describe('Checkout Flow Integration', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
+          expect(error.error).toBeInstanceOf(DatabaseError);
         }
       }
     });
 
-    it('should fail checkout if Firestore write fails after payment', async () => {
+    it('should fail checkout if database write fails after payment', async () => {
       const mockSubscription = createMockSubscription({status: 'active'});
 
       const stripeService = createTestStripeService({
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'SET_USER_FAILED',
               message: 'Write failed',
             }),
@@ -267,7 +267,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -294,14 +294,14 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => {
           callCount++;
           if (callCount === 1) {
             return Effect.fail(
-              new FirestoreError({
+              new DatabaseError({
                 code: 'SET_MEMBERSHIP_FAILED',
                 message: 'Temporary failure',
               }),
@@ -313,7 +313,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -355,7 +355,7 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(existingUser)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -363,7 +363,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -381,8 +381,8 @@ describe('Checkout Flow Integration', () => {
       );
 
       // Should use existing user's ID for membership
-      expect(firestoreService.setMembership).toHaveBeenCalled();
-      const setMembershipCall = (firestoreService.setMembership as any).mock.calls[0];
+      expect(databaseService.setMembership).toHaveBeenCalled();
+      const setMembershipCall = (databaseService.setMembership as any).mock.calls[0];
       expect(setMembershipCall[0]).toBe('existing_user_123');
     });
   });
@@ -395,7 +395,7 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -403,7 +403,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -433,7 +433,7 @@ describe('Checkout Flow Integration', () => {
         retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
         addInvoiceItem: vi.fn(() => Effect.succeed({} as any)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         setUser: vi.fn(() => Effect.void),
         setMembership: vi.fn(() => Effect.void),
@@ -441,7 +441,7 @@ describe('Checkout Flow Integration', () => {
 
       const testLayer = Layer.merge(
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const mockSession = createMockCheckoutSession({

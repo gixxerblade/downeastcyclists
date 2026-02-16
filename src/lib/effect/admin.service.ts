@@ -14,11 +14,12 @@ import type {
 
 import {AuthService} from './auth.service';
 import {MembershipCardService} from './card.service';
+import {DatabaseService} from './database.service';
 import {
   AdminError,
   CardError,
+  DatabaseError,
   EmailConflictError,
-  FirestoreError,
   ImportError,
   MemberNotFoundError,
   NotFoundError,
@@ -30,10 +31,9 @@ import {
   AuthError,
   ValidationError,
 } from './errors';
-import {FirestoreService} from './firestore.service';
 import type {
+  DatabaseDataSnapshot,
   DiscrepancyType,
-  FirebaseDataSnapshot,
   MembershipAdjustment,
   MembershipStatus,
   MemberWithMembership,
@@ -57,32 +57,32 @@ export interface AdminService {
     isAdmin: boolean,
   ) => Effect.Effect<
     void,
-    UnauthorizedError | AdminError | SessionError | AuthError | FirestoreError
+    UnauthorizedError | AdminError | SessionError | AuthError | DatabaseError
   >;
 
   readonly searchMembers: (
     params: MemberSearchParams,
-  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, FirestoreError>;
+  ) => Effect.Effect<{members: MemberWithMembership[]; total: number}, DatabaseError>;
 
   readonly getMember: (
     userId: string,
-  ) => Effect.Effect<MemberWithMembership, FirestoreError | NotFoundError>;
+  ) => Effect.Effect<MemberWithMembership, DatabaseError | NotFoundError>;
 
   readonly adjustMembership: (
     adminUid: string,
     adjustment: MembershipAdjustment,
-  ) => Effect.Effect<void, FirestoreError | NotFoundError | AdminError>;
+  ) => Effect.Effect<void, DatabaseError | NotFoundError | AdminError>;
 
-  readonly validateStripeVsFirebase: (
+  readonly validateStripeVsDatabase: (
     email: string,
-  ) => Effect.Effect<ReconciliationReport, AdminError | StripeError | FirestoreError>;
+  ) => Effect.Effect<ReconciliationReport, AdminError | StripeError | DatabaseError>;
 
   readonly reconcileMembership: (
     email: string,
     adminUid?: string,
   ) => Effect.Effect<
     ReconciliationResult,
-    AdminError | StripeError | FirestoreError | CardError | QRError
+    AdminError | StripeError | DatabaseError | CardError | QRError
   >;
 
   // Member CRUD operations
@@ -92,7 +92,7 @@ export interface AdminService {
     adminEmail?: string,
   ) => Effect.Effect<
     {userId: string; membershipId: string; membershipNumber: string},
-    ValidationError | EmailConflictError | FirestoreError | AuthError | CardError | QRError
+    ValidationError | EmailConflictError | DatabaseError | AuthError | CardError | QRError
   >;
 
   readonly updateMember: (
@@ -104,7 +104,7 @@ export interface AdminService {
     {emailSyncedToStripe?: boolean; emailSyncedToAuth?: boolean},
     | MemberNotFoundError
     | ValidationError
-    | FirestoreError
+    | DatabaseError
     | StripeError
     | AuthError
     | CardError
@@ -118,7 +118,7 @@ export interface AdminService {
     adminEmail?: string,
   ) => Effect.Effect<
     {stripeSubscriptionCanceled?: boolean},
-    MemberNotFoundError | StripeSubscriptionActiveError | FirestoreError | StripeError
+    MemberNotFoundError | StripeSubscriptionActiveError | DatabaseError | StripeError
   >;
 
   readonly bulkImportMembers: (
@@ -127,20 +127,20 @@ export interface AdminService {
     adminEmail?: string,
   ) => Effect.Effect<
     BulkImportResult,
-    ImportError | FirestoreError | AuthError | CardError | QRError
+    ImportError | DatabaseError | AuthError | CardError | QRError
   >;
 
   readonly getExpiringMemberships: (
     withinDays: 30 | 60 | 90,
-  ) => Effect.Effect<ExpiringMember[], FirestoreError>;
+  ) => Effect.Effect<ExpiringMember[], DatabaseError>;
 
   readonly getMemberAuditLog: (
     userId: string,
-  ) => Effect.Effect<AuditEntry[], MemberNotFoundError | FirestoreError>;
+  ) => Effect.Effect<AuditEntry[], MemberNotFoundError | DatabaseError>;
 
   readonly getPaymentHistory: (
     userId: string,
-  ) => Effect.Effect<PaymentHistoryItem[], MemberNotFoundError | StripeError | FirestoreError>;
+  ) => Effect.Effect<PaymentHistoryItem[], MemberNotFoundError | StripeError | DatabaseError>;
 
   readonly issueRefund: (
     userId: string,
@@ -148,7 +148,7 @@ export interface AdminService {
     adminUid: string,
     amount?: number,
     reason?: string,
-  ) => Effect.Effect<Stripe.Refund, MemberNotFoundError | StripeError | FirestoreError>;
+  ) => Effect.Effect<Stripe.Refund, MemberNotFoundError | StripeError | DatabaseError>;
 }
 
 // Service tag
@@ -182,18 +182,18 @@ function resolvePlanType(priceId: string): 'individual' | 'family' {
 }
 
 function formatTimestamp(timestamp: unknown): string {
-  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
-    return (timestamp as {toDate: () => Date}).toDate().toISOString();
-  }
   if (timestamp instanceof Date) {
     return timestamp.toISOString();
+  }
+  if (typeof timestamp === 'string') {
+    return new Date(timestamp).toISOString();
   }
   return new Date(timestamp as number).toISOString();
 }
 
 function detectDiscrepancies(
   stripeData: StripeDataSnapshot | null,
-  firebaseData: FirebaseDataSnapshot | null,
+  dbData: DatabaseDataSnapshot | null,
 ): DiscrepancyType[] {
   const discrepancies: DiscrepancyType[] = [];
 
@@ -203,51 +203,51 @@ function detectDiscrepancies(
     return discrepancies;
   }
 
-  // No Firebase user
-  if (!firebaseData) {
-    discrepancies.push('MISSING_FIREBASE_USER');
-    discrepancies.push('MISSING_FIREBASE_MEMBERSHIP');
-    discrepancies.push('MISSING_FIREBASE_CARD');
+  // No database user
+  if (!dbData) {
+    discrepancies.push('MISSING_DB_USER');
+    discrepancies.push('MISSING_DB_MEMBERSHIP');
+    discrepancies.push('MISSING_DB_CARD');
     return discrepancies;
   }
 
   // Missing membership
-  if (!firebaseData.membership) {
-    discrepancies.push('MISSING_FIREBASE_MEMBERSHIP');
+  if (!dbData.membership) {
+    discrepancies.push('MISSING_DB_MEMBERSHIP');
   } else {
     // Status mismatch
-    if (firebaseData.membership.status !== stripeData.subscriptionStatus) {
+    if (dbData.membership.status !== stripeData.subscriptionStatus) {
       discrepancies.push('STATUS_MISMATCH');
     }
 
     // Plan mismatch
-    if (firebaseData.membership.planType !== stripeData.planType) {
+    if (dbData.membership.planType !== stripeData.planType) {
       discrepancies.push('PLAN_MISMATCH');
     }
 
     // Date mismatch (compare dates, allow 1 day tolerance)
     const stripeEnd = new Date(stripeData.currentPeriodEnd).getTime();
-    const firebaseEnd = new Date(firebaseData.membership.endDate).getTime();
-    if (Math.abs(stripeEnd - firebaseEnd) > 86400000) {
+    const dbEnd = new Date(dbData.membership.endDate).getTime();
+    if (Math.abs(stripeEnd - dbEnd) > 86400000) {
       // 1 day in ms
       discrepancies.push('DATE_MISMATCH');
     }
   }
 
   // Missing card
-  if (!firebaseData.card) {
-    discrepancies.push('MISSING_FIREBASE_CARD');
-  } else if (firebaseData.membership) {
+  if (!dbData.card) {
+    discrepancies.push('MISSING_DB_CARD');
+  } else if (dbData.membership) {
     // Card/membership mismatches
-    if (firebaseData.card.status !== firebaseData.membership.status) {
+    if (dbData.card.status !== dbData.membership.status) {
       discrepancies.push('CARD_STATUS_MISMATCH');
     }
-    if (firebaseData.card.planType !== firebaseData.membership.planType) {
+    if (dbData.card.planType !== dbData.membership.planType) {
       discrepancies.push('CARD_STATUS_MISMATCH');
     }
     // Card dates mismatch (compare card validUntil with membership endDate, 1 day tolerance)
-    const cardValidUntil = new Date(firebaseData.card.validUntil).getTime();
-    const membershipEndDate = new Date(firebaseData.membership.endDate).getTime();
+    const cardValidUntil = new Date(dbData.card.validUntil).getTime();
+    const membershipEndDate = new Date(dbData.membership.endDate).getTime();
     if (Math.abs(cardValidUntil - membershipEndDate) > 86400000) {
       discrepancies.push('CARD_DATES_MISMATCH');
     }
@@ -263,7 +263,7 @@ function detectDiscrepancies(
 function generateReconcileActions(
   discrepancies: DiscrepancyType[],
   stripeData: StripeDataSnapshot | null,
-  firebaseData: FirebaseDataSnapshot | null,
+  dbData: DatabaseDataSnapshot | null,
 ): string[] {
   const actions: string[] = [];
 
@@ -271,17 +271,17 @@ function generateReconcileActions(
     return ['No action possible - no Stripe subscription found'];
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_USER')) {
-    actions.push('Create Firebase user linked to Stripe customer');
+  if (discrepancies.includes('MISSING_DB_USER')) {
+    actions.push('Create database user linked to Stripe customer');
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_MEMBERSHIP')) {
-    actions.push(`Create membership document with status: ${stripeData.subscriptionStatus}`);
+  if (discrepancies.includes('MISSING_DB_MEMBERSHIP')) {
+    actions.push(`Create membership record with status: ${stripeData.subscriptionStatus}`);
   }
 
   if (discrepancies.includes('STATUS_MISMATCH')) {
     actions.push(
-      `Update membership status: ${firebaseData?.membership?.status} → ${stripeData.subscriptionStatus}`,
+      `Update membership status: ${dbData?.membership?.status} → ${stripeData.subscriptionStatus}`,
     );
   }
 
@@ -293,11 +293,11 @@ function generateReconcileActions(
 
   if (discrepancies.includes('PLAN_MISMATCH')) {
     actions.push(
-      `Update membership plan type: ${firebaseData?.membership?.planType} → ${stripeData.planType}`,
+      `Update membership plan type: ${dbData?.membership?.planType} → ${stripeData.planType}`,
     );
   }
 
-  if (discrepancies.includes('MISSING_FIREBASE_CARD')) {
+  if (discrepancies.includes('MISSING_DB_CARD')) {
     actions.push('Generate new membership card with QR code');
   }
 
@@ -314,16 +314,16 @@ function generateReconcileActions(
 // Implementation
 const make = Effect.gen(function* () {
   const auth = yield* AuthService;
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
   const stats = yield* StatsService;
   const stripe = yield* StripeService;
   const cardService = yield* MembershipCardService;
 
   // Shared helper function to build reconciliation report
-  // This avoids code duplication between validateStripeVsFirebase and reconcileMembership
+  // This avoids code duplication between validateStripeVsDatabase and reconcileMembership
   const buildReconciliationReport = (
     email: string,
-  ): Effect.Effect<ReconciliationReport, StripeError | FirestoreError> =>
+  ): Effect.Effect<ReconciliationReport, StripeError | DatabaseError> =>
     Effect.gen(function* () {
       // Fetch Stripe data
       const stripeCustomer = yield* stripe.getCustomerByEmail(email);
@@ -364,17 +364,17 @@ const make = Effect.gen(function* () {
         }
       }
 
-      // Fetch Firebase data
-      const firebaseUser = yield* firestore.getUserByEmail(email);
-      let firebaseData: FirebaseDataSnapshot | null = null;
+      // Fetch database data
+      const dbUser = yield* db.getUserByEmail(email);
+      let databaseData: DatabaseDataSnapshot | null = null;
 
-      if (firebaseUser) {
-        const membership = yield* firestore.getActiveMembership(firebaseUser.id);
-        const card = yield* firestore.getMembershipCard(firebaseUser.id);
+      if (dbUser) {
+        const membership = yield* db.getActiveMembership(dbUser.id);
+        const card = yield* db.getMembershipCard(dbUser.id);
 
-        firebaseData = {
-          userId: firebaseUser.id,
-          userEmail: firebaseUser.email,
+        databaseData = {
+          userId: dbUser.id,
+          userEmail: dbUser.email,
           membership: membership
             ? {
                 id: membership.id,
@@ -399,13 +399,13 @@ const make = Effect.gen(function* () {
       }
 
       // Detect discrepancies
-      const discrepancies = detectDiscrepancies(stripeData, firebaseData);
-      const reconcileActions = generateReconcileActions(discrepancies, stripeData, firebaseData);
+      const discrepancies = detectDiscrepancies(stripeData, databaseData);
+      const reconcileActions = generateReconcileActions(discrepancies, stripeData, databaseData);
 
       return {
         email,
         stripeData,
-        firebaseData,
+        databaseData,
         discrepancies,
         canReconcile:
           stripeData !== null &&
@@ -460,7 +460,7 @@ const make = Effect.gen(function* () {
         yield* auth.setCustomClaims(targetUid, {admin: isAdmin});
 
         // Log the action
-        yield* firestore.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
+        yield* db.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
           changedBy: admin.uid,
           newValue: isAdmin,
           timestamp: new Date().toISOString(),
@@ -472,19 +472,19 @@ const make = Effect.gen(function* () {
       }),
 
     // Search members
-    searchMembers: (params) => firestore.getAllMemberships(params),
+    searchMembers: (params) => db.getAllMemberships(params),
 
     // Get single member
     getMember: (userId) =>
       Effect.gen(function* () {
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
 
         if (!user) {
           return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
-        const membership = yield* firestore.getActiveMembership(userId);
-        const card = yield* firestore.getMembershipCard(userId);
+        const membership = yield* db.getActiveMembership(userId);
+        const card = yield* db.getMembershipCard(userId);
 
         return {user, membership, card};
       }),
@@ -495,7 +495,7 @@ const make = Effect.gen(function* () {
         const {userId, membershipId, newEndDate, newStatus, reason} = adjustment;
 
         // Verify membership exists
-        const membership = yield* firestore.getMembership(userId, membershipId);
+        const membership = yield* db.getMembership(userId, membershipId);
 
         if (!membership) {
           return yield* new NotFoundError({resource: 'membership', id: membershipId});
@@ -535,10 +535,10 @@ const make = Effect.gen(function* () {
         }
 
         // Apply update
-        yield* firestore.updateMembership(userId, membershipId, updateData);
+        yield* db.updateMembership(userId, membershipId, updateData);
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
+        yield* db.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
           adjustedBy: adminUid,
           membershipId,
           changes: updateData,
@@ -553,8 +553,8 @@ const make = Effect.gen(function* () {
         yield* Effect.log(`Membership ${membershipId} adjusted by admin ${adminUid}: ${reason}`);
       }),
 
-    // Validate Stripe vs Firebase data
-    validateStripeVsFirebase: (email) => buildReconciliationReport(email),
+    // Validate Stripe vs database data
+    validateStripeVsDatabase: (email) => buildReconciliationReport(email),
 
     // Execute reconciliation
     reconcileMembership: (email, adminUid) =>
@@ -585,18 +585,18 @@ const make = Effect.gen(function* () {
 
         // Step 1: Ensure user exists
         let userId: string;
-        if (!report.firebaseData) {
+        if (!report.databaseData) {
           // Create user
-          const newUser = yield* firestore.upsertUserByStripeCustomer(
+          const newUser = yield* db.upsertUserByStripeCustomer(
             stripeDataValue.customerId,
             stripeDataValue.customerEmail,
             {},
           );
           userId = newUser.id;
           userCreated = true;
-          actionsPerformed.push(`Created Firebase user: ${userId}`);
+          actionsPerformed.push(`Created user: ${userId}`);
         } else {
-          userId = report.firebaseData.userId;
+          userId = report.databaseData.userId;
         }
 
         // Step 2: Create or update membership document
@@ -607,25 +607,25 @@ const make = Effect.gen(function* () {
           startDate: new Date(stripeDataValue.currentPeriodStart),
           endDate: new Date(stripeDataValue.currentPeriodEnd),
           autoRenew: !stripeDataValue.cancelAtPeriodEnd,
-          createdAt: null as unknown, // Overwritten by serverTimestamp in implementation
-          updatedAt: null as unknown, // Overwritten by serverTimestamp in implementation
+          createdAt: null as unknown, // Overwritten by database layer
+          updatedAt: null as unknown, // Overwritten by database layer
         };
 
-        if (!report.firebaseData?.membership) {
-          yield* firestore.setMembership(userId, stripeDataValue.subscriptionId, membershipData);
+        if (!report.databaseData?.membership) {
+          yield* db.setMembership(userId, stripeDataValue.subscriptionId, membershipData);
           actionsPerformed.push(`Created membership: ${stripeDataValue.subscriptionId}`);
         } else {
-          yield* firestore.updateMembership(userId, stripeDataValue.subscriptionId, membershipData);
+          yield* db.updateMembership(userId, stripeDataValue.subscriptionId, membershipData);
           actionsPerformed.push(`Updated membership: ${stripeDataValue.subscriptionId}`);
         }
         membershipUpdated = true;
 
         // Step 3: Create or update card document
-        const user = yield* firestore.getUser(userId);
-        const membership = yield* firestore.getMembership(userId, stripeDataValue.subscriptionId);
+        const user = yield* db.getUser(userId);
+        const membership = yield* db.getMembership(userId, stripeDataValue.subscriptionId);
 
         if (user && membership) {
-          if (!report.firebaseData?.card) {
+          if (!report.databaseData?.card) {
             // Create new card
             yield* cardService.createCard({userId, user, membership});
             cardCreated = true;
@@ -639,7 +639,7 @@ const make = Effect.gen(function* () {
         }
 
         // Step 4: Log audit entry
-        yield* firestore.logAuditEntry(userId, 'RECONCILIATION', {
+        yield* db.logAuditEntry(userId, 'RECONCILIATION', {
           stripeSubscriptionId: stripeDataValue.subscriptionId,
           discrepanciesFixed: report.discrepancies,
           actionsPerformed,
@@ -685,8 +685,8 @@ const make = Effect.gen(function* () {
           });
         }
 
-        // Check if email already exists in Firestore
-        const existingUser = yield* firestore.getUserByEmail(input.email);
+        // Check if email already exists in database
+        const existingUser = yield* db.getUserByEmail(input.email);
         if (existingUser) {
           return yield* new EmailConflictError({
             email: input.email,
@@ -706,8 +706,8 @@ const make = Effect.gen(function* () {
           userId = newAuthUser.uid;
         }
 
-        // Create user document in Firestore
-        yield* firestore.createUser(userId, {
+        // Create user document in database
+        yield* db.createUser(userId, {
           email: input.email,
           name: input.name,
           phone: input.phone,
@@ -722,7 +722,7 @@ const make = Effect.gen(function* () {
           input.status === 'complimentary' || input.status === 'legacy' ? 'active' : input.status;
 
         // Create membership document
-        yield* firestore.setMembership(userId, membershipId, {
+        yield* db.setMembership(userId, membershipId, {
           stripeSubscriptionId: membershipId,
           planType: input.planType,
           status: membershipStatus,
@@ -734,11 +734,11 @@ const make = Effect.gen(function* () {
         });
 
         // Get user and membership for card creation
-        const user = yield* firestore.getUser(userId);
-        const membership = yield* firestore.getMembership(userId, membershipId);
+        const user = yield* db.getUser(userId);
+        const membership = yield* db.getMembership(userId, membershipId);
 
         if (!user || !membership) {
-          return yield* new FirestoreError({
+          return yield* new DatabaseError({
             code: 'DATA_NOT_FOUND',
             message: 'Failed to retrieve created user or membership',
           });
@@ -758,7 +758,7 @@ const make = Effect.gen(function* () {
         }
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, 'MEMBER_CREATED', {
+        yield* db.logAuditEntry(userId, 'MEMBER_CREATED', {
           performedBy: adminUid,
           performedByEmail: adminEmail,
           newValues: {
@@ -780,7 +780,7 @@ const make = Effect.gen(function* () {
     updateMember: (userId, input, adminUid, adminEmail) =>
       Effect.gen(function* () {
         // Get existing user
-        const existingUser = yield* firestore.getUser(userId);
+        const existingUser = yield* db.getUser(userId);
         if (!existingUser) {
           return yield* new MemberNotFoundError({
             userId,
@@ -831,11 +831,11 @@ const make = Effect.gen(function* () {
         }
 
         if (Object.keys(userUpdates).length > 0) {
-          yield* firestore.updateUser(userId, userUpdates);
+          yield* db.updateUser(userId, userUpdates);
         }
 
         // Update membership if needed
-        const activeMembership = yield* firestore.getActiveMembership(userId);
+        const activeMembership = yield* db.getActiveMembership(userId);
         if (activeMembership) {
           const membershipUpdates: Record<string, unknown> = {};
 
@@ -898,11 +898,11 @@ const make = Effect.gen(function* () {
           }
 
           if (Object.keys(membershipUpdates).length > 0) {
-            yield* firestore.updateMembership(userId, activeMembership.id, membershipUpdates);
+            yield* db.updateMembership(userId, activeMembership.id, membershipUpdates);
 
             // Update card to match membership
-            const updatedUser = yield* firestore.getUser(userId);
-            const updatedMembership = yield* firestore.getMembership(userId, activeMembership.id);
+            const updatedUser = yield* db.getUser(userId);
+            const updatedMembership = yield* db.getMembership(userId, activeMembership.id);
             if (updatedUser && updatedMembership) {
               yield* cardService.updateCard({
                 userId,
@@ -914,7 +914,7 @@ const make = Effect.gen(function* () {
         }
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, 'MEMBER_UPDATED', {
+        yield* db.logAuditEntry(userId, 'MEMBER_UPDATED', {
           performedBy: adminUid,
           performedByEmail: adminEmail,
           previousValues,
@@ -930,7 +930,7 @@ const make = Effect.gen(function* () {
     deleteMember: (userId, input, adminUid, adminEmail) =>
       Effect.gen(function* () {
         // Get existing user
-        const existingUser = yield* firestore.getUser(userId);
+        const existingUser = yield* db.getUser(userId);
         if (!existingUser) {
           return yield* new MemberNotFoundError({
             userId,
@@ -956,10 +956,10 @@ const make = Effect.gen(function* () {
         }
 
         // Soft delete - sets membership and card status to 'deleted'
-        yield* firestore.softDeleteMember(userId, adminUid, input.reason);
+        yield* db.softDeleteMember(userId, adminUid, input.reason);
 
         // Update stats
-        const activeMembership = yield* firestore.getActiveMembership(userId);
+        const activeMembership = yield* db.getActiveMembership(userId);
         if (activeMembership) {
           yield* stats.decrementStat('activeMembers');
           yield* stats.decrementStat('totalMembers');
@@ -971,7 +971,7 @@ const make = Effect.gen(function* () {
         }
 
         // Log audit entry (already logged in softDeleteMember, but add admin details)
-        yield* firestore.logAuditEntry(userId, 'MEMBER_DELETED', {
+        yield* db.logAuditEntry(userId, 'MEMBER_DELETED', {
           performedBy: adminUid,
           performedByEmail: adminEmail,
           reason: input.reason,
@@ -1022,7 +1022,7 @@ const make = Effect.gen(function* () {
           }
 
           // Check for existing user
-          const existingUser = yield* firestore.getUserByEmail(row.email);
+          const existingUser = yield* db.getUserByEmail(row.email);
           if (existingUser) {
             results.errors.push({
               row: i + 1,
@@ -1045,7 +1045,7 @@ const make = Effect.gen(function* () {
                 userId = newAuthUser.uid;
               }
 
-              yield* firestore.createUser(userId, {
+              yield* db.createUser(userId, {
                 email: row.email,
                 name: row.name,
                 phone: row.phone,
@@ -1053,7 +1053,7 @@ const make = Effect.gen(function* () {
 
               const membershipId = `import_${Date.now()}_${i}`;
 
-              yield* firestore.setMembership(userId, membershipId, {
+              yield* db.setMembership(userId, membershipId, {
                 stripeSubscriptionId: membershipId,
                 planType: row.planType,
                 status: 'active',
@@ -1064,8 +1064,8 @@ const make = Effect.gen(function* () {
                 updatedAt: null as unknown,
               });
 
-              const user = yield* firestore.getUser(userId);
-              const membership = yield* firestore.getMembership(userId, membershipId);
+              const user = yield* db.getUser(userId);
+              const membership = yield* db.getMembership(userId, membershipId);
 
               if (user && membership) {
                 yield* cardService.createCard({userId, user, membership});
@@ -1094,7 +1094,7 @@ const make = Effect.gen(function* () {
         }
 
         // Log bulk import audit entry
-        yield* firestore.logAuditEntry('system', 'BULK_IMPORT', {
+        yield* db.logAuditEntry('system', 'BULK_IMPORT', {
           performedBy: adminUid,
           performedByEmail: adminEmail,
           totalRows: rows.length,
@@ -1109,13 +1109,13 @@ const make = Effect.gen(function* () {
     // Get expiring memberships
     getExpiringMemberships: (withinDays) =>
       Effect.gen(function* () {
-        const members = yield* firestore.getExpiringMemberships(withinDays);
+        const members = yield* db.getExpiringMemberships(withinDays);
         const now = new Date();
 
         return members
           .filter((m) => m.user && m.membership)
           .map((m) => {
-            // Timestamps are serialized as ISO strings from Firestore
+            // Dates are ISO strings from Postgres
             // Safe: .filter above ensures both user and membership exist
             const membership = m.membership as NonNullable<typeof m.membership>;
             const user = m.user as NonNullable<typeof m.user>;
@@ -1142,7 +1142,7 @@ const make = Effect.gen(function* () {
     // Get member audit log
     getMemberAuditLog: (userId) =>
       Effect.gen(function* () {
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
         if (!user) {
           return yield* new MemberNotFoundError({
             userId,
@@ -1150,7 +1150,7 @@ const make = Effect.gen(function* () {
           });
         }
 
-        const entries = yield* firestore.getMemberAuditLog(userId);
+        const entries = yield* db.getMemberAuditLog(userId);
 
         return entries.map((entry) => ({
           id: entry.id,
@@ -1159,18 +1159,14 @@ const make = Effect.gen(function* () {
           performedByEmail: entry.details?.performedByEmail as string | undefined,
           details: entry.details || {},
           timestamp:
-            typeof entry.timestamp === 'object' && 'toDate' in entry.timestamp
-              ? (entry.timestamp as {toDate: () => Date}).toDate().toISOString()
-              : typeof entry.timestamp === 'string'
-                ? entry.timestamp
-                : new Date().toISOString(),
+            typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString(),
         }));
       }),
 
     // Get payment history
     getPaymentHistory: (userId) =>
       Effect.gen(function* () {
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
         if (!user) {
           return yield* new MemberNotFoundError({
             userId,
@@ -1211,7 +1207,7 @@ const make = Effect.gen(function* () {
     // Issue refund
     issueRefund: (userId, paymentIntentId, adminUid, amount, reason) =>
       Effect.gen(function* () {
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
         if (!user) {
           return yield* new MemberNotFoundError({
             userId,
@@ -1222,7 +1218,7 @@ const make = Effect.gen(function* () {
         const refund = yield* stripe.createRefund(paymentIntentId, amount, reason);
 
         // Log audit entry
-        yield* firestore.logAuditEntry(userId, 'REFUND_ISSUED', {
+        yield* db.logAuditEntry(userId, 'REFUND_ISSUED', {
           performedBy: adminUid,
           refundId: refund.id,
           paymentIntentId,

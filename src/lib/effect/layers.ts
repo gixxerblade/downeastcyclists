@@ -3,8 +3,8 @@ import {Layer} from 'effect';
 import {AdminServiceLive} from './admin.service';
 import {AuthServiceLive} from './auth.service';
 import {MembershipCardServiceLive} from './card.service';
+import {DatabaseServiceLive} from './database.service';
 import {ExportServiceLive} from './export.service';
-import {FirestoreServiceLive} from './firestore.service';
 import {MembershipServiceLive} from './membership.service';
 import {PortalServiceLive} from './portal.service';
 import {QRServiceLive} from './qr.service';
@@ -12,44 +12,44 @@ import {StatsServiceLive} from './stats.service';
 import {StripeServiceLive} from './stripe.service';
 import {WebhookIdempotencyServiceLive} from './webhook-idempotency.service';
 
-// Base services layer (no dependencies)
+// Base services layer (no inter-service dependencies)
 const BaseServicesLayer = Layer.mergeAll(
   StripeServiceLive,
-  FirestoreServiceLive,
+  DatabaseServiceLive,
   AuthServiceLive,
   WebhookIdempotencyServiceLive,
   QRServiceLive,
 );
 
-// Membership service (depends on Stripe + Firestore)
+// Membership service (depends on Stripe + Database)
 const MembershipLayer = MembershipServiceLive.pipe(
   Layer.provide(StripeServiceLive),
-  Layer.provide(FirestoreServiceLive),
+  Layer.provide(DatabaseServiceLive),
 );
 
-// Portal service (depends on Auth + Stripe + Firestore)
+// Portal service (depends on Auth + Stripe + Database)
 const PortalLayer = PortalServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(StripeServiceLive),
-  Layer.provide(FirestoreServiceLive),
+  Layer.provide(DatabaseServiceLive),
 );
 
-// Card service (depends on Firestore + QR only - no storage needed)
+// Card service (depends on Database + QR)
 const CardLayer = MembershipCardServiceLive.pipe(
-  Layer.provide(FirestoreServiceLive),
+  Layer.provide(DatabaseServiceLive),
   Layer.provide(QRServiceLive),
 );
 
-// Stats service (depends on Firestore)
-const StatsLayer = StatsServiceLive.pipe(Layer.provide(FirestoreServiceLive));
+// Stats service (depends on Database)
+const StatsLayer = StatsServiceLive.pipe(Layer.provide(DatabaseServiceLive));
 
-// Export service (depends on Firestore)
-const ExportLayer = ExportServiceLive.pipe(Layer.provide(FirestoreServiceLive));
+// Export service (depends on Database)
+const ExportLayer = ExportServiceLive.pipe(Layer.provide(DatabaseServiceLive));
 
-// Admin service (depends on Auth + Firestore + Stats + Stripe + Card)
+// Admin service (depends on Auth + Database + Stats + Stripe + Card)
 const AdminLayer = AdminServiceLive.pipe(
   Layer.provide(AuthServiceLive),
-  Layer.provide(FirestoreServiceLive),
+  Layer.provide(DatabaseServiceLive),
   Layer.provide(StatsLayer),
   Layer.provide(StripeServiceLive),
   Layer.provide(CardLayer),

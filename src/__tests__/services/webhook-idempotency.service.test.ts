@@ -1,11 +1,16 @@
 import {Effect, Exit} from 'effect';
 import {describe, it, expect, vi} from 'vitest';
 
-import {FirestoreError, DuplicateWebhookError} from '@/src/lib/effect/errors';
+// Mock the db client to avoid Neon connection requirement in tests
+vi.mock('@/src/db/client', () => ({
+  db: {},
+}));
+
+import {DatabaseError, DuplicateWebhookError} from '@/src/lib/effect/errors';
 import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.service';
 
 import {createTestWebhookService, TestWebhookLayer} from '../layers/test-layers';
-import {createMockWebhookEvent} from '../mocks/firestore.mock';
+import {createMockWebhookEvent} from '../mocks/database.mock';
 
 describe('WebhookIdempotencyService', () => {
   describe('claimEvent', () => {
@@ -125,13 +130,13 @@ describe('WebhookIdempotencyService', () => {
       expect(Exit.isFailure(result)).toBe(true);
     });
 
-    it('should fail with FirestoreError on transaction failure', async () => {
+    it('should fail with DatabaseError on query failure', async () => {
       const mockService = createTestWebhookService({
         claimEvent: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'CLAIM_WEBHOOK_EVENT_FAILED',
-              message: 'Transaction failed',
+              message: 'Query failed',
             }),
           ),
         ),
@@ -151,7 +156,7 @@ describe('WebhookIdempotencyService', () => {
         const error = result.cause;
         expect(error._tag).toBe('Fail');
         if (error._tag === 'Fail') {
-          expect(error.error).toBeInstanceOf(FirestoreError);
+          expect(error.error).toBeInstanceOf(DatabaseError);
         }
       }
     });
@@ -176,11 +181,11 @@ describe('WebhookIdempotencyService', () => {
       expect(mockService.completeEvent).toHaveBeenCalledWith('evt_123');
     });
 
-    it('should fail with FirestoreError on network error', async () => {
+    it('should fail with DatabaseError on network error', async () => {
       const mockService = createTestWebhookService({
         completeEvent: vi.fn(() =>
           Effect.fail(
-            new FirestoreError({
+            new DatabaseError({
               code: 'COMPLETE_WEBHOOK_EVENT_FAILED',
               message: 'Network error',
             }),

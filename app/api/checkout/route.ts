@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         status: 500,
       }),
     ),
-    Effect.catchTag('FirestoreError', (error) =>
+    Effect.catchTag('DatabaseError', (error) =>
       Effect.succeed({
         error: error.message,
         _tag: 'error' as const,

@@ -38,7 +38,7 @@ export async function GET() {
       if (failure._tag === 'NotFoundError' && 'resource' in failure) {
         return NextResponse.json({error: `${failure.resource} not found`}, {status: 404});
       }
-      if (failure._tag === 'FirestoreError' && 'message' in failure) {
+      if (failure._tag === 'DatabaseError' && 'message' in failure) {
         return NextResponse.json({error: failure.message as string}, {status: 500});
       }
     }

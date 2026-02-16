@@ -2,7 +2,7 @@ import {Effect, Exit} from 'effect';
 import {cookies} from 'next/headers';
 import {NextRequest, NextResponse} from 'next/server';
 
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {DatabaseService} from '@/src/lib/effect/database.service';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
 
@@ -20,13 +20,13 @@ export async function GET(_request: NextRequest) {
 
   const program = Effect.gen(function* () {
     const portal = yield* PortalService;
-    const firestore = yield* FirestoreService;
+    const db = yield* DatabaseService;
 
     // Verify session
     const session = yield* portal.verifySession(sessionCookie);
 
     // Check if membership exists
-    const membership = yield* firestore.getActiveMembership(session.uid);
+    const membership = yield* db.getActiveMembership(session.uid);
 
     return {
       ready: !!membership,

@@ -21,13 +21,7 @@ import type {
   UpdateMemberResponse,
 } from '@/src/types/admin';
 
-import {
-  AdminError,
-  FirestoreError,
-  StripeError,
-  UnauthorizedError,
-  ValidationError,
-} from './errors';
+import {AdminError, DatabaseError, StripeError, UnauthorizedError, ValidationError} from './errors';
 import type {MembershipStats, MemberWithMembership} from './schemas';
 
 export interface GetMembersParams {
@@ -47,10 +41,7 @@ export interface GetMembersResponse {
  * Refresh membership stats by recalculating from all memberships
  * Uses Effect.tryPromise to wrap the API call with typed errors
  */
-export const refreshStats = (): Effect.Effect<
-  MembershipStats,
-  FirestoreError | UnauthorizedError
-> =>
+export const refreshStats = (): Effect.Effect<MembershipStats, DatabaseError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch('/api/admin/stats', {method: 'POST'});
@@ -73,7 +64,7 @@ export const refreshStats = (): Effect.Effect<
       if (error instanceof UnauthorizedError) {
         return error;
       }
-      return new FirestoreError({
+      return new DatabaseError({
         code: 'REFRESH_STATS_FAILED',
         message: error instanceof Error ? error.message : 'Failed to refresh stats',
         cause: error,
@@ -84,7 +75,7 @@ export const refreshStats = (): Effect.Effect<
 /**
  * Get current cached membership stats
  */
-export const getStats = (): Effect.Effect<MembershipStats, FirestoreError | UnauthorizedError> =>
+export const getStats = (): Effect.Effect<MembershipStats, DatabaseError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch('/api/admin/stats');
@@ -107,7 +98,7 @@ export const getStats = (): Effect.Effect<MembershipStats, FirestoreError | Unau
       if (error instanceof UnauthorizedError) {
         return error;
       }
-      return new FirestoreError({
+      return new DatabaseError({
         code: 'GET_STATS_FAILED',
         message: error instanceof Error ? error.message : 'Failed to get stats',
         cause: error,
@@ -120,7 +111,7 @@ export const getStats = (): Effect.Effect<MembershipStats, FirestoreError | Unau
  */
 export const getMembers = (
   params: GetMembersParams,
-): Effect.Effect<GetMembersResponse, FirestoreError | UnauthorizedError> =>
+): Effect.Effect<GetMembersResponse, DatabaseError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const searchParams = new URLSearchParams({
@@ -152,7 +143,7 @@ export const getMembers = (
       if (error instanceof UnauthorizedError) {
         return error;
       }
-      return new FirestoreError({
+      return new DatabaseError({
         code: 'GET_MEMBERS_FAILED',
         message: error instanceof Error ? error.message : 'Failed to get members',
         cause: error,
@@ -329,7 +320,7 @@ export const importMembers = (
  */
 export const getExpiringMemberships = (
   days: 30 | 60 | 90,
-): Effect.Effect<ExpiringMember[], FirestoreError | UnauthorizedError> =>
+): Effect.Effect<ExpiringMember[], DatabaseError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch(`/api/admin/members/expiring?days=${days}`);
@@ -350,7 +341,7 @@ export const getExpiringMemberships = (
       if (error instanceof UnauthorizedError) {
         return error;
       }
-      return new FirestoreError({
+      return new DatabaseError({
         code: 'GET_EXPIRING_FAILED',
         message: error instanceof Error ? error.message : 'Failed to get expiring memberships',
         cause: error,
@@ -363,7 +354,7 @@ export const getExpiringMemberships = (
  */
 export const getMemberAuditLog = (
   userId: string,
-): Effect.Effect<AuditEntry[], FirestoreError | UnauthorizedError> =>
+): Effect.Effect<AuditEntry[], DatabaseError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch(`/api/admin/members/${userId}/audit`);
@@ -384,7 +375,7 @@ export const getMemberAuditLog = (
       if (error instanceof UnauthorizedError) {
         return error;
       }
-      return new FirestoreError({
+      return new DatabaseError({
         code: 'GET_AUDIT_LOG_FAILED',
         message: error instanceof Error ? error.message : 'Failed to get audit log',
         cause: error,

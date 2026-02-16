@@ -4,7 +4,7 @@ import {NextRequest, NextResponse} from 'next/server';
 import type Stripe from 'stripe';
 
 import {MembershipCardService} from '@/src/lib/effect/card.service';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {DatabaseService} from '@/src/lib/effect/database.service';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {MembershipService} from '@/src/lib/effect/membership.service';
 import {StatsService} from '@/src/lib/effect/stats.service';
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
                   // Generate membership card after successful checkout
                   yield* Effect.gen(function* () {
                     const cardService = yield* MembershipCardService;
-                    const firestore = yield* FirestoreService;
+                    const db = yield* DatabaseService;
 
                     // Get user and membership data
                     const userId = session.metadata?.userId || (session.subscription as string);
-                    const user = yield* firestore.getUser(userId);
-                    const membership = yield* firestore.getActiveMembership(userId);
+                    const user = yield* db.getUser(userId);
+                    const membership = yield* db.getActiveMembership(userId);
 
                     if (user && membership) {
                       yield* Effect.log(`[WEBHOOK] Creating membership card for user ${userId}`);
@@ -186,8 +186,8 @@ export async function POST(request: NextRequest) {
       console.error('Stripe error in webhook:', error);
       return Effect.succeed({error: error.message, _tag: 'error' as const, status: 400});
     }),
-    Effect.catchTag('FirestoreError', (error) => {
-      console.error('Firestore error in webhook:', error);
+    Effect.catchTag('DatabaseError', (error) => {
+      console.error('Database error in webhook:', error);
       return Effect.succeed({error: error.message, _tag: 'error' as const, status: 500});
     }),
   );

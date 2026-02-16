@@ -67,8 +67,8 @@ export const createAccount = (
     },
   });
 
-// Create Firestore user document via API
-const createFirestoreUser = (
+// Create user document via API
+const createDatabaseUser = (
   idToken: string,
   name?: string,
 ): Effect.Effect<{success: boolean; userId: string}, AuthError> =>
@@ -82,20 +82,20 @@ const createFirestoreUser = (
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create user in Firestore');
+        throw new Error(data.error || 'Failed to create user');
       }
 
       return response.json();
     },
     catch: (error) =>
       new AuthError({
-        code: 'FIRESTORE_USER_CREATE_FAILED',
-        message: error instanceof Error ? error.message : 'Failed to create user in Firestore',
+        code: 'USER_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create user',
         cause: error,
       }),
   });
 
-// Complete signup flow: create account + create Firestore document + create session
+// Complete signup flow: create account + database user + session
 export const signupAndLogin = (
   credentials: SignupCredentials,
 ): Effect.Effect<{success: boolean}, AuthError> =>
@@ -120,8 +120,8 @@ export const signupAndLogin = (
         }),
     });
 
-    // Create Firestore user document
-    yield* createFirestoreUser(idToken, credentials.name);
+    // Create user document
+    yield* createDatabaseUser(idToken, credentials.name);
 
     // Create session
     yield* createSessionCookie(idToken);

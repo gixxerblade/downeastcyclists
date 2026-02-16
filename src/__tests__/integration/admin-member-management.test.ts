@@ -8,10 +8,10 @@ import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/sr
 
 import {
   createTestAuthService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   createTestStripeService,
   TestAuthLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
 
@@ -28,7 +28,7 @@ describe('Admin Member Management Integration', () => {
         updateUserEmail: vi.fn(() => Effect.void),
       });
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         getUser: vi.fn((uid) => {
           if (uid === userId) {
@@ -106,10 +106,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_1',
               action: 'MEMBER_CREATED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 newValues: {
                   email: 'test@example.com',
                   planType: 'individual',
@@ -119,10 +119,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_2',
               action: 'MEMBER_UPDATED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 previousValues: {email: 'test@example.com'},
                 newValues: {email: 'newemail@example.com'},
                 reason: 'Email change',
@@ -131,10 +131,10 @@ describe('Admin Member Management Integration', () => {
             {
               id: 'audit_3',
               action: 'MEMBER_DELETED',
+              performedBy: 'admin_123',
+              performedByEmail: 'admin@example.com',
               timestamp: new Date().toISOString(),
               details: {
-                performedBy: 'admin_123',
-                performedByEmail: 'admin@example.com',
                 reason: 'User requested deletion',
               },
             },
@@ -256,7 +256,7 @@ describe('Admin Member Management Integration', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -284,7 +284,7 @@ describe('Admin Member Management Integration', () => {
 
       expect(createResult.userId).toBe(userId);
       expect(createResult.membershipNumber).toBe(membershipNumber);
-      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
         'MEMBER_CREATED',
         expect.any(Object),
@@ -342,7 +342,7 @@ describe('Admin Member Management Integration', () => {
 
       expect(deleteResult.stripeSubscriptionCanceled).toBe(true);
       expect(stripeService.cancelSubscription).toHaveBeenCalledWith('sub_123', deleteInput.reason);
-      expect(firestoreService.softDeleteMember).toHaveBeenCalled();
+      expect(databaseService.softDeleteMember).toHaveBeenCalled();
     });
   });
 
@@ -356,7 +356,7 @@ describe('Admin Member Management Integration', () => {
       });
 
       let membershipNumberCounter = 1;
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUserByEmail: vi.fn(() => Effect.succeed(null)),
         createUser: vi.fn((userId, data) =>
           Effect.succeed({
@@ -509,7 +509,7 @@ describe('Admin Member Management Integration', () => {
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
@@ -551,8 +551,8 @@ describe('Admin Member Management Integration', () => {
       expect(result.created).toBe(3);
       expect(result.errors).toEqual([]);
       expect(authService.createAuthUser).toHaveBeenCalledTimes(3);
-      expect(firestoreService.createUser).toHaveBeenCalledTimes(3);
-      expect(firestoreService.setMembership).toHaveBeenCalledTimes(3);
+      expect(databaseService.createUser).toHaveBeenCalledTimes(3);
+      expect(databaseService.setMembership).toHaveBeenCalledTimes(3);
       expect(cardService.createCard).toHaveBeenCalledTimes(3);
     });
   });
@@ -562,7 +562,7 @@ describe('Admin Member Management Integration', () => {
       const now = new Date();
       const in29Days = new Date(now.getTime() + 29 * 24 * 60 * 60 * 1000);
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getExpiringMemberships: vi.fn((_withinDays) =>
           Effect.succeed([
             {
@@ -710,7 +710,7 @@ describe('Admin Member Management Integration', () => {
       };
 
       const testLayer = Layer.mergeAll(
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
@@ -729,7 +729,7 @@ describe('Admin Member Management Integration', () => {
       expect(result).toHaveLength(2);
       expect(result[0].daysUntilExpiration).toBe(29);
       expect(result[1].daysUntilExpiration).toBe(29);
-      expect(firestoreService.getExpiringMemberships).toHaveBeenCalledWith(30);
+      expect(databaseService.getExpiringMemberships).toHaveBeenCalledWith(30);
     });
   });
 
@@ -737,7 +737,7 @@ describe('Admin Member Management Integration', () => {
     it('should retrieve payment history and issue refund', async () => {
       const userId = 'user_123';
 
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() =>
           Effect.succeed({
             id: userId,
@@ -872,7 +872,7 @@ describe('Admin Member Management Integration', () => {
       };
 
       const testLayer = Layer.mergeAll(
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
         TestStripeLayer(stripeService),
         TestAuthLayer(authService),
         Layer.succeed(MembershipCardService, cardService),
@@ -907,7 +907,7 @@ describe('Admin Member Management Integration', () => {
       expect(refund.id).toBe('ref_123');
       expect(refund.amount).toBe(5000);
       expect(stripeService.createRefund).toHaveBeenCalledWith('pi_123', undefined, undefined);
-      expect(firestoreService.logAuditEntry).toHaveBeenCalledWith(
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
         'REFUND_ISSUED',
         expect.objectContaining({

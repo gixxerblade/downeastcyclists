@@ -20,6 +20,6 @@ export async function GET(request: NextRequest) {
         yield* admin.verifyAdmin(sessionCookie);
         return yield* admin.getExpiringMemberships(days as 30 | 60 | 90);
       }),
-    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'FirestoreError'],
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
   });
 }

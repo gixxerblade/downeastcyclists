@@ -1,7 +1,7 @@
 import {Context, Effect, Layer} from 'effect';
 
-import {CardError, FirestoreError, NotFoundError, QRError} from './errors';
-import {FirestoreService} from './firestore.service';
+import {DatabaseService} from './database.service';
+import {CardError, DatabaseError, NotFoundError, QRError} from './errors';
 import {QRService} from './qr.service';
 import type {MembershipCard, VerificationResult, MembershipDocument, UserDocument} from './schemas';
 
@@ -11,23 +11,23 @@ export interface MembershipCardService {
     userId: string;
     user: UserDocument;
     membership: MembershipDocument;
-  }) => Effect.Effect<MembershipCard, CardError | FirestoreError | QRError>;
+  }) => Effect.Effect<MembershipCard, CardError | DatabaseError | QRError>;
 
   readonly updateCard: (params: {
     userId: string;
     user: UserDocument;
     membership: MembershipDocument;
-  }) => Effect.Effect<MembershipCard, CardError | FirestoreError | QRError>;
+  }) => Effect.Effect<MembershipCard, CardError | DatabaseError | QRError>;
 
-  readonly getCard: (userId: string) => Effect.Effect<MembershipCard | null, FirestoreError>;
+  readonly getCard: (userId: string) => Effect.Effect<MembershipCard | null, DatabaseError>;
 
   readonly verifyMembership: (
     membershipNumber: string,
-  ) => Effect.Effect<VerificationResult, FirestoreError | NotFoundError>;
+  ) => Effect.Effect<VerificationResult, DatabaseError | NotFoundError>;
 
   readonly verifyQRCode: (
     qrData: string,
-  ) => Effect.Effect<VerificationResult, QRError | FirestoreError | NotFoundError>;
+  ) => Effect.Effect<VerificationResult, QRError | DatabaseError | NotFoundError>;
 }
 
 // Service tag
@@ -36,7 +36,7 @@ export const MembershipCardService =
 
 // Implementation
 const make = Effect.gen(function* () {
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
   const qr = yield* QRService;
 
   return MembershipCardService.of({
@@ -47,14 +47,11 @@ const make = Effect.gen(function* () {
         const currentYear = new Date().getFullYear();
 
         // Generate unique membership number (atomic)
-        const membershipNumber = yield* firestore.getNextMembershipNumber(currentYear);
+        const membershipNumber = yield* db.getNextMembershipNumber(currentYear);
 
-        // Calculate validity dates
-        const validFrom =
-          membership.startDate.toDate?.()?.toISOString() ||
-          new Date(membership.startDate as unknown as number).toISOString();
-        const validUntil =
-          membership.endDate.toDate?.() || new Date(membership.endDate as unknown as number);
+        // Dates are ISO strings from Postgres
+        const validFrom = new Date(membership.startDate as string).toISOString();
+        const validUntil = new Date(membership.endDate as string);
 
         // Generate QR code data
         const qrData = yield* qr.generateQRData({
@@ -79,8 +76,8 @@ const make = Effect.gen(function* () {
           updatedAt: new Date().toISOString(),
         };
 
-        // Save to Firestore
-        yield* firestore.setMembershipCard(userId, card);
+        // Save to database
+        yield* db.setMembershipCard(userId, card);
 
         yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
@@ -91,22 +88,18 @@ const make = Effect.gen(function* () {
     updateCard: ({userId, user, membership}) =>
       Effect.gen(function* () {
         // Get existing card to preserve membership number
-        const existingCard = yield* firestore.getMembershipCard(userId);
+        const existingCard = yield* db.getMembershipCard(userId);
 
         if (!existingCard) {
           // No existing card - create new one using createCard logic
-          // Get current year
           const currentYear = new Date().getFullYear();
 
           // Generate unique membership number (atomic)
-          const membershipNumber = yield* firestore.getNextMembershipNumber(currentYear);
+          const membershipNumber = yield* db.getNextMembershipNumber(currentYear);
 
-          // Calculate validity dates
-          const validFrom =
-            membership.startDate.toDate?.()?.toISOString() ||
-            new Date(membership.startDate as unknown as number).toISOString();
-          const validUntil =
-            membership.endDate.toDate?.() || new Date(membership.endDate as unknown as number);
+          // Dates are ISO strings from Postgres
+          const validFrom = new Date(membership.startDate as string).toISOString();
+          const validUntil = new Date(membership.endDate as string);
 
           // Generate QR code data
           const qrData = yield* qr.generateQRData({
@@ -131,20 +124,17 @@ const make = Effect.gen(function* () {
             updatedAt: new Date().toISOString(),
           };
 
-          // Save to Firestore
-          yield* firestore.setMembershipCard(userId, card);
+          // Save to database
+          yield* db.setMembershipCard(userId, card);
 
           yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
           return {...card, id: 'current'} as MembershipCard;
         }
 
-        // Calculate validity dates from membership
-        const validFrom =
-          membership.startDate.toDate?.()?.toISOString() ||
-          new Date(membership.startDate as unknown as number).toISOString();
-        const validUntil =
-          membership.endDate.toDate?.() || new Date(membership.endDate as unknown as number);
+        // Dates are ISO strings from Postgres
+        const validFrom = new Date(membership.startDate as string).toISOString();
+        const validUntil = new Date(membership.endDate as string);
 
         // Regenerate QR code with updated dates
         const qrData = yield* qr.generateQRData({
@@ -169,19 +159,19 @@ const make = Effect.gen(function* () {
           updatedAt: new Date().toISOString(),
         };
 
-        yield* firestore.setMembershipCard(userId, updatedCard);
+        yield* db.setMembershipCard(userId, updatedCard);
         yield* Effect.log(`Membership card updated for user ${userId}`);
 
         return {...updatedCard, id: 'current'} as MembershipCard;
       }),
 
     // Get existing card - simple delegation
-    getCard: (userId) => firestore.getMembershipCard(userId),
+    getCard: (userId) => db.getMembershipCard(userId),
 
     // Verify membership by number - for admin lookup
     verifyMembership: (membershipNumber) =>
       Effect.gen(function* () {
-        const result = yield* firestore.getMembershipByNumber(membershipNumber);
+        const result = yield* db.getMembershipByNumber(membershipNumber);
 
         if (!result) {
           return yield* new NotFoundError({resource: 'membership', id: membershipNumber});
@@ -241,7 +231,7 @@ const make = Effect.gen(function* () {
         }
 
         // Look up full membership details
-        const result = yield* firestore.getMembershipByNumber(payload.mn);
+        const result = yield* db.getMembershipByNumber(payload.mn);
 
         if (!result) {
           return {

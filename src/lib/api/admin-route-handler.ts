@@ -13,7 +13,7 @@ type AdminErrorTag =
   | 'SessionError'
   | 'AuthError'
   | 'StripeError'
-  | 'FirestoreError'
+  | 'DatabaseError'
   | 'CardError'
   | 'QRError'
   | 'AdminError'
@@ -44,7 +44,7 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 401}),
   StripeError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-  FirestoreError: (error: {message: string}) =>
+  DatabaseError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
   CardError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
@@ -92,9 +92,9 @@ export type AdminRouteOptions = {
  *       if (!email) {
  *         return yield* Effect.fail(new AdminError({ message: 'Email required' }));
  *       }
- *       return yield* admin.validateStripeVsFirebase(email);
+ *       return yield* admin.validateStripeVsDatabase(email);
  *     }),
- *     errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'StripeError', 'FirestoreError', 'AdminError']
+ *     errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'StripeError', 'DatabaseError', 'AdminError']
  *   });
  * }
  */

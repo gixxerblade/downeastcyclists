@@ -35,7 +35,7 @@ export async function GET(_request: NextRequest) {
     Effect.catchTag('SessionError', () =>
       Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
     ),
-    Effect.catchTag('FirestoreError', (error) =>
+    Effect.catchTag('DatabaseError', (error) =>
       Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
     ),
   );

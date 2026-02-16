@@ -7,17 +7,13 @@ import {PortalService, PortalServiceLive} from '@/src/lib/effect/portal.service'
 import {
   createTestAuthService,
   createTestStripeService,
-  createTestFirestoreService,
+  createTestDatabaseService,
   TestAuthLayer,
   TestStripeLayer,
-  TestFirestoreLayer,
+  TestDatabaseLayer,
 } from '../layers/test-layers';
+import {createMockUserDocument, createMockMembershipDocument} from '../mocks/database.mock';
 import {createMockDecodedToken} from '../mocks/firebase-admin.mock';
-import {
-  createMockUserDocument,
-  createMockMembershipDocument,
-  createMockTimestamp,
-} from '../mocks/firestore.mock';
 import {createMockPortalSession} from '../mocks/stripe.mock';
 
 describe('PortalService', () => {
@@ -34,12 +30,12 @@ describe('PortalService', () => {
         ),
       });
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -70,12 +66,12 @@ describe('PortalService', () => {
         verifySessionCookie: vi.fn(() => Effect.succeed(mockDecodedToken as any)),
       });
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService();
+      const databaseService = createTestDatabaseService();
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -97,14 +93,14 @@ describe('PortalService', () => {
     it('should fail with NotFoundError when user not found', async () => {
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -131,7 +127,7 @@ describe('PortalService', () => {
       const mockUser = createMockUserDocument();
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
         getActiveMembership: vi.fn(() => Effect.succeed(null)),
       });
@@ -139,7 +135,7 @@ describe('PortalService', () => {
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -163,12 +159,12 @@ describe('PortalService', () => {
       futureDate.setDate(futureDate.getDate() + 30);
       const mockMembership = createMockMembershipDocument({
         status: 'active',
-        endDate: createMockTimestamp(futureDate),
+        endDate: futureDate.toISOString(),
       });
 
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
         getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
       });
@@ -176,7 +172,7 @@ describe('PortalService', () => {
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -202,7 +198,7 @@ describe('PortalService', () => {
 
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUserWithStripe)),
         getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
       });
@@ -210,7 +206,7 @@ describe('PortalService', () => {
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -233,7 +229,7 @@ describe('PortalService', () => {
 
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUserNoStripe)),
         getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
       });
@@ -241,7 +237,7 @@ describe('PortalService', () => {
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -261,14 +257,14 @@ describe('PortalService', () => {
     it('should fail with NotFoundError when user not found', async () => {
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -297,14 +293,14 @@ describe('PortalService', () => {
       });
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -342,14 +338,14 @@ describe('PortalService', () => {
           ),
         ),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -382,14 +378,14 @@ describe('PortalService', () => {
       const stripeService = createTestStripeService({
         createPortalSession: vi.fn(() => Effect.succeed(mockPortalSession)),
       });
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -410,14 +406,14 @@ describe('PortalService', () => {
     it('should call setUser with stripeCustomerId', async () => {
       const authService = createTestAuthService();
       const stripeService = createTestStripeService();
-      const firestoreService = createTestFirestoreService({
+      const databaseService = createTestDatabaseService({
         setUser: vi.fn(() => Effect.void),
       });
 
       const testLayer = Layer.mergeAll(
         TestAuthLayer(authService),
         TestStripeLayer(stripeService),
-        TestFirestoreLayer(firestoreService),
+        TestDatabaseLayer(databaseService),
       );
 
       const program = Effect.gen(function* () {
@@ -430,7 +426,7 @@ describe('PortalService', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(firestoreService.setUser).toHaveBeenCalledWith('firebase_uid_123', {
+      expect(databaseService.setUser).toHaveBeenCalledWith('firebase_uid_123', {
         stripeCustomerId: 'cus_stripe_123',
       });
     });

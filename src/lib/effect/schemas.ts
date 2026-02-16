@@ -33,8 +33,8 @@ export const UserDocument = S.Struct({
   phone: S.optional(S.String),
   address: S.optional(Address),
   stripeCustomerId: S.optional(S.String),
-  createdAt: S.Any, // Firestore Timestamp
-  updatedAt: S.Any, // Firestore Timestamp
+  createdAt: S.Any,
+  updatedAt: S.Any,
 });
 export type UserDocument = S.Schema.Type<typeof UserDocument>;
 
@@ -44,8 +44,8 @@ export const MembershipDocument = S.Struct({
   stripeSubscriptionId: S.String,
   planType: PlanType,
   status: MembershipStatus,
-  startDate: S.Any, // Firestore Timestamp
-  endDate: S.Any, // Firestore Timestamp
+  startDate: S.Any,
+  endDate: S.Any,
   autoRenew: S.Boolean,
   createdAt: S.Any,
   updatedAt: S.Any,
@@ -180,7 +180,7 @@ export type JoinFormData = S.Schema.Type<typeof JoinFormData>;
 export const WebhookEventDocument = S.Struct({
   id: S.String, // Stripe event ID (evt_xxx)
   type: S.String, // Event type (checkout.session.completed, etc.)
-  processedAt: S.Any, // Firestore Timestamp
+  processedAt: S.Any,
   status: S.Literal('processing', 'completed', 'failed'),
   errorMessage: S.optional(S.String),
   retryCount: S.optional(S.Number),
@@ -303,10 +303,10 @@ export type ExportOptions = S.Schema.Type<typeof ExportOptions>;
 export const DiscrepancyType = S.Literal(
   'NO_STRIPE_CUSTOMER', // No Stripe customer found for email
   'NO_STRIPE_SUBSCRIPTION', // Customer has no active subscription
-  'MISSING_FIREBASE_USER', // User not in Firebase
-  'MISSING_FIREBASE_MEMBERSHIP', // Membership document missing
-  'MISSING_FIREBASE_CARD', // Card document missing
-  'STATUS_MISMATCH', // Status differs between Stripe and Firebase
+  'MISSING_DB_USER', // User not in database
+  'MISSING_DB_MEMBERSHIP', // Membership record missing
+  'MISSING_DB_CARD', // Card record missing
+  'STATUS_MISMATCH', // Status differs between Stripe and database
   'DATE_MISMATCH', // Start/end dates differ
   'PLAN_MISMATCH', // Plan type differs
   'CARD_STATUS_MISMATCH', // Card status doesn't match membership
@@ -329,8 +329,8 @@ export const StripeDataSnapshot = S.Struct({
 });
 export type StripeDataSnapshot = S.Schema.Type<typeof StripeDataSnapshot>;
 
-// Firebase data snapshot for comparison
-export const FirebaseDataSnapshot = S.Struct({
+// Database data snapshot for comparison
+export const DatabaseDataSnapshot = S.Struct({
   userId: S.String,
   userEmail: S.String,
   membership: S.NullOr(
@@ -354,13 +354,13 @@ export const FirebaseDataSnapshot = S.Struct({
     }),
   ),
 });
-export type FirebaseDataSnapshot = S.Schema.Type<typeof FirebaseDataSnapshot>;
+export type DatabaseDataSnapshot = S.Schema.Type<typeof DatabaseDataSnapshot>;
 
 // Reconciliation report
 export const ReconciliationReport = S.Struct({
   email: S.String,
   stripeData: S.NullOr(StripeDataSnapshot),
-  firebaseData: S.NullOr(FirebaseDataSnapshot),
+  databaseData: S.NullOr(DatabaseDataSnapshot),
   discrepancies: S.Array(DiscrepancyType),
   canReconcile: S.Boolean,
   reconcileActions: S.Array(S.String), // Human-readable list of actions to take

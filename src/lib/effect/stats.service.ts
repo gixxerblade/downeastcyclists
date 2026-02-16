@@ -1,24 +1,24 @@
 import {Context, Effect, Layer, pipe} from 'effect';
 
-import {FirestoreError} from './errors';
-import {FirestoreService} from './firestore.service';
+import {DatabaseService} from './database.service';
+import {DatabaseError} from './errors';
 import type {MembershipStats} from './schemas';
 
 // Service interface
 export interface StatsService {
-  readonly getStats: () => Effect.Effect<MembershipStats, FirestoreError>;
+  readonly getStats: () => Effect.Effect<MembershipStats, DatabaseError>;
 
-  readonly refreshStats: () => Effect.Effect<MembershipStats, FirestoreError>;
+  readonly refreshStats: () => Effect.Effect<MembershipStats, DatabaseError>;
 
   readonly incrementStat: (
     stat: keyof Omit<MembershipStats, 'updatedAt'>,
     amount?: number,
-  ) => Effect.Effect<void, FirestoreError>;
+  ) => Effect.Effect<void, DatabaseError>;
 
   readonly decrementStat: (
     stat: keyof Omit<MembershipStats, 'updatedAt'>,
     amount?: number,
-  ) => Effect.Effect<void, FirestoreError>;
+  ) => Effect.Effect<void, DatabaseError>;
 }
 
 // Service tag
@@ -39,20 +39,20 @@ const defaultStats: MembershipStats = {
 
 // Implementation
 const make = Effect.gen(function* () {
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
 
   return StatsService.of({
     // Get cached stats or return defaults
     getStats: () =>
       pipe(
-        firestore.getStats(),
+        db.getStats(),
         Effect.map((stats) => stats ?? defaultStats),
       ),
 
     // Force recalculation from all memberships
     refreshStats: () =>
       Effect.gen(function* () {
-        const {members, total} = yield* firestore.getAllMemberships({});
+        const {members, total} = yield* db.getAllMemberships({});
 
         const stats: MembershipStats = {
           totalMembers: total,
@@ -61,9 +61,8 @@ const make = Effect.gen(function* () {
           ).length,
           expiredMembers: members.filter((m) => {
             if (!m.membership) return false;
-            const endDate = m.membership.endDate?.toDate?.()
-              ? m.membership.endDate.toDate()
-              : new Date(m.membership.endDate as unknown as string);
+            // Dates are ISO strings from Postgres
+            const endDate = new Date(m.membership.endDate as string);
             return endDate < new Date() && m.membership.status !== 'canceled';
           }).length,
           canceledMembers: members.filter((m) => m.membership?.status === 'canceled').length,
@@ -77,16 +76,16 @@ const make = Effect.gen(function* () {
           updatedAt: new Date().toISOString(),
         };
 
-        yield* firestore.updateStats(stats);
+        yield* db.updateStats(stats);
 
         return stats;
       }),
 
     incrementStat: (stat, amount = 1) =>
       pipe(
-        firestore.getStats(),
+        db.getStats(),
         Effect.flatMap((current) =>
-          firestore.updateStats({
+          db.updateStats({
             [stat]: ((current?.[stat] as number) || 0) + amount,
           }),
         ),
@@ -94,9 +93,9 @@ const make = Effect.gen(function* () {
 
     decrementStat: (stat, amount = 1) =>
       pipe(
-        firestore.getStats(),
+        db.getStats(),
         Effect.flatMap((current) =>
-          firestore.updateStats({
+          db.updateStats({
             [stat]: Math.max(0, ((current?.[stat] as number) || 0) - amount),
           }),
         ),

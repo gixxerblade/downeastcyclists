@@ -1,4 +1,3 @@
-import {Timestamp} from '@google-cloud/firestore';
 import type {Schema as S} from 'effect';
 import {Context, Effect, Layer, pipe} from 'effect';
 import type Stripe from 'stripe';
@@ -10,8 +9,8 @@ import {
   getPlanNameForType,
 } from '../membership-plans-config';
 
-import {StripeError, FirestoreError, ValidationError, NotFoundError} from './errors';
-import {FirestoreService} from './firestore.service';
+import {DatabaseService} from './database.service';
+import {StripeError, DatabaseError, ValidationError, NotFoundError} from './errors';
 import type {
   CheckoutSessionRequest,
   CheckoutSessionResponse,
@@ -47,27 +46,24 @@ export interface MembershipService {
     request: S.Schema.Type<typeof CheckoutSessionRequest>,
   ) => Effect.Effect<
     S.Schema.Type<typeof CheckoutSessionResponse>,
-    StripeError | FirestoreError | ValidationError
+    StripeError | DatabaseError | ValidationError
   >;
 
   readonly processCheckoutCompleted: (
     session: Stripe.Checkout.Session,
-  ) => Effect.Effect<void, StripeError | FirestoreError>;
+  ) => Effect.Effect<void, StripeError | DatabaseError>;
 
   readonly processSubscriptionUpdated: (
     subscription: Stripe.Subscription,
-  ) => Effect.Effect<void, FirestoreError>;
+  ) => Effect.Effect<void, DatabaseError>;
 
   readonly processSubscriptionDeleted: (
     subscription: Stripe.Subscription,
-  ) => Effect.Effect<void, FirestoreError>;
+  ) => Effect.Effect<void, DatabaseError>;
 
   readonly getMembershipStatus: (
     userId: string,
-  ) => Effect.Effect<
-    S.Schema.Type<typeof MembershipStatusResponse>,
-    FirestoreError | NotFoundError
-  >;
+  ) => Effect.Effect<S.Schema.Type<typeof MembershipStatusResponse>, DatabaseError | NotFoundError>;
 
   readonly getPlans: () => Effect.Effect<
     Array<{id: string; name: string; price: number; benefits: string[]; stripePriceId: string}>,
@@ -78,10 +74,10 @@ export interface MembershipService {
 // Service tag
 export const MembershipService = Context.GenericTag<MembershipService>('MembershipService');
 
-// Implementation - depends on StripeService and FirestoreService
+// Implementation - depends on StripeService and DatabaseService
 const make = Effect.gen(function* () {
   const stripe = yield* StripeService;
-  const firestore = yield* FirestoreService;
+  const db = yield* DatabaseService;
 
   return MembershipService.of({
     // Checkout flow: validate → lookup user → create session
@@ -97,7 +93,7 @@ const make = Effect.gen(function* () {
         Effect.flatMap((req) =>
           req.userId
             ? pipe(
-                firestore.getUser(req.userId),
+                db.getUser(req.userId),
                 Effect.map((user) => ({
                   ...req,
                   stripeCustomerId: user?.stripeCustomerId,
@@ -203,30 +199,27 @@ const make = Effect.gen(function* () {
         // If no Firebase UID is provided (guest checkout), we:
         // 1. Check if a user exists with this email
         // 2. Fall back to using subscriptionId as the document ID
-        // This allows guest checkouts to create user records that can be linked later
         let userDocId = userId;
         if (!userDocId) {
-          const existingUser = customerEmail
-            ? yield* firestore.getUserByEmail(customerEmail)
-            : null;
+          const existingUser = customerEmail ? yield* db.getUserByEmail(customerEmail) : null;
           userDocId = existingUser?.id || subscriptionId;
         }
 
-        // Update user document
-        yield* firestore.setUser(userDocId, {
+        // Update user document with ISO date strings
+        yield* db.setUser(userDocId, {
           id: userDocId,
           email: customerEmail || '',
           stripeCustomerId: customerId,
-          createdAt: Timestamp.now(),
+          createdAt: new Date().toISOString(),
         } as any);
 
-        // Create membership document with proper Firestore Timestamps
-        yield* firestore.setMembership(userDocId, subscriptionId, {
+        // Create membership document with proper date handling
+        yield* db.setMembership(userDocId, subscriptionId, {
           stripeSubscriptionId: subscriptionId,
           planType,
           status: subscription.status as MembershipStatus,
-          startDate: Timestamp.fromDate(new Date(currentPeriodStart * 1000)),
-          endDate: Timestamp.fromDate(new Date(currentPeriodEnd * 1000)),
+          startDate: new Date(currentPeriodStart * 1000).toISOString(),
+          endDate: new Date(currentPeriodEnd * 1000).toISOString(),
           autoRenew: !subscription.cancel_at_period_end,
         } as any);
 
@@ -244,7 +237,7 @@ const make = Effect.gen(function* () {
         yield* Effect.log(`Processing subscription update: ${subscriptionId}`);
 
         // Find user by Stripe customer ID
-        const user = yield* firestore.getUserByStripeCustomerId(customerId);
+        const user = yield* db.getUserByStripeCustomerId(customerId);
         if (!user) {
           yield* Effect.logWarning(`No user found for customer ${customerId}`);
           return;
@@ -255,10 +248,10 @@ const make = Effect.gen(function* () {
         const currentPeriodStart = (subscriptionItem as any).current_period_start;
         const currentPeriodEnd = (subscriptionItem as any).current_period_end;
 
-        yield* firestore.updateMembership(user.id, subscriptionId, {
+        yield* db.updateMembership(user.id, subscriptionId, {
           status: subscription.status as MembershipStatus,
-          startDate: Timestamp.fromDate(new Date(currentPeriodStart * 1000)),
-          endDate: Timestamp.fromDate(new Date(currentPeriodEnd * 1000)),
+          startDate: new Date(currentPeriodStart * 1000).toISOString(),
+          endDate: new Date(currentPeriodEnd * 1000).toISOString(),
           autoRenew: !subscription.cancel_at_period_end,
         } as any);
 
@@ -273,13 +266,13 @@ const make = Effect.gen(function* () {
 
         yield* Effect.log(`Processing subscription deletion: ${subscriptionId}`);
 
-        const user = yield* firestore.getUserByStripeCustomerId(customerId);
+        const user = yield* db.getUserByStripeCustomerId(customerId);
         if (!user) {
           yield* Effect.logWarning(`No user found for customer ${customerId}`);
           return;
         }
 
-        yield* firestore.updateMembership(user.id, subscriptionId, {
+        yield* db.updateMembership(user.id, subscriptionId, {
           status: 'canceled',
           autoRenew: false,
         });
@@ -290,13 +283,13 @@ const make = Effect.gen(function* () {
     // Get membership status for user
     getMembershipStatus: (userId) =>
       Effect.gen(function* () {
-        const user = yield* firestore.getUser(userId);
+        const user = yield* db.getUser(userId);
 
         if (!user) {
           return yield* new NotFoundError({resource: 'user', id: userId});
         }
 
-        const membership = yield* firestore.getActiveMembership(userId);
+        const membership = yield* db.getActiveMembership(userId);
 
         let membershipData: S.Schema.Type<typeof MembershipStatusResponse>['membership'] = null;
 
@@ -307,9 +300,7 @@ const make = Effect.gen(function* () {
             planType: membership.planType,
             planName,
             status: membership.status,
-            endDate:
-              membership.endDate.toDate?.()?.toISOString() ||
-              new Date(membership.endDate as unknown as number).toISOString(),
+            endDate: new Date(membership.endDate as string).toISOString(),
             autoRenew: membership.autoRenew,
           };
         }
@@ -345,5 +336,5 @@ const make = Effect.gen(function* () {
   });
 });
 
-// Live layer - requires StripeService and FirestoreService
+// Live layer - requires StripeService and DatabaseService
 export const MembershipServiceLive = Layer.effect(MembershipService, make);

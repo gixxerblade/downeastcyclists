@@ -3,11 +3,11 @@ import {vi} from 'vitest';
 
 import {AdminService, type AdminService as AdminServiceType} from '@/src/lib/effect/admin.service';
 import {AuthService, type AuthService as AuthServiceType} from '@/src/lib/effect/auth.service';
-import {NotFoundError} from '@/src/lib/effect/errors';
 import {
-  FirestoreService,
-  type FirestoreService as FirestoreServiceType,
-} from '@/src/lib/effect/firestore.service';
+  DatabaseService,
+  type DatabaseService as DatabaseServiceType,
+} from '@/src/lib/effect/database.service';
+import {NotFoundError} from '@/src/lib/effect/errors';
 import {
   MembershipService,
   type MembershipService as MembershipServiceType,
@@ -66,16 +66,14 @@ export const createTestStripeService = (
   ...overrides,
 });
 
-export const createTestFirestoreService = (
-  overrides: Partial<FirestoreServiceType> = {},
-): FirestoreServiceType => ({
+export const createTestDatabaseService = (
+  overrides: Partial<DatabaseServiceType> = {},
+): DatabaseServiceType => ({
   getUser: vi.fn(() => Effect.succeed(null)),
   getUserByEmail: vi.fn(() => Effect.succeed(null)),
   getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
   setUser: vi.fn(() => Effect.void),
-  createUser: vi.fn(() =>
-    Effect.die('Not mocked'),
-  ) as unknown as FirestoreServiceType['createUser'],
+  createUser: vi.fn(() => Effect.die('Not mocked')) as unknown as DatabaseServiceType['createUser'],
   updateUser: vi.fn(() => Effect.void),
   getMembership: vi.fn(() => Effect.succeed(null)),
   getActiveMembership: vi.fn(() => Effect.succeed(null)),
@@ -83,7 +81,7 @@ export const createTestFirestoreService = (
   updateMembership: vi.fn(() => Effect.void),
   upsertUserByStripeCustomer: vi.fn(() =>
     Effect.die('Not mocked'),
-  ) as unknown as FirestoreServiceType['upsertUserByStripeCustomer'],
+  ) as unknown as DatabaseServiceType['upsertUserByStripeCustomer'],
   deleteMembership: vi.fn(() => Effect.void),
   getNextMembershipNumber: vi.fn(() => Effect.succeed('DEC-2025-000001')),
   getMembershipCard: vi.fn(() => Effect.succeed(null)),
@@ -182,9 +180,9 @@ export const createTestAdminService = (
     Effect.fail(new NotFoundError({resource: 'user', id: ''})),
   ) as unknown as AdminServiceType['getMember'],
   adjustMembership: vi.fn(() => Effect.void),
-  validateStripeVsFirebase: vi.fn(() =>
+  validateStripeVsDatabase: vi.fn(() =>
     Effect.die('Not mocked'),
-  ) as unknown as AdminServiceType['validateStripeVsFirebase'],
+  ) as unknown as AdminServiceType['validateStripeVsDatabase'],
   reconcileMembership: vi.fn((_email: string, _adminUid?: string) =>
     Effect.die('Not mocked'),
   ) as unknown as AdminServiceType['reconcileMembership'],
@@ -211,8 +209,8 @@ export const createTestAdminService = (
 export const TestStripeLayer = (service: StripeServiceType) =>
   Layer.succeed(StripeService, service);
 
-export const TestFirestoreLayer = (service: FirestoreServiceType) =>
-  Layer.succeed(FirestoreService, service);
+export const TestDatabaseLayer = (service: DatabaseServiceType) =>
+  Layer.succeed(DatabaseService, service);
 
 export const TestAuthLayer = (service: AuthServiceType) => Layer.succeed(AuthService, service);
 
@@ -230,18 +228,18 @@ export const TestAdminLayer = (service: AdminServiceType) => Layer.succeed(Admin
 // Combined test layer builder for integration tests
 export const createTestLayers = (services: {
   stripe?: Partial<StripeServiceType>;
-  firestore?: Partial<FirestoreServiceType>;
+  database?: Partial<DatabaseServiceType>;
   auth?: Partial<AuthServiceType>;
   webhook?: Partial<WebhookIdempotencyServiceType>;
 }) => {
   const stripeService = createTestStripeService(services.stripe);
-  const firestoreService = createTestFirestoreService(services.firestore);
+  const databaseService = createTestDatabaseService(services.database);
   const authService = createTestAuthService(services.auth);
   const webhookService = createTestWebhookService(services.webhook);
 
   return Layer.mergeAll(
     TestStripeLayer(stripeService),
-    TestFirestoreLayer(firestoreService),
+    TestDatabaseLayer(databaseService),
     TestAuthLayer(authService),
     TestWebhookLayer(webhookService),
   );

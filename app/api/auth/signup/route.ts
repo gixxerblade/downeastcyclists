@@ -1,9 +1,8 @@
-import {Timestamp} from '@google-cloud/firestore';
 import {Effect, pipe} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
 import {AuthService} from '@/src/lib/effect/auth.service';
-import {FirestoreService} from '@/src/lib/effect/firestore.service';
+import {DatabaseService} from '@/src/lib/effect/database.service';
 import {LiveLayer} from '@/src/lib/effect/layers';
 
 export const dynamic = 'force-dynamic';
@@ -24,32 +23,32 @@ export async function POST(request: NextRequest) {
     const program = pipe(
       Effect.gen(function* () {
         const auth = yield* AuthService;
-        const firestore = yield* FirestoreService;
+        const db = yield* DatabaseService;
 
         // Verify the ID token and get user info
         const decodedToken = yield* auth.verifyIdToken(idToken);
 
-        // Check if user already exists in Firestore
-        const existingUser = yield* firestore.getUser(decodedToken.uid);
+        // Check if user already exists
+        const existingUser = yield* db.getUser(decodedToken.uid);
 
         if (existingUser) {
-          yield* Effect.log(`User ${decodedToken.uid} already exists in Firestore`);
+          yield* Effect.log(`User ${decodedToken.uid} already exists`);
           return {success: true, userId: decodedToken.uid};
         }
 
-        // Create user document in Firestore
-        yield* firestore.setUser(
+        // Create user document
+        yield* db.setUser(
           decodedToken.uid,
           {
             id: decodedToken.uid,
             email: decodedToken.email || '',
             name: name,
-            createdAt: Timestamp.now(),
+            createdAt: new Date().toISOString(),
           } as any,
           false, // Don't merge, create new document
         );
 
-        yield* Effect.log(`Created Firestore user document for ${decodedToken.uid}`);
+        yield* Effect.log(`Created user document for ${decodedToken.uid}`);
 
         return {success: true, userId: decodedToken.uid};
       }),
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
         }),
       ),
 
-      Effect.catchTag('FirestoreError', (error) =>
+      Effect.catchTag('DatabaseError', (error) =>
         Effect.succeed({
           error: error.message,
           _tag: 'error' as const,
