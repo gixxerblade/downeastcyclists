@@ -66,7 +66,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Framework**: Next.js 15, React 19, TypeScript
 - **UI**: Material UI 6, TailwindCSS, Emotion
 - **CMS**: Contentful for blog posts, bylaws, and static content
-- **Database**: Google Firestore for trail status, members, and dynamic data
+- **Database**: PostgreSQL via Neon (serverless) with Drizzle ORM; Google Firestore for trail status
 - **Authentication**: Firebase Authentication
 - **Payments**: Stripe (subscriptions, checkout, customer portal, webhooks)
 - **Error Handling**: Effect-TS for type-safe, composable operations
@@ -117,6 +117,10 @@ pnpm test             # Run tests (watch mode)
 pnpm test:run         # Run tests once
 pnpm test:coverage    # Generate coverage report
 pnpm types:contentful # Regenerate Contentful TypeScript types
+pnpm db:generate      # Generate Drizzle migration files
+pnpm db:migrate       # Run pending database migrations
+pnpm db:push          # Push schema directly to database
+pnpm db:studio        # Launch Drizzle Studio UI
 ```
 
 ### Content Management
@@ -129,15 +133,18 @@ pnpm types:contentful
 
 This command generates TypeScript types based on your Contentful content models.
 
-### Trail Status Management
+### Database
 
-Trail status is managed through the admin dashboard. Authenticated users can:
+The primary database is PostgreSQL via Neon (serverless), managed with Drizzle ORM. Schema definitions live in `src/db/schema/` and migrations are in `drizzle/`.
 
-1. Log in to the dashboard
-2. Update trail status (open/closed)
-3. Add notes about trail conditions
+```bash
+pnpm db:generate   # Generate migration from schema changes
+pnpm db:migrate    # Apply pending migrations
+pnpm db:push       # Push schema directly (development)
+pnpm db:studio     # Browse data with Drizzle Studio
+```
 
-The trail status is stored in Firestore and is available through the `/api/trails` endpoint.
+Trail status is stored separately in Google Firestore and managed through the admin dashboard.
 
 ## Netlify Deployment
 
@@ -169,6 +176,10 @@ The following environment variables need to be set in Netlify:
 - `GOOGLE_CLIENT_EMAIL`: Your Google service account email
 - `GOOGLE_PRIVATE_KEY`: Your Google service account private key
 - `FIREBASE_ENCRYPTION_KEY`: Key to decrypt the encrypted service account file at build time
+
+**Database:**
+
+- `NETLIFY_DATABASE_URL`: PostgreSQL connection string (auto-provided on Netlify with Neon integration)
 
 **Stripe:**
 
