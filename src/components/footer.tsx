@@ -172,12 +172,13 @@ const StravaWidget = () => {
       )}
       <iframe
         ref={iframeRef}
+        allowTransparency={true}
+        frameBorder="0"
         height="160"
+        scrolling="no"
         src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
-        style={{display: isLoading ? 'none' : 'block'}}
-        title="Strava Club Widget"
         width="300"
-      />
+      ></iframe>{' '}
       {!isLoading && !error && (
         <div className="mt-2 text-sm text-gray-600">
           <a
