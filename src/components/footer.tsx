@@ -3,7 +3,7 @@
 import {Facebook, Instagram} from '@mui/icons-material';
 import {CircularProgress} from '@mui/material';
 import {styled} from '@mui/material/styles';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useState} from 'react';
 
 // Import icons individually
 import BicycleGallery from '../icons/BicycleGallery';
@@ -111,42 +111,6 @@ const StyledIcon = styled(Icons)(() => ({
 const StravaWidget = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify the message is from Strava
-      if (event.origin !== 'https://www.strava.com') return;
-
-      // If we receive any message from Strava, the widget is working
-      setIsLoading(false);
-      setError(false);
-
-      // Clear the timeout since we got a response
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-
-    // Listen for postMessage from Strava iframe
-    window.addEventListener('message', handleMessage);
-
-    // Set a timeout - if we don't hear from Strava in 5 seconds, show error
-    timeoutRef.current = setTimeout(() => {
-      setIsLoading(false);
-      setError(true);
-    }, 5000);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-40 text-gray-600">
@@ -171,13 +135,17 @@ const StravaWidget = () => {
         </div>
       )}
       <iframe
-        ref={iframeRef}
         allowTransparency={true}
         frameBorder="0"
         height="160"
         scrolling="no"
         src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
         width="300"
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false);
+          setError(true);
+        }}
       ></iframe>{' '}
       {!isLoading && !error && (
         <div className="mt-2 text-sm text-gray-600">
