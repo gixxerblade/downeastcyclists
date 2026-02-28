@@ -105,6 +105,39 @@ export const loginWithPassword = (
     return yield* createSessionCookie(idToken);
   });
 
+// Verify a password reset code and return the associated email
+export const verifyPasswordResetCode = (oobCode: string): Effect.Effect<string, AuthError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const {verifyPasswordResetCode: verify} = await import('firebase/auth');
+      return verify(auth, oobCode);
+    },
+    catch: (error) =>
+      new AuthError({
+        code: 'VERIFY_RESET_CODE_FAILED',
+        message: error instanceof Error ? error.message : 'Invalid or expired reset link',
+        cause: error,
+      }),
+  });
+
+// Complete a password reset using the oob code
+export const confirmPasswordReset = (
+  oobCode: string,
+  newPassword: string,
+): Effect.Effect<void, AuthError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const {confirmPasswordReset: confirm} = await import('firebase/auth');
+      await confirm(auth, oobCode, newPassword);
+    },
+    catch: (error) =>
+      new AuthError({
+        code: 'CONFIRM_RESET_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to reset password',
+        cause: error,
+      }),
+  });
+
 // Verify if current URL is a sign-in link
 export const isValidSignInLink = (url: string): Effect.Effect<boolean, never> =>
   Effect.sync(() => {
