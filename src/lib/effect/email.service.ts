@@ -35,8 +35,8 @@ const make = Effect.gen(function* () {
         const displayName = name ?? 'Member';
 
         yield* Effect.tryPromise({
-          try: () =>
-            resend.emails.send({
+          try: async () => {
+            const {data, error} = await resend.emails.send({
               from,
               to,
               subject: 'Welcome to Down East Cyclists — Set Your Password',
@@ -49,13 +49,26 @@ const make = Effect.gen(function* () {
                    "Forgot password?" option on the sign-in page.</p>
                 <p>— Down East Cyclists</p>
               `.trim(),
-            }),
-          catch: (error) =>
-            new EmailError({
+            });
+            if (error) {
+              throw error;
+            }
+            return data;
+          },
+          catch: (error) => {
+            const detail =
+              error instanceof Error
+                ? error.message
+                : typeof error === 'object' && error !== null && 'message' in error
+                  ? String((error as {message: unknown}).message)
+                  : JSON.stringify(error);
+            console.error('[EmailService] Resend error:', error);
+            return new EmailError({
               code: 'SEND_FAILED',
-              message: `Failed to send welcome email to ${to}`,
+              message: `Failed to send welcome email to ${to}: ${detail}`,
               cause: error,
-            }),
+            });
+          },
         });
       }),
   });
