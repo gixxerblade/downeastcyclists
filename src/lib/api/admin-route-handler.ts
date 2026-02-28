@@ -19,6 +19,7 @@ type AdminErrorTag =
   | 'AdminError'
   | 'MemberNotFoundError'
   | 'EmailConflictError'
+  | 'EmailError'
   | 'StripeSubscriptionActiveError'
   | 'ImportError'
   | 'ValidationError';
@@ -62,6 +63,8 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
   ValidationError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
+  EmailError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
 };
 
 /**

@@ -7,6 +7,7 @@ import {
   DatabaseService,
   type DatabaseService as DatabaseServiceType,
 } from '@/src/lib/effect/database.service';
+import {EmailService, type EmailService as EmailServiceType} from '@/src/lib/effect/email.service';
 import {NotFoundError} from '@/src/lib/effect/errors';
 import {
   MembershipService,
@@ -124,6 +125,14 @@ export const createTestAuthService = (
   ) as unknown as AuthServiceType['createAuthUser'],
   getUserByEmail: vi.fn(() => Effect.succeed(null)),
   deleteUser: vi.fn(() => Effect.void),
+  generatePasswordResetLink: vi.fn(() => Effect.succeed('https://example.com/reset')),
+  ...overrides,
+});
+
+export const createTestEmailService = (
+  overrides: Partial<EmailServiceType> = {},
+): EmailServiceType => ({
+  sendWelcomeEmail: vi.fn(() => Effect.void),
   ...overrides,
 });
 
@@ -202,6 +211,7 @@ export const createTestAdminService = (
   getMemberAuditLog: vi.fn(() => Effect.succeed([])),
   getPaymentHistory: vi.fn(() => Effect.succeed([])),
   issueRefund: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['issueRefund'],
+  sendPasswordReset: vi.fn(() => Effect.void),
   ...overrides,
 });
 
@@ -213,6 +223,8 @@ export const TestDatabaseLayer = (service: DatabaseServiceType) =>
   Layer.succeed(DatabaseService, service);
 
 export const TestAuthLayer = (service: AuthServiceType) => Layer.succeed(AuthService, service);
+
+export const TestEmailLayer = (service: EmailServiceType) => Layer.succeed(EmailService, service);
 
 export const TestWebhookLayer = (service: WebhookIdempotencyServiceType) =>
   Layer.succeed(WebhookIdempotencyService, service);

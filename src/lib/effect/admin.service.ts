@@ -15,20 +15,22 @@ import type {
 import {AuthService} from './auth.service';
 import {MembershipCardService} from './card.service';
 import {DatabaseService} from './database.service';
+import {EmailService} from './email.service';
 import {
   AdminError,
+  AuthError,
   CardError,
   DatabaseError,
   EmailConflictError,
+  EmailError,
   ImportError,
   MemberNotFoundError,
   NotFoundError,
   QRError,
+  SessionError,
   StripeError,
   StripeSubscriptionActiveError,
   UnauthorizedError,
-  SessionError,
-  AuthError,
   ValidationError,
 } from './errors';
 import type {
@@ -149,6 +151,10 @@ export interface AdminService {
     amount?: number,
     reason?: string,
   ) => Effect.Effect<Stripe.Refund, MemberNotFoundError | StripeError | DatabaseError>;
+
+  readonly sendPasswordReset: (
+    userId: string,
+  ) => Effect.Effect<void, MemberNotFoundError | DatabaseError | AuthError | EmailError>;
 }
 
 // Service tag
@@ -318,6 +324,7 @@ const make = Effect.gen(function* () {
   const stats = yield* StatsService;
   const stripe = yield* StripeService;
   const cardService = yield* MembershipCardService;
+  const emailService = yield* EmailService;
 
   // Shared helper function to build reconciliation report
   // This avoids code duplication between validateStripeVsDatabase and reconcileMembership
@@ -706,6 +713,21 @@ const make = Effect.gen(function* () {
           userId = newAuthUser.uid;
         }
 
+        // Send welcome email with password setup link — non-fatal if it fails
+        yield* Effect.gen(function* () {
+          const resetLink = yield* auth.generatePasswordResetLink(input.email);
+          yield* emailService.sendWelcomeEmail({
+            to: input.email,
+            name: input.name,
+            passwordSetupLink: resetLink,
+          });
+        }).pipe(
+          Effect.tapError((e) =>
+            Effect.logWarning(`Welcome email not sent to ${input.email}: ${JSON.stringify(e)}`),
+          ),
+          Effect.ignore,
+        );
+
         // Create user document in database
         yield* db.createUser(userId, {
           email: input.email,
@@ -1045,6 +1067,21 @@ const make = Effect.gen(function* () {
                 userId = newAuthUser.uid;
               }
 
+              // Send welcome email — non-fatal
+              yield* Effect.gen(function* () {
+                const resetLink = yield* auth.generatePasswordResetLink(row.email);
+                yield* emailService.sendWelcomeEmail({
+                  to: row.email,
+                  name: row.name,
+                  passwordSetupLink: resetLink,
+                });
+              }).pipe(
+                Effect.tapError((e) =>
+                  Effect.logWarning(`Welcome email not sent to ${row.email}: ${JSON.stringify(e)}`),
+                ),
+                Effect.ignore,
+              );
+
               yield* db.createUser(userId, {
                 email: row.email,
                 name: row.name,
@@ -1228,6 +1265,25 @@ const make = Effect.gen(function* () {
         });
 
         return refund;
+      }),
+
+    // Send password reset email to an existing member
+    sendPasswordReset: (userId) =>
+      Effect.gen(function* () {
+        const user = yield* db.getUser(userId);
+        if (!user) {
+          return yield* new MemberNotFoundError({
+            userId,
+            message: 'Member not found',
+          });
+        }
+
+        const resetLink = yield* auth.generatePasswordResetLink(user.email);
+        yield* emailService.sendWelcomeEmail({
+          to: user.email,
+          name: user.name,
+          passwordSetupLink: resetLink,
+        });
       }),
   });
 });

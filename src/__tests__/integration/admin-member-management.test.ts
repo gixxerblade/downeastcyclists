@@ -9,9 +9,11 @@ import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/sr
 import {
   createTestAuthService,
   createTestDatabaseService,
+  createTestEmailService,
   createTestStripeService,
   TestAuthLayer,
   TestDatabaseLayer,
+  TestEmailLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
 
@@ -260,6 +262,7 @@ describe('Admin Member Management Integration', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       // Step 1: Create member
@@ -513,6 +516,7 @@ describe('Admin Member Management Integration', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const rows = [
@@ -715,6 +719,7 @@ describe('Admin Member Management Integration', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const program = Effect.gen(function* () {
@@ -877,6 +882,7 @@ describe('Admin Member Management Integration', () => {
         TestAuthLayer(authService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       // Get payment history

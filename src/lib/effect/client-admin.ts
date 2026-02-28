@@ -21,7 +21,14 @@ import type {
   UpdateMemberResponse,
 } from '@/src/types/admin';
 
-import {AdminError, DatabaseError, StripeError, UnauthorizedError, ValidationError} from './errors';
+import {
+  AdminError,
+  DatabaseError,
+  EmailError,
+  StripeError,
+  UnauthorizedError,
+  ValidationError,
+} from './errors';
 import type {MembershipStats, MemberWithMembership} from './schemas';
 
 export interface GetMembersParams {
@@ -412,6 +419,40 @@ export const getPaymentHistory = (
       return new StripeError({
         code: 'GET_PAYMENT_HISTORY_FAILED',
         message: error instanceof Error ? error.message : 'Failed to get payment history',
+        cause: error,
+      });
+    },
+  });
+
+/**
+ * Send a password reset / setup email to an existing member
+ */
+export const sendPasswordReset = (
+  userId: string,
+): Effect.Effect<void, AdminError | EmailError | UnauthorizedError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const response = await fetch(`/api/admin/members/${userId}/reset-password`, {
+        method: 'POST',
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        const data = await response.json();
+        throw new UnauthorizedError({message: data.error || 'Unauthorized'});
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send password reset email');
+      }
+    },
+    catch: (error) => {
+      if (error instanceof UnauthorizedError) {
+        return error;
+      }
+      return new AdminError({
+        code: 'SEND_RESET_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to send password reset email',
         cause: error,
       });
     },

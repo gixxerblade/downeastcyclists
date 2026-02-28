@@ -9,9 +9,11 @@ import type {CreateMemberInput, UpdateMemberInput, DeleteMemberInput} from '@/sr
 import {
   createTestAuthService,
   createTestDatabaseService,
+  createTestEmailService,
   createTestStripeService,
   TestAuthLayer,
   TestDatabaseLayer,
+  TestEmailLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
 
@@ -182,6 +184,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: CreateMemberInput = {
@@ -334,6 +337,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: CreateMemberInput = {
@@ -468,6 +472,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: CreateMemberInput = {
@@ -629,6 +634,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: UpdateMemberInput = {
@@ -730,6 +736,7 @@ describe('AdminService CRUD Operations', () => {
         TestAuthLayer(authService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: UpdateMemberInput = {
@@ -834,6 +841,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: UpdateMemberInput = {
@@ -982,6 +990,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: DeleteMemberInput = {
@@ -1067,6 +1076,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const input: DeleteMemberInput = {
@@ -1253,6 +1263,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const rows = [
@@ -1461,6 +1472,7 @@ describe('AdminService CRUD Operations', () => {
         TestStripeLayer(stripeService),
         Layer.succeed(MembershipCardService, cardService),
         Layer.succeed(StatsService, statsService),
+        TestEmailLayer(createTestEmailService()),
       );
 
       const rows = [

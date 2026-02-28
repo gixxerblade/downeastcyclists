@@ -105,6 +105,12 @@ export class ImportError extends Data.TaggedError('ImportError')<{
   readonly cause?: unknown;
 }> {}
 
+export class EmailError extends Data.TaggedError('EmailError')<{
+  readonly code: string;
+  readonly message: string;
+  readonly cause?: unknown;
+}> {}
+
 // Union type for all errors
 export type AppError =
   | StripeError
@@ -124,4 +130,5 @@ export type AppError =
   | MemberNotFoundError
   | EmailConflictError
   | StripeSubscriptionActiveError
-  | ImportError;
+  | ImportError
+  | EmailError;

@@ -4,6 +4,7 @@ import {AdminServiceLive} from './admin.service';
 import {AuthServiceLive} from './auth.service';
 import {MembershipCardServiceLive} from './card.service';
 import {DatabaseServiceLive} from './database.service';
+import {EmailServiceLive} from './email.service';
 import {ExportServiceLive} from './export.service';
 import {MembershipServiceLive} from './membership.service';
 import {PortalServiceLive} from './portal.service';
@@ -17,6 +18,7 @@ const BaseServicesLayer = Layer.mergeAll(
   StripeServiceLive,
   DatabaseServiceLive,
   AuthServiceLive,
+  EmailServiceLive,
   WebhookIdempotencyServiceLive,
   QRServiceLive,
 );
@@ -46,13 +48,14 @@ const StatsLayer = StatsServiceLive.pipe(Layer.provide(DatabaseServiceLive));
 // Export service (depends on Database)
 const ExportLayer = ExportServiceLive.pipe(Layer.provide(DatabaseServiceLive));
 
-// Admin service (depends on Auth + Database + Stats + Stripe + Card)
+// Admin service (depends on Auth + Database + Stats + Stripe + Card + Email)
 const AdminLayer = AdminServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(DatabaseServiceLive),
   Layer.provide(StatsLayer),
   Layer.provide(StripeServiceLive),
   Layer.provide(CardLayer),
+  Layer.provide(EmailServiceLive),
 );
 
 // Complete live layer with all services
@@ -69,6 +72,7 @@ export const LiveLayer = Layer.mergeAll(
 // Re-export individual layers for selective use
 export {
   BaseServicesLayer,
+  EmailServiceLive,
   MembershipLayer,
   PortalLayer,
   CardLayer,

@@ -50,6 +50,8 @@ export interface AuthService {
   ) => Effect.Effect<{uid: string; email: string} | null, AuthError>;
 
   readonly deleteUser: (uid: string) => Effect.Effect<void, AuthError>;
+
+  readonly generatePasswordResetLink: (email: string) => Effect.Effect<string, AuthError>;
 }
 
 // Service tag
@@ -218,6 +220,17 @@ const make = Effect.gen(function* () {
           new AuthError({
             code: 'DELETE_USER_FAILED',
             message: `Failed to delete user ${uid}`,
+            cause: error,
+          }),
+      }),
+
+    generatePasswordResetLink: (email) =>
+      Effect.tryPromise({
+        try: () => auth.generatePasswordResetLink(email),
+        catch: (error) =>
+          new AuthError({
+            code: 'PASSWORD_RESET_LINK_FAILED',
+            message: `Failed to generate password reset link for ${email}`,
             cause: error,
           }),
       }),

@@ -19,8 +19,8 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {Effect} from 'effect';
 import {useState} from 'react';
 
-import {refreshStats, getStats, getMembers} from '@/src/lib/effect/client-admin';
-import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
+import {refreshStats, getStats, getMembers, sendPasswordReset} from '@/src/lib/effect/client-admin';
+import type {AdminError, DatabaseError, EmailError, UnauthorizedError} from '@/src/lib/effect/errors';
 import type {MembershipStats, MemberWithMembership} from '@/src/lib/effect/schemas';
 
 import {BulkImportModal} from './BulkImportModal';
@@ -55,6 +55,10 @@ export function MembershipManagement() {
   const [paymentHistoryMember, setPaymentHistoryMember] = useState<MemberWithMembership | null>(
     null,
   );
+  const [resetEmailFeedback, setResetEmailFeedback] = useState<{
+    message: string;
+    severity: 'success' | 'error';
+  } | null>(null);
 
   // Debounce search input using TanStack Pacer React hook
   const debouncedSetSearch = useDebouncedCallback(
@@ -107,6 +111,18 @@ export function MembershipManagement() {
       queryClient.invalidateQueries({queryKey: ['admin', 'stats']});
       queryClient.invalidateQueries({queryKey: ['admin', 'members']});
     },
+  });
+
+  const passwordResetMutation = useMutation<
+    void,
+    AdminError | EmailError | UnauthorizedError,
+    string
+  >({
+    mutationFn: (userId) => Effect.runPromise(sendPasswordReset(userId)),
+    onSuccess: () =>
+      setResetEmailFeedback({message: 'Password reset email sent.', severity: 'success'}),
+    onError: (err) =>
+      setResetEmailFeedback({message: err.message || 'Failed to send email.', severity: 'error'}),
   });
 
   // Export members
@@ -298,6 +314,17 @@ export function MembershipManagement() {
           </Grid>
         </Paper>
 
+        {/* Password reset feedback */}
+        {resetEmailFeedback && (
+          <Alert
+            severity={resetEmailFeedback.severity}
+            onClose={() => setResetEmailFeedback(null)}
+            sx={{mb: 2}}
+          >
+            {resetEmailFeedback.message}
+          </Alert>
+        )}
+
         {/* Member Table */}
         {membersQuery.isLoading ? (
           <Box sx={{display: 'flex', justifyContent: 'center', py: 6}}>
@@ -320,6 +347,9 @@ export function MembershipManagement() {
             onDeleteMember={(member) => setDeletingMember(member)}
             onViewAudit={(member) => setAuditMember(member)}
             onViewPayments={(member) => setPaymentHistoryMember(member)}
+            onSendPasswordReset={(member) =>
+              member.user?.id && passwordResetMutation.mutate(member.user.id)
+            }
           />
         )}
       </Box>

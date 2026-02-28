@@ -1,6 +1,6 @@
 'use client';
 
-import {Edit, Delete, History, Payment, NavigateBefore, NavigateNext} from '@mui/icons-material';
+import {Edit, Delete, History, LockReset, Payment, NavigateBefore, NavigateNext} from '@mui/icons-material';
 import {
   Table,
   TableBody,
@@ -33,6 +33,7 @@ interface MemberTableProps {
   onDeleteMember?: (member: MemberWithMembership) => void;
   onViewAudit?: (member: MemberWithMembership) => void;
   onViewPayments?: (member: MemberWithMembership) => void;
+  onSendPasswordReset?: (member: MemberWithMembership) => void;
 }
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
@@ -60,6 +61,7 @@ export function MemberTable({
   onDeleteMember,
   onViewAudit,
   onViewPayments,
+  onSendPasswordReset,
 }: MemberTableProps) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -120,6 +122,17 @@ export function MemberTable({
                         <Tooltip title="View Audit Log">
                           <IconButton size="small" onClick={() => onViewAudit(member)}>
                             <History fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {onSendPasswordReset && (
+                        <Tooltip title="Send Password Reset Email">
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            onClick={() => onSendPasswordReset(member)}
+                          >
+                            <LockReset fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}
