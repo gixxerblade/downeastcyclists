@@ -920,11 +920,18 @@ const make = Effect.gen(function* () {
           }
 
           if (Object.keys(membershipUpdates).length > 0) {
-            yield* db.updateMembership(userId, activeMembership.id, membershipUpdates);
+            yield* db.updateMembership(
+              userId,
+              activeMembership.stripeSubscriptionId,
+              membershipUpdates,
+            );
 
             // Update card to match membership
             const updatedUser = yield* db.getUser(userId);
-            const updatedMembership = yield* db.getMembership(userId, activeMembership.id);
+            const updatedMembership = yield* db.getMembership(
+              userId,
+              activeMembership.stripeSubscriptionId,
+            );
             if (updatedUser && updatedMembership) {
               yield* cardService.updateCard({
                 userId,
