@@ -1,7 +1,7 @@
 import {eq, sql} from 'drizzle-orm';
 import {Effect} from 'effect';
 
-import {membershipCards, membershipCounters, users} from '@/src/db/schema/tables';
+import {membershipCards, membershipCounters, memberships, users} from '@/src/db/schema/tables';
 
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
@@ -100,14 +100,24 @@ export function createCardMethods() {
                 })
                 .where(eq(membershipCards.id, existingCard.id));
             } else {
-              // Insert new card — requires a membershipId FK
-              const membershipId = (card as Record<string, unknown>).membershipId as
-                | string
-                | undefined;
+              // Look up the user's active membership for the FK
+              const membership = await db
+                .select({id: memberships.id})
+                .from(memberships)
+                .where(eq(memberships.userId, userRow.id))
+                .orderBy(sql`${memberships.startDate} DESC`)
+                .limit(1)
+                .then((rows) => rows[0] ?? null);
+
+              if (!membership) {
+                throw new Error(
+                  `No membership found for user ${userRow.id} — cannot create card without a membership`,
+                );
+              }
 
               await db.insert(membershipCards).values({
                 userId: userRow.id,
-                membershipId: membershipId ?? userRow.id,
+                membershipId: membership.id,
                 membershipNumber: card.membershipNumber,
                 memberName: card.memberName,
                 email: card.email,
