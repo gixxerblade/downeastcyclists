@@ -8,8 +8,10 @@ import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/members
 import {
   createTestStripeService,
   createTestDatabaseService,
+  createTestCardService,
   TestStripeLayer,
   TestDatabaseLayer,
+  TestCardLayer,
 } from '../layers/test-layers';
 import {createMockUserDocument, createMockMembershipDocument} from '../mocks/database.mock';
 import {
@@ -33,9 +35,10 @@ describe('MembershipService', () => {
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -65,9 +68,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -102,9 +106,10 @@ describe('MembershipService', () => {
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -138,9 +143,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -180,9 +186,10 @@ describe('MembershipService', () => {
         ),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -222,9 +229,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -255,9 +263,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -288,9 +297,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -320,9 +330,10 @@ describe('MembershipService', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -356,9 +367,10 @@ describe('MembershipService', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -385,9 +397,10 @@ describe('MembershipService', () => {
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription();
@@ -413,9 +426,10 @@ describe('MembershipService', () => {
         updateMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription({
@@ -442,9 +456,10 @@ describe('MembershipService', () => {
         updateMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription({
@@ -474,9 +489,10 @@ describe('MembershipService', () => {
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription();
@@ -501,9 +517,10 @@ describe('MembershipService', () => {
         updateMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription();
@@ -531,9 +548,10 @@ describe('MembershipService', () => {
         getUser: vi.fn(() => Effect.succeed(null)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -563,9 +581,10 @@ describe('MembershipService', () => {
         getActiveMembership: vi.fn(() => Effect.succeed(null)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -593,9 +612,10 @@ describe('MembershipService', () => {
         getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -628,9 +648,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -662,9 +683,10 @@ describe('MembershipService', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {

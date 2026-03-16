@@ -10,9 +10,11 @@ import {WebhookIdempotencyService} from '@/src/lib/effect/webhook-idempotency.se
 import {
   createTestStripeService,
   createTestDatabaseService,
+  createTestCardService,
   createTestWebhookService,
   TestStripeLayer,
   TestDatabaseLayer,
+  TestCardLayer,
   TestWebhookLayer,
 } from '../layers/test-layers';
 import {createMockUserDocument} from '../mocks/database.mock';
@@ -179,9 +181,10 @@ describe('Webhook Processing Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -210,9 +213,10 @@ describe('Webhook Processing Integration', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -242,9 +246,10 @@ describe('Webhook Processing Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -275,9 +280,10 @@ describe('Webhook Processing Integration', () => {
         updateMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription({
@@ -306,9 +312,10 @@ describe('Webhook Processing Integration', () => {
         getUserByStripeCustomerId: vi.fn(() => Effect.succeed(null)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription({
@@ -339,9 +346,10 @@ describe('Webhook Processing Integration', () => {
         updateMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSubscription = createMockSubscription({
@@ -444,9 +452,10 @@ describe('Webhook Processing Integration', () => {
         }),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({

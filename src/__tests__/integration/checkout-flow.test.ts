@@ -8,8 +8,10 @@ import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/members
 import {
   createTestStripeService,
   createTestDatabaseService,
+  createTestCardService,
   TestStripeLayer,
   TestDatabaseLayer,
+  TestCardLayer,
 } from '../layers/test-layers';
 import {createMockUserDocument} from '../mocks/database.mock';
 import {createMockCheckoutSession, createMockSubscription} from '../mocks/stripe.mock';
@@ -33,9 +35,10 @@ describe('Checkout Flow Integration', () => {
         getUser: vi.fn(() => Effect.succeed(mockUser)),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -74,9 +77,10 @@ describe('Checkout Flow Integration', () => {
         updateStats: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -115,9 +119,10 @@ describe('Checkout Flow Integration', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -148,9 +153,10 @@ describe('Checkout Flow Integration', () => {
       });
       const databaseService = createTestDatabaseService();
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -181,9 +187,10 @@ describe('Checkout Flow Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -217,9 +224,10 @@ describe('Checkout Flow Integration', () => {
         ),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const program = Effect.gen(function* () {
@@ -265,9 +273,10 @@ describe('Checkout Flow Integration', () => {
         ),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -311,9 +320,10 @@ describe('Checkout Flow Integration', () => {
         }),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession() as Stripe.Checkout.Session;
@@ -361,9 +371,10 @@ describe('Checkout Flow Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -401,9 +412,10 @@ describe('Checkout Flow Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
@@ -439,9 +451,10 @@ describe('Checkout Flow Integration', () => {
         setMembership: vi.fn(() => Effect.void),
       });
 
-      const testLayer = Layer.merge(
+      const testLayer = Layer.mergeAll(
         TestStripeLayer(stripeService),
         TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
       );
 
       const mockSession = createMockCheckoutSession({
