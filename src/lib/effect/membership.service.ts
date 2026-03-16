@@ -235,18 +235,29 @@ const make = Effect.gen(function* () {
           `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`,
         );
 
-        // Create the membership card now that user + membership exist
-        const user = yield* db.getUser(userDocId);
-        const membership = yield* db.getActiveMembership(userDocId);
-
-        if (user && membership) {
-          yield* cardService.createCard({userId: userDocId, user, membership});
-          yield* Effect.log(`Membership card created for user ${userDocId}`);
-        } else {
-          yield* Effect.logWarning(
-            `Skipping card creation — user or membership not found after insert for ${userDocId}`,
-          );
-        }
+        // Create the membership card using data already in scope
+        yield* cardService.createCard({
+          userId: userDocId,
+          user: {
+            id: userDocId,
+            email: customerEmail || '',
+            name: undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          membership: {
+            id: subscriptionId,
+            stripeSubscriptionId: subscriptionId,
+            planType,
+            status: subscription.status as MembershipStatus,
+            startDate: new Date(currentPeriodStart * 1000).toISOString(),
+            endDate: new Date(currentPeriodEnd * 1000).toISOString(),
+            autoRenew: !subscription.cancel_at_period_end,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        });
+        yield* Effect.log(`Membership card created for user ${userDocId}`);
       }),
 
     // Webhook: customer.subscription.updated
