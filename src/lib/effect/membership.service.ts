@@ -179,10 +179,9 @@ const make = Effect.gen(function* () {
         const priceId = subscription.items.data[0]?.price.id;
         const planType = PRICE_TO_PLAN[priceId] || 'individual';
 
-        // Extract period dates from the subscription items
         const subscriptionItem = subscription.items.data[0];
-        const currentPeriodStart = (subscriptionItem as any).current_period_start;
-        const currentPeriodEnd = (subscriptionItem as any).current_period_end;
+        const currentPeriodStart = subscriptionItem?.current_period_start;
+        const currentPeriodEnd = subscriptionItem?.current_period_end;
 
         yield* Effect.log(
           `Subscription dates - start: ${currentPeriodStart}, end: ${currentPeriodEnd}`,
@@ -243,10 +242,9 @@ const make = Effect.gen(function* () {
           return;
         }
 
-        // Update membership - extract period dates from subscription items
         const subscriptionItem = subscription.items.data[0];
-        const currentPeriodStart = (subscriptionItem as any).current_period_start;
-        const currentPeriodEnd = (subscriptionItem as any).current_period_end;
+        const currentPeriodStart = subscriptionItem?.current_period_start;
+        const currentPeriodEnd = subscriptionItem?.current_period_end;
 
         yield* db.updateMembership(user.id, subscriptionId, {
           status: subscription.status as MembershipStatus,

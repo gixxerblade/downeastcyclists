@@ -91,7 +91,12 @@ export function createMembershipMethods() {
             const row = await db
               .select()
               .from(memberships)
-              .where(and(eq(memberships.userId, userRow.id), eq(memberships.id, membershipId)))
+              .where(
+                and(
+                  eq(memberships.userId, userRow.id),
+                  eq(memberships.stripeSubscriptionId, membershipId),
+                ),
+              )
               .limit(1)
               .then((rows) => rows[0] ?? null);
 
@@ -145,12 +150,37 @@ export function createMembershipMethods() {
         yield* Effect.tryPromise({
           try: async () => {
             const now = new Date();
-            await db
-              .insert(memberships)
-              .values({
-                id: membershipId,
+            const subId = data.stripeSubscriptionId || membershipId;
+
+            // Check if a membership already exists for this subscription
+            const existing = await db
+              .select({id: memberships.id})
+              .from(memberships)
+              .where(
+                and(
+                  eq(memberships.userId, userRow.id),
+                  eq(memberships.stripeSubscriptionId, subId),
+                ),
+              )
+              .limit(1)
+              .then((rows) => rows[0] ?? null);
+
+            if (existing) {
+              await db
+                .update(memberships)
+                .set({
+                  planType: data.planType,
+                  status: data.status,
+                  startDate: new Date(data.startDate as string),
+                  endDate: new Date(data.endDate as string),
+                  autoRenew: data.autoRenew,
+                  updatedAt: now,
+                })
+                .where(eq(memberships.id, existing.id));
+            } else {
+              await db.insert(memberships).values({
                 userId: userRow.id,
-                stripeSubscriptionId: data.stripeSubscriptionId || null,
+                stripeSubscriptionId: subId,
                 planType: data.planType,
                 status: data.status,
                 startDate: new Date(data.startDate as string),
@@ -158,19 +188,8 @@ export function createMembershipMethods() {
                 autoRenew: data.autoRenew,
                 createdAt: now,
                 updatedAt: now,
-              })
-              .onConflictDoUpdate({
-                target: memberships.id,
-                set: {
-                  stripeSubscriptionId: data.stripeSubscriptionId || null,
-                  planType: data.planType,
-                  status: data.status,
-                  startDate: new Date(data.startDate as string),
-                  endDate: new Date(data.endDate as string),
-                  autoRenew: data.autoRenew,
-                  updatedAt: now,
-                },
               });
+            }
           },
           catch: (error) =>
             new DatabaseError({
@@ -200,7 +219,10 @@ export function createMembershipMethods() {
             if (data.endDate !== undefined) updates.endDate = new Date(data.endDate as string);
             if (data.autoRenew !== undefined) updates.autoRenew = data.autoRenew;
 
-            await db.update(memberships).set(updates).where(eq(memberships.id, membershipId));
+            await db
+              .update(memberships)
+              .set(updates)
+              .where(eq(memberships.stripeSubscriptionId, membershipId));
           },
           catch: (error) =>
             new DatabaseError({
@@ -217,7 +239,7 @@ export function createMembershipMethods() {
 
         yield* Effect.tryPromise({
           try: async () => {
-            await db.delete(memberships).where(eq(memberships.id, membershipId));
+            await db.delete(memberships).where(eq(memberships.stripeSubscriptionId, membershipId));
           },
           catch: (error) =>
             new DatabaseError({
