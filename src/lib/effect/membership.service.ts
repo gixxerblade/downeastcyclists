@@ -9,8 +9,16 @@ import {
   getPlanNameForType,
 } from '../membership-plans-config';
 
+import {MembershipCardService} from './card.service';
 import {DatabaseService} from './database.service';
-import {StripeError, DatabaseError, ValidationError, NotFoundError} from './errors';
+import {
+  StripeError,
+  DatabaseError,
+  ValidationError,
+  NotFoundError,
+  CardError,
+  QRError,
+} from './errors';
 import type {
   CheckoutSessionRequest,
   CheckoutSessionResponse,
@@ -51,7 +59,7 @@ export interface MembershipService {
 
   readonly processCheckoutCompleted: (
     session: Stripe.Checkout.Session,
-  ) => Effect.Effect<void, StripeError | DatabaseError>;
+  ) => Effect.Effect<void, StripeError | DatabaseError | CardError | QRError>;
 
   readonly processSubscriptionUpdated: (
     subscription: Stripe.Subscription,
@@ -78,6 +86,7 @@ export const MembershipService = Context.GenericTag<MembershipService>('Membersh
 const make = Effect.gen(function* () {
   const stripe = yield* StripeService;
   const db = yield* DatabaseService;
+  const cardService = yield* MembershipCardService;
 
   return MembershipService.of({
     // Checkout flow: validate → lookup user → create session
@@ -225,6 +234,19 @@ const make = Effect.gen(function* () {
         yield* Effect.log(
           `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`,
         );
+
+        // Create the membership card now that user + membership exist
+        const user = yield* db.getUser(userDocId);
+        const membership = yield* db.getActiveMembership(userDocId);
+
+        if (user && membership) {
+          yield* cardService.createCard({userId: userDocId, user, membership});
+          yield* Effect.log(`Membership card created for user ${userDocId}`);
+        } else {
+          yield* Effect.logWarning(
+            `Skipping card creation — user or membership not found after insert for ${userDocId}`,
+          );
+        }
       }),
 
     // Webhook: customer.subscription.updated

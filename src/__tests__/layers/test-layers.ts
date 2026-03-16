@@ -4,6 +4,10 @@ import {vi} from 'vitest';
 import {AdminService, type AdminService as AdminServiceType} from '@/src/lib/effect/admin.service';
 import {AuthService, type AuthService as AuthServiceType} from '@/src/lib/effect/auth.service';
 import {
+  MembershipCardService,
+  type MembershipCardService as MembershipCardServiceType,
+} from '@/src/lib/effect/card.service';
+import {
   DatabaseService,
   type DatabaseService as DatabaseServiceType,
 } from '@/src/lib/effect/database.service';
@@ -147,6 +151,39 @@ export const createTestWebhookService = (
   ...overrides,
 });
 
+export const createTestCardService = (
+  overrides: Partial<MembershipCardServiceType> = {},
+): MembershipCardServiceType => ({
+  createCard: vi.fn(() =>
+    Effect.succeed({
+      id: 'current',
+      userId: 'user_123',
+      membershipNumber: 'DEC-2025-000001',
+      memberName: 'Test User',
+      email: 'test@example.com',
+      planType: 'individual',
+      status: 'active',
+      validFrom: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      qrCodeData: 'test_qr_data',
+      pdfUrl: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+  ) as unknown as MembershipCardServiceType['createCard'],
+  updateCard: vi.fn(() =>
+    Effect.die('Not mocked'),
+  ) as unknown as MembershipCardServiceType['updateCard'],
+  getCard: vi.fn(() => Effect.succeed(null)),
+  verifyMembership: vi.fn(() =>
+    Effect.die('Not mocked'),
+  ) as unknown as MembershipCardServiceType['verifyMembership'],
+  verifyQRCode: vi.fn(() =>
+    Effect.die('Not mocked'),
+  ) as unknown as MembershipCardServiceType['verifyQRCode'],
+  ...overrides,
+});
+
 export const createTestMembershipService = (
   overrides: Partial<MembershipServiceType> = {},
 ): MembershipServiceType => ({
@@ -223,6 +260,9 @@ export const TestDatabaseLayer = (service: DatabaseServiceType) =>
   Layer.succeed(DatabaseService, service);
 
 export const TestAuthLayer = (service: AuthServiceType) => Layer.succeed(AuthService, service);
+
+export const TestCardLayer = (service: MembershipCardServiceType) =>
+  Layer.succeed(MembershipCardService, service);
 
 export const TestEmailLayer = (service: EmailServiceType) => Layer.succeed(EmailService, service);
 

@@ -23,10 +23,17 @@ const BaseServicesLayer = Layer.mergeAll(
   QRServiceLive,
 );
 
-// Membership service (depends on Stripe + Database)
+// Card service (depends on Database + QR)
+const CardLayer = MembershipCardServiceLive.pipe(
+  Layer.provide(DatabaseServiceLive),
+  Layer.provide(QRServiceLive),
+);
+
+// Membership service (depends on Stripe + Database + Card)
 const MembershipLayer = MembershipServiceLive.pipe(
   Layer.provide(StripeServiceLive),
   Layer.provide(DatabaseServiceLive),
+  Layer.provide(CardLayer),
 );
 
 // Portal service (depends on Auth + Stripe + Database)
@@ -34,12 +41,6 @@ const PortalLayer = PortalServiceLive.pipe(
   Layer.provide(AuthServiceLive),
   Layer.provide(StripeServiceLive),
   Layer.provide(DatabaseServiceLive),
-);
-
-// Card service (depends on Database + QR)
-const CardLayer = MembershipCardServiceLive.pipe(
-  Layer.provide(DatabaseServiceLive),
-  Layer.provide(QRServiceLive),
 );
 
 // Stats service (depends on Database)
