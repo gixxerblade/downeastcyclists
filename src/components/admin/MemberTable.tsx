@@ -1,6 +1,14 @@
 'use client';
 
-import {Edit, Delete, History, LockReset, Payment, NavigateBefore, NavigateNext} from '@mui/icons-material';
+import {
+  Edit,
+  Delete,
+  History,
+  LockReset,
+  Payment,
+  NavigateBefore,
+  NavigateNext,
+} from '@mui/icons-material';
 import {
   Table,
   TableBody,

@@ -1,6 +1,14 @@
 'use client';
 
-import {Container, Box, Typography, CircularProgress, Alert, TextField, Button} from '@mui/material';
+import {
+  Container,
+  Box,
+  Typography,
+  CircularProgress,
+  Alert,
+  TextField,
+  Button,
+} from '@mui/material';
 import {useMutation} from '@tanstack/react-query';
 import {Effect} from 'effect';
 import {useRouter, useSearchParams} from 'next/navigation';
@@ -159,9 +167,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <Container maxWidth="xs">
-          <Box
-            sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}
-          >
+          <Box sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
             <CircularProgress />
             <Typography sx={{mt: 2}}>Loading...</Typography>
           </Box>

@@ -20,7 +20,12 @@ import {Effect} from 'effect';
 import {useState} from 'react';
 
 import {refreshStats, getStats, getMembers, sendPasswordReset} from '@/src/lib/effect/client-admin';
-import type {AdminError, DatabaseError, EmailError, UnauthorizedError} from '@/src/lib/effect/errors';
+import type {
+  AdminError,
+  DatabaseError,
+  EmailError,
+  UnauthorizedError,
+} from '@/src/lib/effect/errors';
 import type {MembershipStats, MemberWithMembership} from '@/src/lib/effect/schemas';
 
 import {BulkImportModal} from './BulkImportModal';
