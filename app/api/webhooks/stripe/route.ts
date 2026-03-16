@@ -3,8 +3,6 @@ import {headers} from 'next/headers';
 import {NextRequest, NextResponse} from 'next/server';
 import type Stripe from 'stripe';
 
-import {MembershipCardService} from '@/src/lib/effect/card.service';
-import {DatabaseService} from '@/src/lib/effect/database.service';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {MembershipService} from '@/src/lib/effect/membership.service';
 import {StatsService} from '@/src/lib/effect/stats.service';
@@ -48,34 +46,8 @@ export async function POST(request: NextRequest) {
                   yield* Effect.log(
                     `[WEBHOOK] checkout.session.completed - Session: ${session.id}, Customer: ${session.customer}, Subscription: ${session.subscription}`,
                   );
+                  // processCheckoutCompleted handles user, membership, AND card creation
                   yield* membershipService.processCheckoutCompleted(session);
-
-                  // Generate membership card after successful checkout
-                  yield* Effect.gen(function* () {
-                    const cardService = yield* MembershipCardService;
-                    const db = yield* DatabaseService;
-
-                    // Get user and membership data
-                    const userId = session.metadata?.userId || (session.subscription as string);
-                    const user = yield* db.getUser(userId);
-                    const membership = yield* db.getActiveMembership(userId);
-
-                    if (user && membership) {
-                      yield* Effect.log(`[WEBHOOK] Creating membership card for user ${userId}`);
-                      yield* cardService.createCard({userId, user, membership});
-                      yield* Effect.log(`[WEBHOOK] Membership card created for user ${userId}`);
-                    } else {
-                      yield* Effect.log(
-                        `[WEBHOOK] Skipping card creation - user: ${!!user}, membership: ${!!membership}`,
-                      );
-                    }
-                  }).pipe(
-                    Effect.catchAll((error) => {
-                      // Log card creation errors but don't fail the webhook
-                      console.error('[WEBHOOK] Card creation error (non-fatal):', error);
-                      return Effect.void;
-                    }),
-                  );
 
                   // Update stats after successful checkout
                   yield* Effect.gen(function* () {
