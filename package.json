@@ -2,6 +2,7 @@
   "name": "downeastcyclists",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.5.0",
   "scripts": {
     "prepare": "effect-language-service patch",
     "preinstall": "npx only-allow pnpm",
@@ -82,7 +83,7 @@
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.9",
     "eslint": "^8",
-    "eslint-config-next": "15.5.10",
+    "eslint-config-next": "15.5.18",
     "netlify-cli": "^22.2.1",
     "postcss": "8.5.3",
     "tailwindcss": "^3",
