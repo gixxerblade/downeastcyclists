@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.5.0",
   "scripts": {
-    "prepare": "effect-tsgo patch",
+    "prepare": "node scripts/prepare-effect-tsgo.mjs",
     "preinstall": "npx only-allow pnpm",
     "dev": "next dev",
     "build": "next build",
