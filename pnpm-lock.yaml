@@ -17,9 +17,6 @@ importers:
       '@contentful/rich-text-types':
         specifier: ^17.0.0
         version: 17.2.5(babel-plugin-macros@3.1.0)
-      '@effect/language-service':
-        specifier: ^0.72.0
-        version: 0.72.0
       '@emotion/cache':
         specifier: 11.14.0
         version: 11.14.0
@@ -144,6 +141,9 @@ importers:
         specifier: ^3.24.4
         version: 3.25.76
     devDependencies:
+      '@effect/tsgo':
+        specifier: ^0.19.0
+        version: 0.19.0
       '@netlify/plugin-nextjs':
         specifier: ^5.15.11
         version: 5.15.11
@@ -359,8 +359,43 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@effect/language-service@0.72.0':
-    resolution: {integrity: sha512-MWkyTPCXSs5Q3OIBWR3q24SA+ipkdWW7EBJBt6EPUzlzZxjJLXtLBhXpMoCFheSEM0FTWOHT4BRLh5lufsmjVw==}
+  '@effect/tsgo-darwin-arm64@0.19.0':
+    resolution: {integrity: sha512-tieZTHXZlqOtm3YbGxclXNsyxILFtZqMC1fZEy2PAoEGKBHfwNc+r0gR3k3SU9dsSNj3KV8wLsXxfQr/VH1pAA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@effect/tsgo-darwin-x64@0.19.0':
+    resolution: {integrity: sha512-gTxeWR5xkL+UIdrTDcnGDj0dFPnk2AxvHzrA8j3U9OQZ5yHaFK4DA8W2hVxbu2lvGoHeRlyrArBf8YomKnNRdQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@effect/tsgo-linux-arm64@0.19.0':
+    resolution: {integrity: sha512-XEMv3PA8hNkSXAwAXYA5/FPYqV7eVrZS032P/3AuZTHr1jJTcesTK2ANfBHwwEKekmb7y3yBC7f73yhpXah4sg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@effect/tsgo-linux-arm@0.19.0':
+    resolution: {integrity: sha512-SZlUqv74YZkBDd2czXmeOTPtWPOppWNFmwCN4k11s1K4Y/BfIpHmmv0TUHU5DcPe3IoHIJV1kxXrxhfxO1nQsQ==}
+    cpu: [arm]
+    os: [linux]
+
+  '@effect/tsgo-linux-x64@0.19.0':
+    resolution: {integrity: sha512-T3KDEWgWuS3XAuJ5eUkEgeOVgC7pYK/8/hxASEtHJR1NDGPPk6gjg+jfcc0Y5O9P6mG4GL9LQmBIw/G1+GFRHA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@effect/tsgo-win32-arm64@0.19.0':
+    resolution: {integrity: sha512-raoGQr2lNm0qO8sH3v4TlyUlTePm6c6y2FBIZQrUw8B4N/srHS5aVOUgWqnJ/WjuQKl1xCM5SoehuhRkGnoFzw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@effect/tsgo-win32-x64@0.19.0':
+    resolution: {integrity: sha512-KRWaWLXWIEm5mR/qPi9UJIRQdNs7uPfstiEv3bNR3qMVhgwndL2e5XYUoQOOYEK4MTjLM0GO+uknlHHRfI5K8A==}
+    cpu: [x64]
+    os: [win32]
+
+  '@effect/tsgo@0.19.0':
+    resolution: {integrity: sha512-NDyG/RufHigI0bdvyggbr53J6c1GWcnNkm7rUwQbBDuRI1KRThFh2WtugMLL+i6wrRiMXJtgLHzh9lIMqy9gGA==}
     hasBin: true
 
   '@emnapi/core@1.7.1':
@@ -8862,7 +8897,36 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@effect/language-service@0.72.0': {}
+  '@effect/tsgo-darwin-arm64@0.19.0':
+    optional: true
+
+  '@effect/tsgo-darwin-x64@0.19.0':
+    optional: true
+
+  '@effect/tsgo-linux-arm64@0.19.0':
+    optional: true
+
+  '@effect/tsgo-linux-arm@0.19.0':
+    optional: true
+
+  '@effect/tsgo-linux-x64@0.19.0':
+    optional: true
+
+  '@effect/tsgo-win32-arm64@0.19.0':
+    optional: true
+
+  '@effect/tsgo-win32-x64@0.19.0':
+    optional: true
+
+  '@effect/tsgo@0.19.0':
+    optionalDependencies:
+      '@effect/tsgo-darwin-arm64': 0.19.0
+      '@effect/tsgo-darwin-x64': 0.19.0
+      '@effect/tsgo-linux-arm': 0.19.0
+      '@effect/tsgo-linux-arm64': 0.19.0
+      '@effect/tsgo-linux-x64': 0.19.0
+      '@effect/tsgo-win32-arm64': 0.19.0
+      '@effect/tsgo-win32-x64': 0.19.0
 
   '@emnapi/core@1.7.1':
     dependencies:

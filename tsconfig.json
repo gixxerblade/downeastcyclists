@@ -19,7 +19,10 @@
         "name": "next"
       },
       {
-        "name": "@effect/language-service"
+        "name": "@effect/language-service",
+        "diagnostics": false,
+        "includeSuggestionsInTsc": false,
+        "ignoreEffectWarningsInTscExitCode": true
       }
     ],
     "paths": {
