@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Configuration for Netlify deployment
@@ -23,6 +25,15 @@ const nextConfig = {
 
   // Mark Firebase packages as external (not bundled by Next.js)
   serverExternalPackages: ['@google-cloud/firestore', 'firebase-admin'],
+
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname),
+    };
+
+    return config;
+  },
 
   // Add redirect from /about to /about/bylaws
   async redirects() {
