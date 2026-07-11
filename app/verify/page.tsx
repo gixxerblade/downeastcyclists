@@ -84,8 +84,10 @@ export default function VerifyPage() {
     return (
       <Container maxWidth="xs">
         <Box
+          className="dec-card"
           sx={{
             marginTop: 8,
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -103,8 +105,10 @@ export default function VerifyPage() {
     return (
       <Container maxWidth="xs">
         <Box
+          className="dec-card"
           sx={{
             marginTop: 8,
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -129,16 +133,23 @@ export default function VerifyPage() {
   // Need email input
   if (needsEmail) {
     return (
+      <main className="dec-page">
       <Container maxWidth="xs">
         <Box
+          className="dec-card"
           sx={{
             marginTop: 8,
+            mb: 8,
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
           }}
         >
-          <Typography component="h1" variant="h5" gutterBottom>
+          <Typography variant="overline" sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}>
+            MAGIC LINK
+          </Typography>
+          <Typography component="h1" variant="h1" sx={{fontSize: 54}} gutterBottom>
             Confirm your email
           </Typography>
           <Typography color="text.secondary" textAlign="center" sx={{mb: 2}}>
@@ -174,6 +185,7 @@ export default function VerifyPage() {
           </Box>
         </Box>
       </Container>
+      </main>
     );
   }
 

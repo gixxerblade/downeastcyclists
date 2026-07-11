@@ -1,7 +1,7 @@
 'use client';
 
 import {zodResolver} from '@hookform/resolvers/zod';
-import {Container, Typography} from '@mui/material';
+import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {useForm, SubmitHandler} from 'react-hook-form';
 import {z} from 'zod';
@@ -9,12 +9,14 @@ import {z} from 'zod';
 type FormInputs = {
   name: string;
   email: string;
+  subject: string;
   message: string;
 };
 
 const schema = z.object({
   name: z.string().min(1, {message: 'Name is required'}),
   email: z.string().email({message: 'Invalid email address'}),
+  subject: z.string().min(1, {message: 'Subject is required'}),
   message: z.string().min(1, {message: 'Message is required'}),
 });
 
@@ -32,23 +34,16 @@ export default function Contact() {
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     try {
-      // Create form data for Netlify submission following OpenNext docs
       const formData = new FormData();
       formData.append('form-name', 'contact');
-      formData.append('bot-field', ''); // Honeypot field
-      Object.entries(data).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
+      formData.append('bot-field', '');
+      Object.entries(data).forEach(([key, value]) => formData.append(key, value));
 
-      // For local development with netlify dev, submit to root
-      // For production, this will be handled by Netlify's form processing
       const response = await fetch('/__forms.html', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams(formData as any).toString(),
       });
-
-      // console.log("Form submission response:", response);
 
       if (response.ok) {
         router.push('/thanks');
@@ -62,100 +57,98 @@ export default function Contact() {
     }
   };
 
+  const inputClass =
+    'mt-2 min-h-[52px] w-full rounded-xl border bg-[var(--dec-bg)] px-4 text-[var(--dec-ink)] outline-none transition focus:border-[#F20E02]';
+
   return (
-    <Container maxWidth="xl" sx={{paddingTop: 8, paddingBottom: 8}}>
-      <div className="text-center">
-        <Typography variant="h3" component="h1" gutterBottom align="center">
-          Contact Us
-        </Typography>
-
-        <div className="flex flex-col md:flex-row justify-center">
-          <div className="md:w-3/5 mx-auto">
-            <form
-              className="form"
-              onSubmit={handleSubmit(onSubmit)}
-              data-netlify="true"
-              name="contact"
-              method="POST"
-              netlify-honeypot="bot-field"
-              data-netlify-recaptcha="true"
-            >
-              <input type="hidden" name="form-name" value="contact" />
-              <p className="hidden">
-                <label>
-                  Don&apos;t fill this out if you&apos;re human: <input name="bot-field" />
-                </label>
-              </p>
-              <div className="mb-4">
-                <label className="block text-left mb-2" htmlFor="name">
-                  Name
-                  <div className="mt-1">
-                    <input
-                      id="name"
-                      placeholder="Tadej Pogačar"
-                      className={`w-full p-3 border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                      {...register('name')}
-                    />
-                    {errors.name && (
-                      <p className="text-red-500 text-sm mt-1 text-left">{errors.name.message}</p>
-                    )}
-                  </div>
-                </label>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-left mb-2" htmlFor="email">
-                  Email
-                  <div className="mt-1">
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="info@tadejpogacar.com"
-                      className={`w-full p-3 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                      {...register('email')}
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1 text-left">{errors.email.message}</p>
-                    )}
-                  </div>
-                </label>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-left mb-2" htmlFor="message">
-                  Message
-                  <div className="mt-1">
-                    <textarea
-                      id="message"
-                      placeholder="Enter your message here..."
-                      className={`w-full p-3 border ${errors.message ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                      rows={5}
-                      style={{height: '125px'}}
-                      {...register('message')}
-                    ></textarea>
-                    {errors.message && (
-                      <p className="text-red-500 text-sm mt-1 text-left">
-                        {errors.message.message}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              </div>
-              {/* Netlify reCAPTCHA - this div must be empty for Netlify to inject the reCAPTCHA */}
-              <div className="mb-4" data-netlify-recaptcha="true"></div>
-              <div className="mt-6">
-                <button
-                  type="submit"
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
+    <main className="dec-page">
+      <section className="dec-container grid gap-10 py-16 md:grid-cols-[1.2fr_.8fr] md:py-20">
+        <div>
+          <div className="mb-4 text-sm font-bold tracking-[.1em] text-[#F20E02]">CONTACT</div>
+          <h1 className="dec-display text-6xl md:text-[92px]">Talk to the club</h1>
+          <p className="mt-6 max-w-xl text-lg font-light leading-8 text-[var(--dec-muted)]">
+            Questions about rides, trails, memberships, or volunteering? Send a note and a club
+            volunteer will follow up.
+          </p>
         </div>
-      </div>
-    </Container>
+
+        <aside className="dec-card p-7">
+          <h2 className="font-[Anton] text-3xl">Quick links</h2>
+          <div className="mt-5 flex flex-col gap-4 text-sm font-semibold">
+            <a href="mailto:info@downeastcyclists.com" className="text-[#F20E02]">
+              info@downeastcyclists.com
+            </a>
+            <a href="https://www.facebook.com/downeastcyclists" target="_blank" rel="noreferrer noopener">
+              Facebook ↗
+            </a>
+            <a href="https://www.instagram.com/downeastcyclists/" target="_blank" rel="noreferrer noopener">
+              Instagram ↗
+            </a>
+            <a href="https://www.meetup.com/down-east-cyclists/events/calendar/" target="_blank" rel="noreferrer noopener">
+              Meetup calendar ↗
+            </a>
+          </div>
+          <div className="mt-7 rounded-2xl bg-[#F20E02] p-5 text-white">
+            <div className="font-[Anton] text-3xl">First ride is free</div>
+            <p className="mt-2 text-sm leading-6 text-white/85">
+              Come meet the group before joining. Bring a helmet, lights, and questions.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <section className="dec-container pb-20">
+        <form
+          className="dec-card mx-auto max-w-3xl p-6 md:p-9"
+          onSubmit={handleSubmit(onSubmit)}
+          data-netlify="true"
+          name="contact"
+          method="POST"
+          netlify-honeypot="bot-field"
+          data-netlify-recaptcha="true"
+        >
+          <input type="hidden" name="form-name" value="contact" />
+          <p className="hidden">
+            <label>
+              Don&apos;t fill this out if you&apos;re human: <input name="bot-field" />
+            </label>
+          </p>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className="block text-sm font-bold text-[var(--dec-muted)]" htmlFor="name">
+              Name
+              <input id="name" placeholder="First and last" className={`${inputClass} border-[var(--dec-border)]`} {...register('name')} />
+              {errors.name && <span className="mt-1 block text-sm text-[#F20E02]">{errors.name.message}</span>}
+            </label>
+
+            <label className="block text-sm font-bold text-[var(--dec-muted)]" htmlFor="email">
+              Email
+              <input id="email" type="email" placeholder="you@email.com" className={`${inputClass} border-[var(--dec-border)]`} {...register('email')} />
+              {errors.email && <span className="mt-1 block text-sm text-[#F20E02]">{errors.email.message}</span>}
+            </label>
+          </div>
+
+          <label className="mt-5 block text-sm font-bold text-[var(--dec-muted)]" htmlFor="subject">
+            Subject
+            <input id="subject" placeholder="How can we help?" className={`${inputClass} border-[var(--dec-border)]`} {...register('subject')} />
+            {errors.subject && <span className="mt-1 block text-sm text-[#F20E02]">{errors.subject.message}</span>}
+          </label>
+
+          <label className="mt-5 block text-sm font-bold text-[var(--dec-muted)]" htmlFor="message">
+            Message
+            <textarea id="message" placeholder="Enter your message..." className={`${inputClass} min-h-40 py-4 border-[var(--dec-border)]`} {...register('message')} />
+            {errors.message && <span className="mt-1 block text-sm text-[#F20E02]">{errors.message.message}</span>}
+          </label>
+
+          <div className="mt-5" data-netlify-recaptcha="true"></div>
+          <button type="submit" className="dec-primary-button mt-7 w-full sm:w-auto" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Send message'}
+          </button>
+          <p className="mt-4 text-sm text-[var(--dec-muted-2)]">
+            Already a member? <Link href="/member" className="font-bold text-[#F20E02]">Open your member portal.</Link>
+          </p>
+        </form>
+      </section>
+    </main>
   );
 }

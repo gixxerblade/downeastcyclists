@@ -13,13 +13,13 @@ import ThemeRegistry from '@/src/components/ThemeRegistry/ThemeRegistry';
 import QueryProvider from '@/src/providers/QueryProvider';
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#F20E02',
   width: 'device-width',
   initialScale: 1,
 };
 
 export const metadata: Metadata = {
-  title: 'Down East Cycists',
+  title: 'Down East Cyclists',
   description: 'A Recreational Cycling Club in Eastern North Carolina',
   manifest: '/manifest.json',
   other: {
@@ -32,8 +32,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+          rel="stylesheet"
+        />
         {/* Add cache control meta tags */}
         <meta
           httpEquiv="Cache-Control"

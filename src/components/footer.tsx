@@ -1,164 +1,92 @@
 'use client';
 
 import {Facebook, Instagram} from '@mui/icons-material';
-import {CircularProgress} from '@mui/material';
-import {styled} from '@mui/material/styles';
-import React, {useState} from 'react';
-
-// Import icons individually
-import BicycleGallery from '../icons/BicycleGallery';
-import BicycleShop from '../icons/BicycleShop';
-import CapeFearCyclists from '../icons/CapeFearCyclists';
-import CapeFearSorba from '../icons/CapeFearSorba';
-import Icons from '../icons/Icons';
+import Link from 'next/link';
 
 const friends = [
-  {
-    title: 'Bicycle Gallery',
-    icon: <BicycleGallery />,
-    link: 'https://www.bicycle-gallery.com/',
-  },
-  {
-    title: 'Bicycle Shop',
-    icon: <BicycleShop />,
-    link: 'https://www.thebicycle.com',
-  },
-  {
-    title: 'Cape Fear Cyclists',
-    icon: <CapeFearCyclists />,
-    link: 'https://www.capefearcyclists.org/',
-  },
-  {
-    title: 'Cape Fear Sorba',
-    icon: <CapeFearSorba />,
-    link: 'https://capefearsorba.org/',
-  },
+  {title: 'Bicycle Gallery', link: 'https://www.bicycle-gallery.com/'},
+  {title: 'The Bicycle Shop', link: 'https://www.thebicycle.com'},
+  {title: 'Cape Fear Cyclists', link: 'https://www.capefearcyclists.org/'},
+  {title: 'Cape Fear SORBA', link: 'https://capefearsorba.org/'},
+  {title: 'Strava club', link: 'https://www.strava.com/clubs/4097'},
 ];
 
-const Footer = () => {
+function Wordmark() {
   return (
-    <>
-      <footer className="bg-gray-100 text-gray-700 py-8 px-4">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="flex flex-col items-center">
-            <h1 className="text-2xl font-bold text-center mb-4">Connect</h1>
-            <div className="flex space-x-8 items-center">
-              <a
-                aria-label="Down east cyclists Facebook"
-                href="https://www.facebook.com/downeastcyclists"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="flex items-center justify-center"
-              >
-                <Facebook sx={{fontSize: 48}} className="fb-circle" />
-              </a>
-              <a
-                aria-label="down east cyclists instagram"
-                href="https://www.instagram.com/downeastcyclists/"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="flex items-center justify-center"
-              >
-                <Instagram sx={{fontSize: 48}} className="instagram" />
-              </a>
-            </div>
-          </div>
-          <div className="flex flex-col items-center">
-            <h1 className="text-2xl font-bold text-center mb-4">Links</h1>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              {friends &&
-                friends.map((friend) => {
-                  return (
-                    <div key={friend.title} className="flex justify-center">
-                      <a
-                        target="_blank"
-                        aria-label={friend.title}
-                        rel="noreferrer noopener"
-                        href={friend.link}
-                        title={friend.title}
-                      >
-                        <StyledIcon>{friend.icon}</StyledIcon>
-                      </a>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-          <div className="flex flex-col items-center">
-            <h1 className="text-2xl font-bold text-center mb-4">Weekly Mileage</h1>
-            <StravaWidget />
-          </div>
-        </div>
-        <div className="mt-8 text-center">
-          <h2 className="text-lg">&copy;{new Date().getFullYear()} Down East Cyclists</h2>
-        </div>
-      </footer>
-    </>
-  );
-};
-export default Footer;
-
-const StyledIcon = styled(Icons)(() => ({
-  '& svg': {
-    fill: '#000000',
-    '&:hover': {
-      transition: '0.2s linear',
-      fill: '#ef1a25',
-    },
-  },
-}));
-
-const StravaWidget = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-40 text-gray-600">
-        <p className="mb-2">Strava widget temporarily unavailable</p>
-        <a
-          href="https://www.strava.com/clubs/4097"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 underline"
-        >
-          View our club activities on Strava →
-        </a>
+    <div className="flex items-center gap-3">
+      <div className="grid h-11 w-11 -skew-x-6 place-items-center bg-[#F20E02] font-[Anton] text-xl text-white">
+        <span className="skew-x-6">DEC</span>
       </div>
-    );
-  }
-
-  return (
-    <div className="text-center">
-      {isLoading && (
-        <div className="flex items-center justify-center h-40">
-          <CircularProgress />
-        </div>
-      )}
-      <iframe
-        allowTransparency={true}
-        frameBorder="0"
-        height="160"
-        scrolling="no"
-        src="https://www.strava.com/clubs/4097/latest-rides/8683108f61f96a7b5c9c472f4176a0b942b74964?show_rides=false"
-        width="300"
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
-          setIsLoading(false);
-          setError(true);
-        }}
-      ></iframe>{' '}
-      {!isLoading && !error && (
-        <div className="mt-2 text-sm text-gray-600">
-          <a
-            href="https://www.strava.com/clubs/4097"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            View full activities on Strava →
-          </a>
-        </div>
-      )}
+      <div className="font-[Anton] text-[15px] leading-none tracking-[.05em]">
+        DOWN EAST
+        <br />
+        <span className="text-[var(--dec-muted-2)]">CYCLISTS</span>
+      </div>
     </div>
   );
-};
+}
+
+export default function Footer() {
+  return (
+    <footer className="border-t border-[var(--dec-border)] bg-[var(--dec-surface)] text-[var(--dec-ink)]">
+      <div className="dec-container grid gap-10 py-14 md:grid-cols-[1.35fr_1fr_1fr]">
+        <div>
+          <Wordmark />
+          <p className="mt-4 max-w-sm text-sm leading-6 text-[var(--dec-muted-2)]">
+            Promoting safe, social cycling across Eastern North Carolina since 2009.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <a
+              aria-label="Down East Cyclists Facebook"
+              href="https://www.facebook.com/downeastcyclists"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="grid h-11 w-11 place-items-center rounded-full border border-[var(--dec-border)]"
+            >
+              <Facebook fontSize="small" />
+            </a>
+            <a
+              aria-label="Down East Cyclists Instagram"
+              href="https://www.instagram.com/downeastcyclists/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="grid h-11 w-11 place-items-center rounded-full border border-[var(--dec-border)]"
+            >
+              <Instagram fontSize="small" />
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-xs font-bold tracking-[.08em] text-[var(--dec-muted-2)]">
+            CLUB
+          </h2>
+          <div className="flex flex-col gap-3 text-sm font-medium">
+            <a href="https://www.meetup.com/down-east-cyclists/events/calendar/" target="_blank" rel="noreferrer noopener">
+              Rides & events ↗
+            </a>
+            <Link href="/trails/b3">Trails</Link>
+            <Link href="/blog">Blog</Link>
+            <Link href="/about/leadership">Leadership</Link>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-xs font-bold tracking-[.08em] text-[var(--dec-muted-2)]">
+            FRIENDS OF THE CLUB
+          </h2>
+          <div className="flex flex-col gap-3 text-sm font-medium">
+            {friends.map((friend) => (
+              <a key={friend.title} href={friend.link} target="_blank" rel="noreferrer noopener">
+                {friend.title} ↗
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-[var(--dec-border)] py-5 text-center text-xs text-[var(--dec-muted-2)]">
+        &copy; {new Date().getFullYear()} Down East Cyclists
+      </div>
+    </footer>
+  );
+}

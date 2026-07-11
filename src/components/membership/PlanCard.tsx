@@ -12,6 +12,7 @@ import {
   ListItemIcon,
   ListItemText,
   Box,
+  Chip,
 } from '@mui/material';
 
 export interface MembershipPlan {
@@ -30,6 +31,8 @@ interface PlanCardProps {
 }
 
 export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
+  const isFamily = plan.name.toLowerCase().includes('family');
+
   return (
     <Card
       sx={{
@@ -37,7 +40,10 @@ export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
         display: 'flex',
         flexDirection: 'column',
         border: selected ? '2px solid' : '1px solid',
-        borderColor: selected ? 'primary.main' : 'divider',
+        borderColor: selected ? 'primary.main' : 'var(--dec-border)',
+        bgcolor: selected ? (isFamily ? '#16130F' : 'var(--dec-surface)') : 'var(--dec-surface)',
+        color: selected && isFamily ? '#FAF7F2' : 'var(--dec-ink)',
+        position: 'relative',
         transition: 'all 0.2s ease-in-out',
         '&:hover': {
           borderColor: selected ? 'primary.main' : 'primary.light',
@@ -45,16 +51,32 @@ export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
         },
       }}
     >
-      <CardContent sx={{flexGrow: 1}}>
-        <Typography variant="h5" component="h3" gutterBottom fontWeight="bold">
+      {isFamily && (
+        <Chip
+          label="Most popular"
+          size="small"
+          sx={{
+            position: 'absolute',
+            top: 16,
+            left: 24,
+            bgcolor: '#F20E02',
+            color: '#fff',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '.05em',
+          }}
+        />
+      )}
+      <CardContent sx={{flexGrow: 1, pt: isFamily ? 7 : 2}}>
+        <Typography variant="h4" component="h3" gutterBottom>
           {plan.name}
         </Typography>
 
         <Box sx={{mb: 2}}>
-          <Typography variant="h4" component="span" color="primary" fontWeight="bold">
+          <Typography variant="h3" component="span" sx={{color: selected && isFamily ? '#fff' : 'var(--dec-ink)'}}>
             ${plan.price}
           </Typography>
-          <Typography variant="body2" component="span" color="text.secondary">
+          <Typography variant="body2" component="span" sx={{color: selected && isFamily ? '#c4bcae' : 'var(--dec-muted)'}}>
             /year
           </Typography>
         </Box>
@@ -65,7 +87,13 @@ export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
               <ListItemIcon sx={{minWidth: 32}}>
                 <CheckCircleIcon color="success" fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={benefit} primaryTypographyProps={{variant: 'body2'}} />
+              <ListItemText
+                primary={benefit}
+                primaryTypographyProps={{
+                  variant: 'body2',
+                  sx: {color: selected && isFamily ? '#e6e1d8' : 'var(--dec-muted)'},
+                }}
+              />
             </ListItem>
           ))}
         </List>
@@ -79,7 +107,7 @@ export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
           onClick={() => onSelect(plan.id, plan.stripePriceId)}
           disabled={disabled}
         >
-          {selected ? 'Selected' : 'Select Plan'}
+          {selected ? 'Selected ✓' : 'Select'}
         </Button>
       </CardActions>
     </Card>

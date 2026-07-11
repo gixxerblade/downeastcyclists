@@ -26,86 +26,74 @@ export default async function BlogPostPage({params}: BlogPostPageProps) {
   }
 
   return (
-    <article className="py-24 px-4 md:px-24 max-w-4xl mx-auto">
-      <div className="mb-6">
+    <article className="dec-page">
+      <div className="dec-container max-w-5xl py-12 md:py-16">
         <Link
           href="/blog"
-          className="inline-flex items-center text-sm font-medium text-red-600 hover:text-red-800"
+          className="inline-flex min-h-11 items-center text-sm font-bold text-[#F20E02]"
         >
           ← Back to all posts
         </Link>
-      </div>
 
-      <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
+        <h1 className="dec-display mt-8 max-w-4xl text-5xl md:text-[82px]">{post.title}</h1>
 
-      <div className="flex items-center text-sm text-gray-600 mb-6">
-        {post.publishDate && (
-          <time dateTime={post.publishDate} className="mr-4">
-            <span className="font-medium">Published: </span>
-            {new Date(post.publishDate).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
-        )}
-        {post.author && (
-          <div>
-            <span className="font-medium">Author: </span>
-            {post.author}
+        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm font-semibold text-[var(--dec-muted-2)]">
+          {post.publishDate && (
+            <time dateTime={post.publishDate}>
+              {new Date(post.publishDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </time>
+          )}
+          {post.author && <div>By {post.author}</div>}
+        </div>
+
+        {post.image && (
+          <div className="relative my-8 h-[320px] w-full overflow-hidden rounded-[22px] border border-[var(--dec-border)] md:h-[520px]">
+            <Image
+              src={post.image.src || DecLogo}
+              alt={post.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 980px"
+              priority
+            />
           </div>
         )}
-      </div>
 
-      {post.image && (
-        <div className="relative w-full h-[400px] mb-8 overflow-hidden rounded-lg">
-          <Image
-            src={post.image.src || DecLogo}
-            alt={post.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 800px"
-            priority
-          />
+        <div className="dec-card mx-auto max-w-3xl p-6 md:p-9">
+          <div className="prose prose-lg max-w-none dark:prose-invert prose-a:text-[#F20E02]">
+            {post.body ? (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: (props) => <h1 className="font-[Anton] text-4xl" {...props} />,
+                  h2: (props) => <h2 className="font-[Anton] text-3xl" {...props} />,
+                  h3: (props) => <h3 className="text-xl font-bold" {...props} />,
+                  img: ({src, alt}) => (
+                    <div className="my-6 relative">
+                      {typeof src === 'string' && (
+                        <Image
+                          src={src.startsWith('//') ? `https:${src}` : src}
+                          alt={typeof alt === 'string' ? alt : ''}
+                          width={800}
+                          height={450}
+                          className="max-w-full rounded-lg"
+                        />
+                      )}
+                    </div>
+                  ),
+                }}
+              >
+                {post.body}
+              </ReactMarkdown>
+            ) : (
+              <p>No content available for this post.</p>
+            )}
+          </div>
         </div>
-      )}
-
-      <div className="prose prose-lg max-w-none">
-        {post.body ? (
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: (props) => <h1 className="text-3xl font-bold mt-8 mb-4" {...props} />,
-              h2: (props) => <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />,
-              h3: (props) => <h3 className="text-xl font-bold mt-5 mb-2" {...props} />,
-              p: (props) => <p className="my-4" {...props} />,
-              ul: (props) => <ul className="list-disc pl-6 my-4" {...props} />,
-              ol: (props) => <ol className="list-decimal pl-6 my-4" {...props} />,
-              li: (props) => <li className="mb-1" {...props} />,
-              a: (props) => <a className="text-red-600 hover:text-red-800 underline" {...props} />,
-              blockquote: (props) => (
-                <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4" {...props} />
-              ),
-              img: ({src, alt}) => (
-                <div className="my-6 relative">
-                  {typeof src === 'string' && (
-                    <Image
-                      src={src.startsWith('//') ? `https:${src}` : src}
-                      alt={typeof alt === 'string' ? alt : ''}
-                      width={800}
-                      height={450}
-                      className="rounded-lg max-w-full"
-                    />
-                  )}
-                </div>
-              ),
-            }}
-          >
-            {post.body}
-          </ReactMarkdown>
-        ) : (
-          <p>No content available for this post.</p>
-        )}
       </div>
     </article>
   );

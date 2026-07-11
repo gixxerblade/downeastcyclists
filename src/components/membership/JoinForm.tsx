@@ -9,7 +9,6 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Divider,
   IconButton,
   InputAdornment,
   FormControlLabel,
@@ -19,7 +18,7 @@ import {useQuery, useMutation} from '@tanstack/react-query';
 import {Schema as S} from 'effect';
 import {Effect} from 'effect';
 import Link from 'next/link';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 
 import {joinAndCheckout, type JoinRequest} from '@/src/lib/effect/client-join';
 import type {AuthError} from '@/src/lib/effect/errors';
@@ -82,6 +81,14 @@ export function JoinForm() {
     setValidationError(null);
   };
 
+  useEffect(() => {
+    if (!plansQuery.data?.length || selectedPlanId) return;
+    const familyPlan =
+      plansQuery.data.find((plan) => plan.name.toLowerCase().includes('family')) ||
+      plansQuery.data[0];
+    handlePlanSelect(familyPlan.id, familyPlan.stripePriceId);
+  }, [plansQuery.data, selectedPlanId]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
@@ -137,6 +144,8 @@ export function JoinForm() {
   // Determine error message
   const errorMessage = validationError || (joinMutation.error?.message ?? null);
   const isEmailInUse = joinMutation.error?.code === 'EMAIL_IN_USE';
+  const selectedPlan = plansQuery.data?.find((plan) => plan.id === selectedPlanId) || null;
+  const summaryPrice = selectedPlan?.price || selectedPlanPrice || 0;
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
@@ -159,10 +168,6 @@ export function JoinForm() {
       )}
 
       {/* Step 1: Select Plan */}
-      <Typography variant="h5" component="h2" gutterBottom>
-        1. Choose Your Membership
-      </Typography>
-
       {plansQuery.isLoading && (
         <Box sx={{display: 'flex', justifyContent: 'center', py: 4}}>
           <CircularProgress />
@@ -190,104 +195,101 @@ export function JoinForm() {
         </Grid>
       )}
 
-      <Divider sx={{my: 4}} />
+      <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: '1.3fr .7fr'}, gap: 3, alignItems: 'start'}}>
+        <Box className="dec-card" sx={{p: {xs: 3, md: 4}}}>
+          <Typography variant="h4" component="h2" gutterBottom>
+            Your details
+          </Typography>
 
-      {/* Step 2: Create Account */}
-      <Typography variant="h5" component="h2" gutterBottom>
-        2. Create Your Account
-      </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
+            Your account lets you manage your membership and access member benefits.
+          </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
-        Your account lets you manage your membership and access member benefits.
-      </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Full Name (Optional)"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={joinMutation.isPending}
+              />
+            </Grid>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Full Name (Optional)"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={joinMutation.isPending}
-          />
-        </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={joinMutation.isPending}
+              />
+            </Grid>
 
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={joinMutation.isPending}
-          />
-        </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={joinMutation.isPending}
+                helperText="Minimum 6 characters"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        disabled={joinMutation.isPending}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
 
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={joinMutation.isPending}
-            helperText="Minimum 6 characters"
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle password visibility"
-                    onClick={() => setShowPassword(!showPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                    disabled={joinMutation.isPending}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Confirm Password"
-            type={showConfirmPassword ? 'text' : 'password'}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            disabled={joinMutation.isPending}
-            error={showPasswordMatchError}
-            helperText={showPasswordMatchError ? 'Passwords do not match' : ' '}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle confirm password visibility"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                    disabled={joinMutation.isPending}
-                  >
-                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
-      </Grid>
-
-      <Divider sx={{my: 4}} />
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Confirm Password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={joinMutation.isPending}
+                error={showPasswordMatchError}
+                helperText={showPasswordMatchError ? 'Passwords do not match' : ' '}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle confirm password visibility"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        disabled={joinMutation.isPending}
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+          </Grid>
 
       {/* Processing Fee Option */}
       {selectedPlanId && processingFee > 0 && (
-        <Box sx={{mb: 3}}>
+        <Box sx={{mt: 3}}>
           <FormControlLabel
             control={
               <Checkbox
@@ -308,35 +310,55 @@ export function JoinForm() {
           />
         </Box>
       )}
+        </Box>
 
-      {/* Step 3: Submit */}
-      <Box sx={{textAlign: 'center'}}>
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          disabled={joinMutation.isPending || !selectedPlanId}
-          sx={{minWidth: 200}}
-        >
-          {joinMutation.isPending ? (
-            <>
-              <CircularProgress size={20} sx={{mr: 1}} color="inherit" />
-              Processing...
-            </>
-          ) : (
-            'Continue to Payment'
+        <Box className="dec-card" sx={{p: {xs: 3, md: 4}, position: {md: 'sticky'}, top: 96}}>
+          <Typography variant="h4" component="h2" gutterBottom>
+            Summary
+          </Typography>
+          <Box sx={{display: 'flex', justifyContent: 'space-between', py: 1.5}}>
+            <Typography color="text.secondary">{selectedPlan?.name || 'Membership'}</Typography>
+            <Typography fontWeight={700}>${summaryPrice.toFixed(2)}</Typography>
+          </Box>
+          {coverFees && (
+            <Box sx={{display: 'flex', justifyContent: 'space-between', py: 1.5}}>
+              <Typography color="text.secondary">Processing fees</Typography>
+              <Typography fontWeight={700}>${processingFee.toFixed(2)}</Typography>
+            </Box>
           )}
-        </Button>
+          <Box sx={{display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--dec-border)', mt: 1.5, pt: 2, mb: 3}}>
+            <Typography fontWeight={800}>Total</Typography>
+            <Typography fontWeight={800}>
+              ${(summaryPrice + (coverFees ? processingFee : 0)).toFixed(2)}
+            </Typography>
+          </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{mt: 2}}>
-          You&apos;ll be redirected to our secure payment provider to complete your membership.
-        </Typography>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            fullWidth
+            disabled={joinMutation.isPending || !selectedPlanId}
+            sx={{bgcolor: '#F20E02', '&:hover': {bgcolor: '#b30a01'}}}
+          >
+            {joinMutation.isPending ? (
+              <>
+                <CircularProgress size={20} sx={{mr: 1}} color="inherit" />
+                Processing...
+              </>
+            ) : (
+              'Continue to secure checkout →'
+            )}
+          </Button>
+
+          <Typography variant="caption" color="text.secondary" sx={{mt: 2, display: 'block', textAlign: 'center'}}>
+            🔒 Secure checkout by Stripe · Auto-renews at ${summaryPrice || 0}/yr · Cancel anytime
+          </Typography>
+        </Box>
       </Box>
 
-      <Divider sx={{my: 4}} />
-
       {/* Already a member link */}
-      <Box sx={{textAlign: 'center'}}>
+      <Box sx={{textAlign: 'center', mt: 4}}>
         <Typography variant="body2" color="text.secondary">
           Already a member?{' '}
           <Link href="/login" style={{color: '#F20E02', textDecoration: 'none'}}>

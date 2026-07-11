@@ -89,13 +89,14 @@ export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
   };
 
   return (
+    <Box className="dec-page">
     <Container maxWidth="md" sx={{py: 6}}>
-      <Paper elevation={3} sx={{p: 4}}>
+      <Paper className="dec-card" elevation={0} sx={{p: {xs: 3, md: 5}}}>
         <Box sx={{textAlign: 'center'}}>
           {status === 'loading' && (
             <>
               <CircularProgress size={60} sx={{mb: 3}} />
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h1" sx={{fontSize: {xs: 44, md: 64}}} gutterBottom>
                 Processing Your Membership
               </Typography>
               <Typography variant="body1" color="text.secondary" paragraph>
@@ -110,7 +111,7 @@ export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
           {status === 'ready' && (
             <>
               <CheckCircle sx={{fontSize: 60, color: 'success.main', mb: 2}} />
-              <Typography variant="h5" gutterBottom color="success.main">
+              <Typography variant="h1" sx={{fontSize: {xs: 44, md: 64}}} gutterBottom color="success.main">
                 Membership Activated!
               </Typography>
               <Typography variant="body1" color="text.secondary">
@@ -165,5 +166,6 @@ export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
         </Box>
       </Paper>
     </Container>
+    </Box>
   );
 }

@@ -30,7 +30,7 @@ jobs:
       - name: TypeScript check
         run: pnpm tsc
 
-      - name: TS GO check
+      - name: TypeScript alias check
         run: pnpm tsgo
 
       - name: Run tests

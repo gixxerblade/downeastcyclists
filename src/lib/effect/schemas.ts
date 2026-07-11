@@ -245,6 +245,16 @@ export const MembershipStats = S.Struct({
   familyCount: S.Number,
   monthlyRevenue: S.Number,
   yearlyRevenue: S.Number,
+  expiringSoonMembers: S.optional(S.Number),
+  newMembersThisMonth: S.optional(S.Number),
+  membershipGrowth: S.optional(
+    S.Array(
+      S.Struct({
+        month: S.String,
+        count: S.Number,
+      }),
+    ),
+  ),
   updatedAt: S.String,
 });
 export type MembershipStats = S.Schema.Type<typeof MembershipStats>;
@@ -329,6 +339,23 @@ export const StripeDataSnapshot = S.Struct({
 });
 export type StripeDataSnapshot = S.Schema.Type<typeof StripeDataSnapshot>;
 
+export const ReconciliationLookupDiagnostics = S.Struct({
+  stripeSecretKeyMode: S.Literal('live', 'test', 'missing', 'unknown'),
+  databaseStripeCustomerId: S.optional(S.String),
+  databaseStripeSubscriptionId: S.optional(S.String),
+  customerRetrieveAttempted: S.Boolean,
+  customerRetrieveSucceeded: S.Boolean,
+  customerRetrieveError: S.optional(S.String),
+  subscriptionRetrieveAttempted: S.Boolean,
+  subscriptionRetrieveSucceeded: S.Boolean,
+  subscriptionRetrieveError: S.optional(S.String),
+  emailCustomerCount: S.Number,
+  subscriptionLookupCount: S.Number,
+});
+export type ReconciliationLookupDiagnostics = S.Schema.Type<
+  typeof ReconciliationLookupDiagnostics
+>;
+
 // Database data snapshot for comparison
 export const DatabaseDataSnapshot = S.Struct({
   userId: S.String,
@@ -364,6 +391,7 @@ export const ReconciliationReport = S.Struct({
   discrepancies: S.Array(DiscrepancyType),
   canReconcile: S.Boolean,
   reconcileActions: S.Array(S.String), // Human-readable list of actions to take
+  lookupDiagnostics: S.optional(ReconciliationLookupDiagnostics),
 });
 export type ReconciliationReport = S.Schema.Type<typeof ReconciliationReport>;
 

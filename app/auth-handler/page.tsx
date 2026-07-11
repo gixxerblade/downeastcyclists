@@ -31,17 +31,18 @@ function AuthHandlerContent() {
   }, [searchParams, router]);
 
   return (
-    <Container maxWidth="xs">
-      <Box
+    <Container maxWidth="xs" className="dec-page">
+      <Box className="dec-card"
         sx={{
           marginTop: 8,
+          p: 4,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
         <CircularProgress />
-        <Typography sx={{mt: 2}}>Processing authentication...</Typography>
+        <Typography sx={{mt: 2, fontWeight: 700}}>Processing authentication...</Typography>
       </Box>
     </Container>
   );

@@ -54,6 +54,7 @@ export const createTestStripeService = (
     Effect.die('Not mocked'),
   ) as unknown as StripeServiceType['addInvoiceItem'],
   getCustomerByEmail: vi.fn(() => Effect.succeed(null)),
+  listCustomersByEmail: vi.fn(() => Effect.succeed([])),
   listCustomerSubscriptions: vi.fn(() => Effect.succeed([])),
   cancelSubscription: vi.fn(() =>
     Effect.die('Not mocked'),

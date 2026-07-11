@@ -168,7 +168,7 @@ export function MembershipManagement() {
     <Box sx={{display: 'flex', flexDirection: 'column', gap: 3}}>
       {/* Stats Section */}
       <Box>
-        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: {xs: 'stretch', lg: 'center'}, mb: 2, gap: 2, flexDirection: {xs: 'column', lg: 'row'}}}>
           <Typography variant="h5" component="h2">
             Membership Statistics
           </Typography>
@@ -192,16 +192,17 @@ export function MembershipManagement() {
 
       {/* Members Section */}
       <Box>
-        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: {xs: 'stretch', lg: 'center'}, mb: 2, gap: 2, flexDirection: {xs: 'column', lg: 'row'}}}>
           <Typography variant="h5" component="h2">
             Members
           </Typography>
-          <Box sx={{display: 'flex', gap: 1}}>
+          <Box sx={{display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: {xs: 'flex-start', lg: 'flex-end'}}}>
             <Button
               variant="contained"
               color="primary"
               onClick={() => setCreateModalOpen(true)}
               startIcon={<Add />}
+              sx={{order: {xs: 1, lg: 5}}}
             >
               Create Member
             </Button>
@@ -209,6 +210,7 @@ export function MembershipManagement() {
               variant="outlined"
               onClick={() => setBulkImportModalOpen(true)}
               startIcon={<Upload />}
+              sx={{order: {xs: 2, lg: 1}}}
             >
               Bulk Import
             </Button>
@@ -216,6 +218,7 @@ export function MembershipManagement() {
               variant="outlined"
               onClick={() => setExpiringReportOpen(true)}
               startIcon={<Schedule />}
+              sx={{order: {xs: 3, lg: 2}}}
             >
               Expiring Report
             </Button>
@@ -224,6 +227,7 @@ export function MembershipManagement() {
               color="success"
               onClick={() => handleExport('csv')}
               disabled={exporting}
+              sx={{order: {xs: 4, lg: 3}}}
             >
               {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
@@ -232,6 +236,7 @@ export function MembershipManagement() {
               color="success"
               onClick={() => handleExport('json')}
               disabled={exporting}
+              sx={{order: {xs: 5, lg: 4}}}
             >
               {exporting ? 'Exporting...' : 'Export JSON'}
             </Button>
@@ -239,7 +244,7 @@ export function MembershipManagement() {
         </Box>
 
         {/* Search and Filters */}
-        <Paper sx={{p: 3, mb: 2}}>
+        <Paper className="dec-card" sx={{p: 3, mb: 2}}>
           <Grid container spacing={2}>
             <Grid size={{xs: 12, md: 3}}>
               <TextField
