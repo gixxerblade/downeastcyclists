@@ -17,8 +17,8 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "tsc": "tsc --noEmit -p tsconfig.json",
-    "tsgo": "tsc --noEmit -p tsconfig.json",
+    "tsc": "node node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
+    "tsgo": "node node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -78,6 +78,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native": "npm:typescript@7.0.2",
     "@vitest/coverage-v8": "^4.0.17",
     "autoprefixer": "^10.0.1",
     "cf-content-types-generator": "2.15.5",
@@ -89,7 +90,7 @@
     "postcss": "8.5.3",
     "tailwindcss": "^3",
     "tsx": "^4.21.0",
-    "typescript": "7.0.2",
+    "typescript": "5.8.2",
     "vitest": "^4.0.17",
     "vitest-mock-extended": "^3.1.0"
   }
