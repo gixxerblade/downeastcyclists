@@ -68,6 +68,9 @@ export function createStatsMethods() {
             familyCount: row.familyCount,
             monthlyRevenue: Number(row.monthlyRevenue),
             yearlyRevenue: Number(row.yearlyRevenue),
+            expiringSoonMembers: undefined,
+            newMembersThisMonth: undefined,
+            membershipGrowth: undefined,
             updatedAt: row.updatedAt.toISOString(),
           } satisfies MembershipStats;
         },

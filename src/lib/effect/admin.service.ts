@@ -187,6 +187,14 @@ function resolvePlanType(priceId: string): 'individual' | 'family' {
   return 'individual';
 }
 
+function getStripeSecretKeyMode(): 'live' | 'test' | 'missing' | 'unknown' {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) return 'missing';
+  if (secretKey.startsWith('sk_live_')) return 'live';
+  if (secretKey.startsWith('sk_test_')) return 'test';
+  return 'unknown';
+}
+
 function formatTimestamp(timestamp: unknown): string {
   if (timestamp instanceof Date) {
     return timestamp.toISOString();
@@ -197,15 +205,71 @@ function formatTimestamp(timestamp: unknown): string {
   return new Date(timestamp as number).toISOString();
 }
 
+function describeStripeError(error: StripeError): string {
+  const cause = error.cause;
+  const causeMessage =
+    cause instanceof Error
+      ? cause.message
+      : typeof cause === 'object' && cause !== null && 'message' in cause
+        ? String((cause as {message: unknown}).message)
+        : undefined;
+
+  return causeMessage ? `${error.message}: ${causeMessage}` : error.message;
+}
+
+function getSubscriptionPeriodDates(subscription: Stripe.Subscription): {
+  periodStart?: number;
+  periodEnd?: number;
+} {
+  const subscriptionData = subscription as unknown as Record<string, unknown>;
+  const subscriptionItemData =
+    (subscription.items.data[0] as unknown as Record<string, unknown> | undefined) || {};
+
+  return {
+    periodStart:
+      (subscriptionData.current_period_start as number | undefined) ||
+      (subscriptionItemData.current_period_start as number | undefined),
+    periodEnd:
+      (subscriptionData.current_period_end as number | undefined) ||
+      (subscriptionItemData.current_period_end as number | undefined),
+  };
+}
+
+function buildStripeDataSnapshot(
+  customerId: string,
+  customerEmail: string,
+  subscription: Stripe.Subscription,
+): StripeDataSnapshot | null {
+  const priceId = subscription.items.data[0]?.price.id || '';
+  const {periodStart, periodEnd} = getSubscriptionPeriodDates(subscription);
+
+  if (!periodStart || !periodEnd) {
+    return null;
+  }
+
+  return {
+    customerId,
+    customerEmail,
+    subscriptionId: subscription.id,
+    subscriptionStatus: subscription.status,
+    priceId,
+    planType: resolvePlanType(priceId),
+    currentPeriodStart: new Date(periodStart * 1000).toISOString(),
+    currentPeriodEnd: new Date(periodEnd * 1000).toISOString(),
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+  };
+}
+
 function detectDiscrepancies(
   stripeData: StripeDataSnapshot | null,
   dbData: DatabaseDataSnapshot | null,
+  stripeCustomerFound = false,
 ): DiscrepancyType[] {
   const discrepancies: DiscrepancyType[] = [];
 
   // No Stripe data
   if (!stripeData) {
-    discrepancies.push('NO_STRIPE_CUSTOMER');
+    discrepancies.push(stripeCustomerFound ? 'NO_STRIPE_SUBSCRIPTION' : 'NO_STRIPE_CUSTOMER');
     return discrepancies;
   }
 
@@ -332,65 +396,124 @@ const make = Effect.gen(function* () {
     email: string,
   ): Effect.Effect<ReconciliationReport, StripeError | DatabaseError> =>
     Effect.gen(function* () {
-      // Fetch Stripe data
-      const stripeCustomer = yield* stripe.getCustomerByEmail(email);
+      // Fetch database data first so we can prefer the stored Stripe customer ID.
+      const dbUser = yield* db.getUserByEmail(email);
+      const dbMembership = dbUser ? yield* db.getActiveMembership(dbUser.id) : null;
+
+      const lookupDiagnostics = {
+        stripeSecretKeyMode: getStripeSecretKeyMode(),
+        databaseStripeCustomerId: dbUser?.stripeCustomerId,
+        databaseStripeSubscriptionId: dbMembership?.stripeSubscriptionId,
+        customerRetrieveAttempted: Boolean(dbUser?.stripeCustomerId),
+        customerRetrieveSucceeded: false,
+        customerRetrieveError: undefined as string | undefined,
+        subscriptionRetrieveAttempted: Boolean(dbMembership?.stripeSubscriptionId),
+        subscriptionRetrieveSucceeded: false,
+        subscriptionRetrieveError: undefined as string | undefined,
+        emailCustomerCount: 0,
+        subscriptionLookupCount: 0,
+      };
+
+      const customerMap = new Map<string, Stripe.Customer>();
       let stripeData: StripeDataSnapshot | null = null;
 
-      if (stripeCustomer) {
-        const subscriptions = yield* stripe.listCustomerSubscriptions(stripeCustomer.id);
+      if (dbUser?.stripeCustomerId) {
+        const storedCustomer = yield* pipe(
+          stripe.getCustomer(dbUser.stripeCustomerId),
+          Effect.map((customer) => ({customer, error: null as StripeError | null})),
+          Effect.catchTag('StripeError', (error) =>
+            Effect.succeed({customer: null, error} as const),
+          ),
+        );
+        if (storedCustomer.customer) {
+          lookupDiagnostics.customerRetrieveSucceeded = true;
+          customerMap.set(storedCustomer.customer.id, storedCustomer.customer);
+        } else if (storedCustomer.error) {
+          lookupDiagnostics.customerRetrieveError = describeStripeError(storedCustomer.error);
+        }
+      }
+
+      if (dbMembership?.stripeSubscriptionId) {
+        const storedSubscription = yield* pipe(
+          stripe.retrieveSubscription(dbMembership.stripeSubscriptionId),
+          Effect.map((subscription) => ({subscription, error: null as StripeError | null})),
+          Effect.catchTag('StripeError', (error) =>
+            Effect.succeed({subscription: null, error} as const),
+          ),
+        );
+
+        if (storedSubscription.subscription) {
+          lookupDiagnostics.subscriptionRetrieveSucceeded = true;
+          const subscriptionCustomer = storedSubscription.subscription.customer;
+          const customerId =
+            typeof subscriptionCustomer === 'string'
+              ? subscriptionCustomer
+              : subscriptionCustomer?.id || dbUser?.stripeCustomerId || '';
+          const customer = customerMap.get(customerId);
+
+          stripeData = buildStripeDataSnapshot(
+            customerId,
+            customer?.email || dbUser?.email || email,
+            storedSubscription.subscription,
+          );
+        } else if (storedSubscription.error) {
+          lookupDiagnostics.subscriptionRetrieveError = describeStripeError(
+            storedSubscription.error,
+          );
+        }
+      }
+
+      const emailCustomers = yield* stripe.listCustomersByEmail(email);
+      lookupDiagnostics.emailCustomerCount = emailCustomers.length;
+      emailCustomers.forEach((customer) => customerMap.set(customer.id, customer));
+
+      const stripeCustomers = Array.from(customerMap.values());
+      let stripeCustomer: Stripe.Customer | null = null;
+
+      for (const candidateCustomer of stripeData ? [] : stripeCustomers) {
+        const subscriptions = yield* stripe.listCustomerSubscriptions(candidateCustomer.id);
+        lookupDiagnostics.subscriptionLookupCount += subscriptions.length;
         const activeSubscription =
-          subscriptions.find((sub) => sub.status === 'active' || sub.status === 'past_due') ||
+          subscriptions.find(
+            (sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due',
+          ) ||
           subscriptions[0];
 
         if (activeSubscription) {
-          const priceId = activeSubscription.items.data[0]?.price.id || '';
-          const subscriptionData = activeSubscription as unknown as Record<string, unknown>;
+          stripeCustomer = candidateCustomer;
+          stripeData = buildStripeDataSnapshot(
+            stripeCustomer.id,
+            stripeCustomer.email || email,
+            activeSubscription,
+          );
 
-          // Safely convert timestamps to ISO strings
-          const periodStart = subscriptionData.current_period_start as number | undefined;
-          const periodEnd = subscriptionData.current_period_end as number | undefined;
-
-          if (!periodStart || !periodEnd) {
+          if (!stripeData) {
             return yield* new StripeError({
               code: 'INVALID_SUBSCRIPTION_DATA',
               message: `Subscription ${activeSubscription.id} missing period dates`,
             });
           }
-
-          stripeData = {
-            customerId: stripeCustomer.id,
-            customerEmail: stripeCustomer.email || email,
-            subscriptionId: activeSubscription.id,
-            subscriptionStatus: activeSubscription.status,
-            priceId,
-            planType: resolvePlanType(priceId),
-            currentPeriodStart: new Date(periodStart * 1000).toISOString(),
-            currentPeriodEnd: new Date(periodEnd * 1000).toISOString(),
-            cancelAtPeriodEnd: activeSubscription.cancel_at_period_end,
-          };
+          break;
         }
       }
 
-      // Fetch database data
-      const dbUser = yield* db.getUserByEmail(email);
       let databaseData: DatabaseDataSnapshot | null = null;
 
       if (dbUser) {
-        const membership = yield* db.getActiveMembership(dbUser.id);
         const card = yield* db.getMembershipCard(dbUser.id);
 
         databaseData = {
           userId: dbUser.id,
           userEmail: dbUser.email,
-          membership: membership
+          membership: dbMembership
             ? {
-                id: membership.id,
-                stripeSubscriptionId: membership.stripeSubscriptionId,
-                status: membership.status,
-                planType: membership.planType,
-                startDate: formatTimestamp(membership.startDate),
-                endDate: formatTimestamp(membership.endDate),
-                autoRenew: membership.autoRenew,
+                id: dbMembership.id,
+                stripeSubscriptionId: dbMembership.stripeSubscriptionId,
+                status: dbMembership.status,
+                planType: dbMembership.planType,
+                startDate: formatTimestamp(dbMembership.startDate),
+                endDate: formatTimestamp(dbMembership.endDate),
+                autoRenew: dbMembership.autoRenew,
               }
             : null,
           card: card
@@ -406,7 +529,7 @@ const make = Effect.gen(function* () {
       }
 
       // Detect discrepancies
-      const discrepancies = detectDiscrepancies(stripeData, databaseData);
+      const discrepancies = detectDiscrepancies(stripeData, databaseData, stripeCustomers.length > 0);
       const reconcileActions = generateReconcileActions(discrepancies, stripeData, databaseData);
 
       return {
@@ -419,6 +542,7 @@ const make = Effect.gen(function* () {
           discrepancies.length > 0 &&
           !discrepancies.includes('NO_STRIPE_SUBSCRIPTION'),
         reconcileActions,
+        lookupDiagnostics,
       };
     });
 

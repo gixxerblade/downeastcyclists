@@ -65,7 +65,7 @@ function ResetPasswordContent() {
   if (codeValid === null) {
     return (
       <Container maxWidth="xs">
-        <Box sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        <Box className="dec-card" sx={{marginTop: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
           <CircularProgress />
           <Typography sx={{mt: 2}}>Verifying reset link...</Typography>
         </Box>
@@ -76,7 +76,7 @@ function ResetPasswordContent() {
   if (!codeValid) {
     return (
       <Container maxWidth="xs">
-        <Box sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        <Box className="dec-card" sx={{marginTop: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
           <Alert severity="error" sx={{width: '100%', mb: 2}}>
             Invalid or expired reset link.
           </Alert>
@@ -94,7 +94,7 @@ function ResetPasswordContent() {
   if (resetMutation.isSuccess) {
     return (
       <Container maxWidth="xs">
-        <Box sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        <Box className="dec-card" sx={{marginTop: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
           <Alert severity="success" sx={{width: '100%', mb: 2}}>
             Password set successfully!
           </Alert>
@@ -107,9 +107,13 @@ function ResetPasswordContent() {
   }
 
   return (
+    <main className="dec-page">
     <Container maxWidth="xs">
-      <Box sx={{marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-        <Typography component="h1" variant="h5" gutterBottom>
+      <Box className="dec-card" sx={{marginTop: 8, mb: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        <Typography variant="overline" sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}>
+          ACCOUNT ACCESS
+        </Typography>
+        <Typography component="h1" variant="h1" sx={{fontSize: 54}} gutterBottom>
           Set your password
         </Typography>
         {email && (
@@ -159,6 +163,7 @@ function ResetPasswordContent() {
         </Box>
       </Box>
     </Container>
+    </main>
   );
 }
 

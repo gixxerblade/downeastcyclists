@@ -1,6 +1,6 @@
 'use client';
 
-import {Container, Typography, Button, CircularProgress} from '@mui/material';
+import {Typography, Button, CircularProgress} from '@mui/material';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import React, {Suspense} from 'react';
@@ -11,8 +11,8 @@ function ThanksContent() {
   const hasError = searchParams?.get('error') === 'true';
 
   return (
-    <div className="text-center">
-      <Typography variant="h3" component="h1" gutterBottom align="center">
+    <div className="dec-card mx-auto max-w-2xl p-8 text-center md:p-10">
+      <Typography variant="h1" sx={{fontSize: {xs: 56, md: 82}, mb: 2}}>
         {hasError ? 'Oops!' : 'Thank You!'}
       </Typography>
 
@@ -26,7 +26,7 @@ function ThanksContent() {
         </Typography>
       )}
 
-      <div className="mt-8 flex justify-center space-x-4">
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
         {hasError && (
           <Link href="/contact" passHref>
             <Button variant="contained" color="secondary">
@@ -48,7 +48,8 @@ function ThanksContent() {
 // Page component with Suspense boundary
 export default function Thanks() {
   return (
-    <Container maxWidth="md" sx={{paddingTop: 8, paddingBottom: 8}}>
+    <main className="dec-page">
+      <section className="dec-container py-16 md:py-20">
       <Suspense
         fallback={
           <div className="flex justify-center items-center" style={{minHeight: '200px'}}>
@@ -58,6 +59,7 @@ export default function Thanks() {
       >
         <ThanksContent />
       </Suspense>
-    </Container>
+      </section>
+    </main>
   );
 }

@@ -38,7 +38,7 @@ export function DigitalCard({card, loading}: DigitalCardProps) {
     return (
       <Card
         sx={{
-          background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)',
+          background: 'linear-gradient(135deg, #16130F 0%, #8f0801 100%)',
           color: 'white',
           maxWidth: 400,
           mx: 'auto',
@@ -91,7 +91,7 @@ export function DigitalCard({card, loading}: DigitalCardProps) {
       <Card
         ref={cardRef}
         sx={{
-          background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)',
+          background: 'linear-gradient(135deg, #16130F 0%, #8f0801 100%)',
           color: 'white',
         }}
       >
@@ -99,7 +99,7 @@ export function DigitalCard({card, loading}: DigitalCardProps) {
           {/* Header */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6" fontWeight="bold">
-              Down East Cyclists
+              DOWN EAST CYCLISTS
             </Typography>
             <Chip label={card.status} color={statusColors[card.status] || 'default'} size="small" />
           </Box>

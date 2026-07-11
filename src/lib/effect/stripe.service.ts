@@ -41,6 +41,10 @@ export interface StripeService {
     email: string,
   ) => Effect.Effect<Stripe.Customer | null, StripeError>;
 
+  readonly listCustomersByEmail: (
+    email: string,
+  ) => Effect.Effect<Stripe.Customer[], StripeError>;
+
   readonly listCustomerSubscriptions: (
     customerId: string,
   ) => Effect.Effect<Stripe.Subscription[], StripeError>;
@@ -177,7 +181,9 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: async () => {
           const {stripe} = getClient();
-          return stripe.subscriptions.retrieve(subscriptionId);
+          return stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price'],
+          });
         },
         catch: (error) =>
           new StripeError({
@@ -284,13 +290,44 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: async () => {
           const {stripe} = getClient();
-          const customers = await stripe.customers.list({email, limit: 1});
+          const customers = await stripe.customers.list({email: email.trim().toLowerCase(), limit: 1});
           return customers.data[0] || null;
         },
         catch: (error) =>
           new StripeError({
             code: 'CUSTOMER_SEARCH_FAILED',
             message: `Failed to search for customer by email ${email}`,
+            cause: error,
+          }),
+      }),
+
+    listCustomersByEmail: (email) =>
+      Effect.tryPromise({
+        try: async () => {
+          const {stripe} = getClient();
+          const normalizedEmail = email.trim().toLowerCase();
+          const customerMap = new Map<string, Stripe.Customer>();
+          const listedCustomers = await stripe.customers.list({email: normalizedEmail, limit: 10});
+
+          listedCustomers.data.forEach((customer) => customerMap.set(customer.id, customer));
+
+          try {
+            const escapedEmail = normalizedEmail.replace(/'/g, "\\'");
+            const searchedCustomers = await stripe.customers.search({
+              query: `email:'${escapedEmail}'`,
+              limit: 10,
+            });
+            searchedCustomers.data.forEach((customer) => customerMap.set(customer.id, customer));
+          } catch (error) {
+            console.warn('Stripe customer search fallback failed:', error);
+          }
+
+          return Array.from(customerMap.values());
+        },
+        catch: (error) =>
+          new StripeError({
+            code: 'CUSTOMER_SEARCH_FAILED',
+            message: `Failed to search for customers by email ${email}`,
             cause: error,
           }),
       }),

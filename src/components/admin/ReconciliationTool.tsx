@@ -1,6 +1,6 @@
 'use client';
 
-import {SyncAlt} from '@mui/icons-material';
+import {SyncAlt, WarningAmber} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -54,6 +54,19 @@ interface ReconciliationReport {
   discrepancies: string[];
   canReconcile: boolean;
   reconcileActions: string[];
+  lookupDiagnostics?: {
+    stripeSecretKeyMode: 'live' | 'test' | 'missing' | 'unknown';
+    databaseStripeCustomerId?: string;
+    databaseStripeSubscriptionId?: string;
+    customerRetrieveAttempted: boolean;
+    customerRetrieveSucceeded: boolean;
+    customerRetrieveError?: string;
+    subscriptionRetrieveAttempted: boolean;
+    subscriptionRetrieveSucceeded: boolean;
+    subscriptionRetrieveError?: string;
+    emailCustomerCount: number;
+    subscriptionLookupCount: number;
+  };
 }
 
 interface ReconciliationResult {
@@ -116,8 +129,21 @@ export function ReconciliationTool() {
     }
   };
 
+  const stripeMissingMessage = report?.discrepancies.includes('NO_STRIPE_CUSTOMER')
+    ? 'No Stripe customer or subscription found'
+    : 'No Stripe subscription found';
+  const lookupDiagnostics = report?.lookupDiagnostics ?? {
+    stripeSecretKeyMode: 'unknown' as const,
+    customerRetrieveAttempted: false,
+    customerRetrieveSucceeded: false,
+    subscriptionRetrieveAttempted: false,
+    subscriptionRetrieveSucceeded: false,
+    emailCustomerCount: 0,
+    subscriptionLookupCount: 0,
+  };
+
   return (
-    <Card>
+    <Card className="dec-card" sx={{bgcolor: 'var(--dec-surface)'}}>
       <CardContent>
         <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 1}}>
           <SyncAlt color="primary" />
@@ -160,7 +186,7 @@ export function ReconciliationTool() {
 
             {/* Discrepancies */}
             {report.discrepancies.length > 0 && report.discrepancies[0] !== 'NO_DISCREPANCY' ? (
-              <Alert severity="warning" sx={{mb: 2}}>
+              <Alert severity="warning" icon={<WarningAmber />} sx={{mb: 2, borderRadius: 2}}>
                 <AlertTitle>Discrepancies Found</AlertTitle>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {report.discrepancies.map((d) => (
@@ -185,7 +211,7 @@ export function ReconciliationTool() {
                   <Box
                     sx={{
                       fontSize: '0.875rem',
-                      bgcolor: 'grey.50',
+                      bgcolor: 'color-mix(in srgb, var(--dec-bg) 80%, transparent)',
                       p: 2,
                       borderRadius: 1,
                       '& > div': {mb: 0.5},
@@ -222,7 +248,7 @@ export function ReconciliationTool() {
                   </Box>
                 ) : (
                   <Alert severity="error" variant="outlined">
-                    No Stripe subscription found
+                    {stripeMissingMessage}
                   </Alert>
                 )}
               </Box>
@@ -236,7 +262,7 @@ export function ReconciliationTool() {
                   <Box
                     sx={{
                       fontSize: '0.875rem',
-                      bgcolor: 'grey.50',
+                      bgcolor: 'color-mix(in srgb, var(--dec-bg) 80%, transparent)',
                       p: 2,
                       borderRadius: 1,
                       '& > div': {mb: 0.5},
@@ -289,6 +315,59 @@ export function ReconciliationTool() {
                 )}
               </Box>
             </Stack>
+
+            <Box
+              sx={{
+                fontSize: '0.8125rem',
+                bgcolor: 'color-mix(in srgb, var(--dec-bg) 80%, transparent)',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: 2,
+                mb: 2,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{mb: 1}}>
+                Lookup Diagnostics
+              </Typography>
+              <Stack spacing={0.5}>
+                <div>
+                  <strong>Stripe key mode:</strong> {lookupDiagnostics.stripeSecretKeyMode}
+                </div>
+                <div>
+                  <strong>DB customer ID:</strong>{' '}
+                  {lookupDiagnostics.databaseStripeCustomerId || 'blank'}
+                </div>
+                <div>
+                  <strong>DB subscription ID:</strong>{' '}
+                  {lookupDiagnostics.databaseStripeSubscriptionId || 'blank'}
+                </div>
+                <div>
+                  <strong>Customer retrieve:</strong>{' '}
+                  {lookupDiagnostics.customerRetrieveAttempted
+                    ? lookupDiagnostics.customerRetrieveSucceeded
+                      ? 'success'
+                      : `failed${lookupDiagnostics.customerRetrieveError ? ` — ${lookupDiagnostics.customerRetrieveError}` : ''}`
+                    : 'not attempted'}
+                </div>
+                <div>
+                  <strong>Subscription retrieve:</strong>{' '}
+                  {lookupDiagnostics.subscriptionRetrieveAttempted
+                    ? lookupDiagnostics.subscriptionRetrieveSucceeded
+                      ? 'success'
+                      : `failed${lookupDiagnostics.subscriptionRetrieveError ? ` — ${lookupDiagnostics.subscriptionRetrieveError}` : ''}`
+                    : 'not attempted'}
+                </div>
+                <div>
+                  <strong>Email search customers:</strong>{' '}
+                  {lookupDiagnostics.emailCustomerCount}
+                </div>
+                <div>
+                  <strong>Listed subscriptions:</strong>{' '}
+                  {lookupDiagnostics.subscriptionLookupCount}
+                </div>
+              </Stack>
+            </Box>
 
             {/* Actions Preview */}
             {report.reconcileActions.length > 0 && report.canReconcile && (
