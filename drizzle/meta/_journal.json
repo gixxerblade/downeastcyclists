@@ -8,6 +8,13 @@
       "when": 1771192998922,
       "tag": "0000_steep_plazm",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783980440012,
+      "tag": "0001_supreme_leech",
+      "breakpoints": true
     }
   ]
 }

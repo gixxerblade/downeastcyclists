@@ -201,3 +201,22 @@ export const auditLog = pgTable(
     index('audit_log_created_at_idx').on(table.createdAt),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// 9. Meetup Events
+// ---------------------------------------------------------------------------
+
+export const meetupEvents = pgTable(
+  'meetup_events',
+  {
+    guid: text('guid').primaryKey(),
+    title: text('title').notNull(),
+    url: text('url').notNull(),
+    startDate: timestamp('start_date', {withTimezone: true}).notNull(),
+    endDate: timestamp('end_date', {withTimezone: true}),
+    location: text('location'),
+    description: text('description'),
+    lastSeenAt: timestamp('last_seen_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [index('meetup_events_start_date_idx').on(table.startDate)],
+);

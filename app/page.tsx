@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import TrailStatus from '@/src/components/TrailStatus';
 import {getHeroVideo} from '@/src/contentful/video';
-import {getUpcomingMeetupRides} from '@/src/lib/meetup-rss';
+import {getUpcomingMeetupRides} from '@/src/lib/meetup/events';
 
 const meetupUrl = 'https://www.meetup.com/down-east-cyclists/events/calendar/';
 
