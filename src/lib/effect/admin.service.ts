@@ -7,6 +7,12 @@ import {
   hasCurrentMembership,
   hasDashboardCapability,
 } from '@/src/lib/access-control';
+import {getPlanNameForType} from '@/src/lib/membership-plans-config';
+import {
+  getMembershipDaysUntilExpiration,
+  isCurrentMembershipStatus,
+  parseMembershipDate,
+} from '@/src/lib/membership-status';
 import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 import type {
   AuditEntry,
@@ -174,6 +180,12 @@ export interface AdminService {
   readonly sendPasswordReset: (
     userId: string,
   ) => Effect.Effect<void, MemberNotFoundError | DatabaseError | AuthError | EmailError>;
+
+  readonly sendRenewalEmail: (
+    userId: string,
+    adminUid: string,
+    adminEmail?: string,
+  ) => Effect.Effect<void, MemberNotFoundError | DatabaseError | EmailError>;
 }
 
 // Service tag
@@ -216,6 +228,15 @@ function describeStripeError(error: StripeError): string {
         : undefined;
 
   return causeMessage ? `${error.message}: ${causeMessage}` : error.message;
+}
+
+function getSiteUrl() {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '');
 }
 
 function getSubscriptionPeriodDates(subscription: Stripe.Subscription): {
@@ -1447,6 +1468,47 @@ const make = Effect.gen(function* () {
           to: user.email,
           name: user.name,
           passwordSetupLink: resetLink,
+        });
+      }),
+
+    sendRenewalEmail: (userId, adminUid, adminEmail) =>
+      Effect.gen(function* () {
+        const user = yield* db.getUser(userId);
+        if (!user) {
+          return yield* new MemberNotFoundError({
+            userId,
+            message: 'Member not found',
+          });
+        }
+
+        const membership = yield* db.getActiveMembership(userId);
+        const renewalUrl = `${getSiteUrl()}/renew`;
+        const endDate = membership ? parseMembershipDate(membership.endDate) : null;
+        const daysUntilExpiration = membership
+          ? getMembershipDaysUntilExpiration(membership.endDate)
+          : null;
+        const reminderDays =
+          daysUntilExpiration === 30 || daysUntilExpiration === 60 || daysUntilExpiration === 90
+            ? daysUntilExpiration
+            : undefined;
+
+        yield* emailService.sendRenewalEmail({
+          to: user.email,
+          name: user.name,
+          renewalUrl,
+          expirationDate: endDate?.toISOString(),
+          planName: membership ? getPlanNameForType(membership.planType) : undefined,
+          daysUntilExpiration: isCurrentMembershipStatus(membership?.status, membership?.endDate)
+            ? reminderDays
+            : undefined,
+          idempotencyKey: `admin-renewal/${user.id}/${new Date().toISOString().slice(0, 10)}`,
+        });
+
+        yield* db.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
+          performedBy: adminUid,
+          performedByEmail: adminEmail,
+          action: 'RENEWAL_EMAIL_SENT',
+          timestamp: new Date().toISOString(),
         });
       }),
   });

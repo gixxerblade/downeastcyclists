@@ -8,6 +8,7 @@ import {
   Payment,
   NavigateBefore,
   NavigateNext,
+  MarkEmailUnread,
 } from '@mui/icons-material';
 import {
   Table,
@@ -42,6 +43,7 @@ interface MemberTableProps {
   onViewAudit?: (member: MemberWithMembership) => void;
   onViewPayments?: (member: MemberWithMembership) => void;
   onSendPasswordReset?: (member: MemberWithMembership) => void;
+  onSendRenewalEmail?: (member: MemberWithMembership) => void;
 }
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
@@ -70,6 +72,7 @@ export function MemberTable({
   onViewAudit,
   onViewPayments,
   onSendPasswordReset,
+  onSendRenewalEmail,
 }: MemberTableProps) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -143,6 +146,17 @@ export function MemberTable({
                             onClick={() => onSendPasswordReset(member)}
                           >
                             <LockReset fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {onSendRenewalEmail && (
+                        <Tooltip title="Send Renewal Email">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            onClick={() => onSendRenewalEmail(member)}
+                          >
+                            <MarkEmailUnread fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}

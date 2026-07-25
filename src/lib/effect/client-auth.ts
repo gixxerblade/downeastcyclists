@@ -48,6 +48,43 @@ export const getCurrentAccessRole = (): Effect.Effect<AccessRole, AuthError> =>
       }),
   });
 
+export const getPostLoginRedirectPath = (): Effect.Effect<string, AuthError> =>
+  Effect.gen(function* () {
+    const role = yield* getCurrentAccessRole();
+    if (role !== 'member') {
+      return '/dashboard';
+    }
+
+    return yield* Effect.tryPromise({
+      try: async () => {
+        const response = await fetch('/api/member/dashboard');
+        if (!response.ok) return '/member';
+
+        const data = await response.json();
+        if (
+          typeof data === 'object' &&
+          data !== null &&
+          'membership' in data &&
+          (!data.membership ||
+            (typeof data.membership === 'object' &&
+              data.membership !== null &&
+              'status' in data.membership &&
+              data.membership.status === 'expired'))
+        ) {
+          return '/renew';
+        }
+
+        return '/member';
+      },
+      catch: (error) =>
+        new AuthError({
+          code: 'POST_LOGIN_REDIRECT_FAILED',
+          message: 'Failed to determine where to send you after login',
+          cause: error,
+        }),
+    });
+  });
+
 // Sign in with email/password
 export const signInWithPassword = (
   credentials: LoginCredentials,

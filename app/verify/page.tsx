@@ -16,7 +16,7 @@ import {useEffect, useState} from 'react';
 
 import {
   completeMagicLinkSignIn,
-  getCurrentAccessRole,
+  getPostLoginRedirectPath,
   isValidSignInLink,
 } from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
@@ -31,8 +31,8 @@ export default function VerifyPage() {
   const verifyMutation = useMutation<unknown, AuthError, string>({
     mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
     onSuccess: async () => {
-      const role = await Effect.runPromise(getCurrentAccessRole());
-      router.replace(role === 'member' ? '/member' : '/dashboard');
+      const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+      router.replace(redirectPath);
     },
     onError: () => {
       // Clear the invalid link state and show error

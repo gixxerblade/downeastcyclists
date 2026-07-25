@@ -10,6 +10,10 @@ export const MembershipStatus = S.Literal(
   'incomplete_expired',
   'trialing', // Kept for Stripe compatibility, not used by DEC
   'unpaid',
+  'deleted',
+  'complimentary',
+  'legacy',
+  'expired',
 );
 export type MembershipStatus = S.Schema.Type<typeof MembershipStatus>;
 

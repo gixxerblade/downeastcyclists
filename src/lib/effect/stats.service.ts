@@ -1,5 +1,7 @@
 import {Context, Effect, Layer, pipe} from 'effect';
 
+import {isCurrentMembershipStatus} from '../membership-status';
+
 import {DatabaseService} from './database.service';
 import {DatabaseError} from './errors';
 import type {MembershipStats} from './schemas';
@@ -74,14 +76,10 @@ const make = Effect.gen(function* () {
 
       return {
         totalMembers: total,
-        activeMembers: members.filter(
-          (m) => m.membership?.status === 'active' || m.membership?.status === 'trialing',
+        activeMembers: members.filter((m) =>
+          isCurrentMembershipStatus(m.membership?.status, m.membership?.endDate, now),
         ).length,
-        expiredMembers: members.filter((m) => {
-          if (!m.membership) return false;
-          const endDate = toDate(m.membership.endDate);
-          return endDate < now && m.membership.status !== 'canceled';
-        }).length,
+        expiredMembers: members.filter((m) => m.membership?.status === 'expired').length,
         canceledMembers: members.filter((m) => m.membership?.status === 'canceled').length,
         individualCount: members.filter((m) => m.membership?.planType === 'individual').length,
         familyCount: members.filter((m) => m.membership?.planType === 'family').length,
@@ -92,7 +90,9 @@ const make = Effect.gen(function* () {
         }, 0),
         expiringSoonMembers: members.filter((m) => {
           if (!m.membership) return false;
-          if (m.membership.status !== 'active' && m.membership.status !== 'trialing') return false;
+          if (!isCurrentMembershipStatus(m.membership.status, m.membership.endDate, now)) {
+            return false;
+          }
           const endDate = toDate(m.membership.endDate);
           return endDate >= now && endDate <= thirtyDaysFromNow;
         }).length,
@@ -113,7 +113,11 @@ const make = Effect.gen(function* () {
     });
 
   return StatsService.of({
-    getStats: () => pipe(calculateStats(), Effect.catchAll(() => Effect.succeed(defaultStats))),
+    getStats: () =>
+      pipe(
+        calculateStats(),
+        Effect.catchAll(() => Effect.succeed(defaultStats)),
+      ),
 
     // Force recalculation from all memberships
     refreshStats: () =>

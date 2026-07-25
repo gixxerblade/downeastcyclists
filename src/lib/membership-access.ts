@@ -91,6 +91,36 @@ export const MEMBERSHIP_ACCESS_RULES: Record<MembershipStatus, MembershipAccessC
     showPaymentWarning: false,
     message: 'Invalid membership status.',
   },
+  deleted: {
+    status: 'deleted',
+    accessLevel: 'none',
+    canAccessMemberContent: false,
+    canAccessMemberDiscounts: false,
+    showPaymentWarning: false,
+    message: 'This membership record has been deleted.',
+  },
+  complimentary: {
+    status: 'complimentary',
+    accessLevel: 'full',
+    canAccessMemberContent: true,
+    canAccessMemberDiscounts: true,
+    showPaymentWarning: false,
+  },
+  legacy: {
+    status: 'legacy',
+    accessLevel: 'full',
+    canAccessMemberContent: true,
+    canAccessMemberDiscounts: true,
+    showPaymentWarning: false,
+  },
+  expired: {
+    status: 'expired',
+    accessLevel: 'none',
+    canAccessMemberContent: false,
+    canAccessMemberDiscounts: false,
+    showPaymentWarning: false,
+    message: 'Your membership has expired. Please renew to restore member access.',
+  },
 };
 
 /**
@@ -105,7 +135,12 @@ export function hasActiveMembershipAccess(status: MembershipStatus | null): bool
 
   // Active members have access
   // Past due members RETAIN access - they already paid for the current period
-  return status === 'active' || status === 'past_due';
+  return (
+    status === 'active' ||
+    status === 'past_due' ||
+    status === 'complimentary' ||
+    status === 'legacy'
+  );
 }
 
 /**

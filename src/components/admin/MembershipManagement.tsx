@@ -20,7 +20,13 @@ import {Effect} from 'effect';
 import {useState} from 'react';
 
 import type {StaffRole} from '@/src/lib/access-control';
-import {refreshStats, getStats, getMembers, sendPasswordReset} from '@/src/lib/effect/client-admin';
+import {
+  refreshStats,
+  getStats,
+  getMembers,
+  sendPasswordReset,
+  sendRenewalEmail,
+} from '@/src/lib/effect/client-admin';
 import type {
   AdminError,
   DatabaseError,
@@ -130,6 +136,20 @@ export function MembershipManagement({role}: {role: StaffRole}) {
       setResetEmailFeedback({message: 'Password reset email sent.', severity: 'success'}),
     onError: (err) =>
       setResetEmailFeedback({message: err.message || 'Failed to send email.', severity: 'error'}),
+  });
+
+  const renewalEmailMutation = useMutation<
+    void,
+    AdminError | EmailError | UnauthorizedError,
+    string
+  >({
+    mutationFn: (userId) => Effect.runPromise(sendRenewalEmail(userId)),
+    onSuccess: () => setResetEmailFeedback({message: 'Renewal email sent.', severity: 'success'}),
+    onError: (err) =>
+      setResetEmailFeedback({
+        message: err.message || 'Failed to send renewal email.',
+        severity: 'error',
+      }),
   });
 
   // Export members
@@ -308,6 +328,7 @@ export function MembershipManagement({role}: {role: StaffRole}) {
                 >
                   <MenuItem value="">All Statuses</MenuItem>
                   <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="expired">Expired</MenuItem>
                   <MenuItem value="past_due">Past Due</MenuItem>
                   <MenuItem value="canceled">Canceled</MenuItem>
                   <MenuItem value="incomplete">Incomplete</MenuItem>
@@ -392,6 +413,11 @@ export function MembershipManagement({role}: {role: StaffRole}) {
             onViewPayments={isAdmin ? (member) => setPaymentHistoryMember(member) : undefined}
             onSendPasswordReset={(member) =>
               member.user?.id && passwordResetMutation.mutate(member.user.id)
+            }
+            onSendRenewalEmail={
+              isAdmin
+                ? (member) => member.user?.id && renewalEmailMutation.mutate(member.user.id)
+                : undefined
             }
           />
         )}

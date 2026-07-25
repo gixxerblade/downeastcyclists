@@ -1,6 +1,7 @@
 import {Context, Effect, Layer, pipe} from 'effect';
 
 import {getPlanNameForType} from '../membership-plans-config';
+import {isCurrentMembershipStatus} from '../membership-status';
 
 import {AuthService} from './auth.service';
 import {DatabaseService} from './database.service';
@@ -87,7 +88,9 @@ const make = Effect.gen(function* () {
             daysRemaining,
           };
 
-          canManageSubscription = !!user.stripeCustomerId;
+          canManageSubscription =
+            !!user.stripeCustomerId &&
+            isCurrentMembershipStatus(membership.status, membership.endDate, now);
         }
 
         return {

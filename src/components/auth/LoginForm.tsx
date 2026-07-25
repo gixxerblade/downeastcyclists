@@ -7,7 +7,11 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {useState, useEffect} from 'react';
 
-import {getCurrentAccessRole, loginWithPassword, sendMagicLink} from '@/src/lib/effect/client-auth';
+import {
+  getPostLoginRedirectPath,
+  loginWithPassword,
+  sendMagicLink,
+} from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
 import {auth} from '@/src/utils/firebase';
 
@@ -56,8 +60,8 @@ export function LoginForm() {
           if (response.ok) {
             const data = await response.json();
             if (data.authenticated) {
-              const role = await Effect.runPromise(getCurrentAccessRole());
-              router.replace(role === 'member' ? '/member' : '/dashboard');
+              const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+              router.replace(redirectPath);
             }
           }
         } catch {
@@ -73,8 +77,8 @@ export function LoginForm() {
   const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
     onSuccess: async () => {
-      const role = await Effect.runPromise(getCurrentAccessRole());
-      router.replace(role === 'member' ? '/member' : '/dashboard');
+      const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+      router.replace(redirectPath);
     },
   });
 

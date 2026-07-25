@@ -1,3 +1,5 @@
+import {isCurrentMembershipStatus} from './membership-status';
+
 export type AccessRole = 'member' | 'organizer' | 'admin';
 
 export type StaffRole = Exclude<AccessRole, 'member'>;
@@ -70,7 +72,5 @@ export function hasCurrentMembership(
     return false;
   }
 
-  const endDate =
-    membership.endDate instanceof Date ? membership.endDate : new Date(String(membership.endDate));
-  return !Number.isNaN(endDate.getTime()) && endDate >= now;
+  return isCurrentMembershipStatus(membership?.status, membership?.endDate, now);
 }
