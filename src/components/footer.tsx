@@ -62,7 +62,11 @@ export default function Footer() {
             CLUB
           </h2>
           <div className="flex flex-col gap-3 text-sm font-medium">
-            <a href="https://www.meetup.com/down-east-cyclists/events/calendar/" target="_blank" rel="noreferrer noopener">
+            <a
+              href="https://www.meetup.com/down-east-cyclists/events/calendar/"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Rides & events ↗
             </a>
             <Link href="/trails/b3">Trails</Link>

@@ -135,7 +135,10 @@ export default async function Blog({searchParams}: {searchParams: Promise<{page:
           <div className="mt-10 flex items-center justify-center gap-3 sm:gap-5">
             <Link
               href={{pathname: '/blog', query: {page: page > 1 ? page - 1 : 1}}}
-              className={clsx('dec-secondary-button', page <= 1 && 'pointer-events-none opacity-50')}
+              className={clsx(
+                'dec-secondary-button',
+                page <= 1 && 'pointer-events-none opacity-50',
+              )}
             >
               Previous
             </Link>
@@ -144,7 +147,10 @@ export default async function Blog({searchParams}: {searchParams: Promise<{page:
             </span>
             <Link
               href={{pathname: '/blog', query: {page: page + 1}}}
-              className={clsx('dec-secondary-button', page >= lastPage && 'pointer-events-none opacity-50')}
+              className={clsx(
+                'dec-secondary-button',
+                page >= lastPage && 'pointer-events-none opacity-50',
+              )}
             >
               Next
             </Link>

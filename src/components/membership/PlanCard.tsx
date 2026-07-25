@@ -73,10 +73,18 @@ export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
         </Typography>
 
         <Box sx={{mb: 2}}>
-          <Typography variant="h3" component="span" sx={{color: selected && isFamily ? '#fff' : 'var(--dec-ink)'}}>
+          <Typography
+            variant="h3"
+            component="span"
+            sx={{color: selected && isFamily ? '#fff' : 'var(--dec-ink)'}}
+          >
             ${plan.price}
           </Typography>
-          <Typography variant="body2" component="span" sx={{color: selected && isFamily ? '#c4bcae' : 'var(--dec-muted)'}}>
+          <Typography
+            variant="body2"
+            component="span"
+            sx={{color: selected && isFamily ? '#c4bcae' : 'var(--dec-muted)'}}
+          >
             /year
           </Typography>
         </Box>

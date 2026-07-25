@@ -20,7 +20,13 @@ const statCards = [
 
 export function StatsCards({stats, loading}: StatsCardsProps) {
   return (
-    <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr 1fr', md: 'repeat(4, 1fr)', xl: 'repeat(7, 1fr)'}, gap: 2}}>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: {xs: '1fr 1fr', md: 'repeat(4, 1fr)', xl: 'repeat(7, 1fr)'},
+        gap: 2,
+      }}
+    >
       {statCards.map(({key, label, color}) => (
         <Card key={key} sx={{bgcolor: 'var(--dec-surface)', minHeight: 118}}>
           <CardContent>
@@ -30,7 +36,7 @@ export function StatsCards({stats, loading}: StatsCardsProps) {
             {loading ? (
               <Skeleton width={58} height={46} />
             ) : (
-              <Typography sx={{fontFamily: 'Anton, sans-serif', fontSize: 34, color, mt: .5}}>
+              <Typography sx={{fontFamily: 'Anton, sans-serif', fontSize: 34, color, mt: 0.5}}>
                 {stats?.[key] ?? ''}
               </Typography>
             )}
@@ -38,7 +44,14 @@ export function StatsCards({stats, loading}: StatsCardsProps) {
         </Card>
       ))}
 
-      <Card sx={{bgcolor: '#16130F', color: '#fff', minHeight: 118, gridColumn: {xs: 'span 2', md: 'span 2', xl: 'span 1'}}}>
+      <Card
+        sx={{
+          bgcolor: '#16130F',
+          color: '#fff',
+          minHeight: 118,
+          gridColumn: {xs: 'span 2', md: 'span 2', xl: 'span 1'},
+        }}
+      >
         <CardContent>
           <Typography variant="body2" sx={{color: '#B8B8BD'}}>
             Annual Revenue
@@ -46,7 +59,9 @@ export function StatsCards({stats, loading}: StatsCardsProps) {
           {loading ? (
             <Skeleton width={90} height={46} sx={{bgcolor: 'rgba(255,255,255,.16)'}} />
           ) : (
-            <Typography sx={{fontFamily: 'Anton, sans-serif', fontSize: 34, color: '#7CF3A0', mt: .5}}>
+            <Typography
+              sx={{fontFamily: 'Anton, sans-serif', fontSize: 34, color: '#7CF3A0', mt: 0.5}}
+            >
               {stats?.yearlyRevenue != null ? `$${stats.yearlyRevenue.toLocaleString()}` : ''}
             </Typography>
           )}

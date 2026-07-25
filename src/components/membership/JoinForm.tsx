@@ -195,7 +195,14 @@ export function JoinForm() {
         </Grid>
       )}
 
-      <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: '1.3fr .7fr'}, gap: 3, alignItems: 'start'}}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {xs: '1fr', md: '1.3fr .7fr'},
+          gap: 3,
+          alignItems: 'start',
+        }}
+      >
         <Box className="dec-card" sx={{p: {xs: 3, md: 4}}}>
           <Typography variant="h4" component="h2" gutterBottom>
             Your details
@@ -287,29 +294,29 @@ export function JoinForm() {
             </Grid>
           </Grid>
 
-      {/* Processing Fee Option */}
-      {selectedPlanId && processingFee > 0 && (
-        <Box sx={{mt: 3}}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={coverFees}
-                onChange={(e) => setCoverFees(e.target.checked)}
-                disabled={joinMutation.isPending}
-                color="primary"
+          {/* Processing Fee Option */}
+          {selectedPlanId && processingFee > 0 && (
+            <Box sx={{mt: 3}}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={coverFees}
+                    onChange={(e) => setCoverFees(e.target.checked)}
+                    disabled={joinMutation.isPending}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Typography variant="body2">
+                    Help cover credit card processing fees (+${processingFee.toFixed(2)})
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Optional - 100% of your membership goes directly to the club
+                    </Typography>
+                  </Typography>
+                }
               />
-            }
-            label={
-              <Typography variant="body2">
-                Help cover credit card processing fees (+${processingFee.toFixed(2)})
-                <Typography variant="caption" display="block" color="text.secondary">
-                  Optional - 100% of your membership goes directly to the club
-                </Typography>
-              </Typography>
-            }
-          />
-        </Box>
-      )}
+            </Box>
+          )}
         </Box>
 
         <Box className="dec-card" sx={{p: {xs: 3, md: 4}, position: {md: 'sticky'}, top: 96}}>
@@ -326,7 +333,16 @@ export function JoinForm() {
               <Typography fontWeight={700}>${processingFee.toFixed(2)}</Typography>
             </Box>
           )}
-          <Box sx={{display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--dec-border)', mt: 1.5, pt: 2, mb: 3}}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              borderTop: '1px solid var(--dec-border)',
+              mt: 1.5,
+              pt: 2,
+              mb: 3,
+            }}
+          >
             <Typography fontWeight={800}>Total</Typography>
             <Typography fontWeight={800}>
               ${(summaryPrice + (coverFees ? processingFee : 0)).toFixed(2)}
@@ -351,7 +367,11 @@ export function JoinForm() {
             )}
           </Button>
 
-          <Typography variant="caption" color="text.secondary" sx={{mt: 2, display: 'block', textAlign: 'center'}}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{mt: 2, display: 'block', textAlign: 'center'}}
+          >
             🔒 Secure checkout by Stripe · Auto-renews at ${summaryPrice || 0}/yr · Cancel anytime
           </Typography>
         </Box>

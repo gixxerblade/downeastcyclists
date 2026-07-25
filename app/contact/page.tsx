@@ -78,13 +78,25 @@ export default function Contact() {
             <a href="mailto:info@downeastcyclists.com" className="text-[#F20E02]">
               info@downeastcyclists.com
             </a>
-            <a href="https://www.facebook.com/downeastcyclists" target="_blank" rel="noreferrer noopener">
+            <a
+              href="https://www.facebook.com/downeastcyclists"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Facebook ↗
             </a>
-            <a href="https://www.instagram.com/downeastcyclists/" target="_blank" rel="noreferrer noopener">
+            <a
+              href="https://www.instagram.com/downeastcyclists/"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Instagram ↗
             </a>
-            <a href="https://www.meetup.com/down-east-cyclists/events/calendar/" target="_blank" rel="noreferrer noopener">
+            <a
+              href="https://www.meetup.com/down-east-cyclists/events/calendar/"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Meetup calendar ↗
             </a>
           </div>
@@ -117,35 +129,71 @@ export default function Contact() {
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block text-sm font-bold text-[var(--dec-muted)]" htmlFor="name">
               Name
-              <input id="name" placeholder="First and last" className={`${inputClass} border-[var(--dec-border)]`} {...register('name')} />
-              {errors.name && <span className="mt-1 block text-sm text-[#F20E02]">{errors.name.message}</span>}
+              <input
+                id="name"
+                placeholder="First and last"
+                className={`${inputClass} border-[var(--dec-border)]`}
+                {...register('name')}
+              />
+              {errors.name && (
+                <span className="mt-1 block text-sm text-[#F20E02]">{errors.name.message}</span>
+              )}
             </label>
 
             <label className="block text-sm font-bold text-[var(--dec-muted)]" htmlFor="email">
               Email
-              <input id="email" type="email" placeholder="you@email.com" className={`${inputClass} border-[var(--dec-border)]`} {...register('email')} />
-              {errors.email && <span className="mt-1 block text-sm text-[#F20E02]">{errors.email.message}</span>}
+              <input
+                id="email"
+                type="email"
+                placeholder="you@email.com"
+                className={`${inputClass} border-[var(--dec-border)]`}
+                {...register('email')}
+              />
+              {errors.email && (
+                <span className="mt-1 block text-sm text-[#F20E02]">{errors.email.message}</span>
+              )}
             </label>
           </div>
 
           <label className="mt-5 block text-sm font-bold text-[var(--dec-muted)]" htmlFor="subject">
             Subject
-            <input id="subject" placeholder="How can we help?" className={`${inputClass} border-[var(--dec-border)]`} {...register('subject')} />
-            {errors.subject && <span className="mt-1 block text-sm text-[#F20E02]">{errors.subject.message}</span>}
+            <input
+              id="subject"
+              placeholder="How can we help?"
+              className={`${inputClass} border-[var(--dec-border)]`}
+              {...register('subject')}
+            />
+            {errors.subject && (
+              <span className="mt-1 block text-sm text-[#F20E02]">{errors.subject.message}</span>
+            )}
           </label>
 
           <label className="mt-5 block text-sm font-bold text-[var(--dec-muted)]" htmlFor="message">
             Message
-            <textarea id="message" placeholder="Enter your message..." className={`${inputClass} min-h-40 py-4 border-[var(--dec-border)]`} {...register('message')} />
-            {errors.message && <span className="mt-1 block text-sm text-[#F20E02]">{errors.message.message}</span>}
+            <textarea
+              id="message"
+              placeholder="Enter your message..."
+              className={`${inputClass} min-h-40 py-4 border-[var(--dec-border)]`}
+              {...register('message')}
+            />
+            {errors.message && (
+              <span className="mt-1 block text-sm text-[#F20E02]">{errors.message.message}</span>
+            )}
           </label>
 
           <div className="mt-5" data-netlify-recaptcha="true"></div>
-          <button type="submit" className="dec-primary-button mt-7 w-full sm:w-auto" disabled={isSubmitting}>
+          <button
+            type="submit"
+            className="dec-primary-button mt-7 w-full sm:w-auto"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? 'Submitting...' : 'Send message'}
           </button>
           <p className="mt-4 text-sm text-[var(--dec-muted-2)]">
-            Already a member? <Link href="/member" className="font-bold text-[#F20E02]">Open your member portal.</Link>
+            Already a member?{' '}
+            <Link href="/member" className="font-bold text-[#F20E02]">
+              Open your member portal.
+            </Link>
           </p>
         </form>
       </section>
