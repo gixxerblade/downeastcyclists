@@ -14,9 +14,16 @@ import {
   parseMembershipDate,
 } from '@/src/lib/membership-status';
 import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
+import {
+  buildRenewalEmailCampaignKey,
+  getRenewalEmailSubject,
+  RENEWAL_EMAIL_TYPE,
+} from '@/src/lib/renewal-email';
 import {buildRenewalUrl} from '@/src/lib/renewal-link';
 import {getSiteUrl} from '@/src/lib/site-url';
 import type {
+  ActionLogParams,
+  ActionLogResult,
   AuditEntry,
   BulkImportResult,
   BulkImportRow,
@@ -25,6 +32,7 @@ import type {
   ExpiringMember,
   PaymentHistoryItem,
   UpdateMemberInput,
+  RenewalEmailResult,
 } from '@/src/types/admin';
 
 import {AuthService} from './auth.service';
@@ -167,6 +175,8 @@ export interface AdminService {
     userId: string,
   ) => Effect.Effect<AuditEntry[], MemberNotFoundError | DatabaseError>;
 
+  readonly getActionLog: (params: ActionLogParams) => Effect.Effect<ActionLogResult, DatabaseError>;
+
   readonly getPaymentHistory: (
     userId: string,
   ) => Effect.Effect<PaymentHistoryItem[], MemberNotFoundError | StripeError | DatabaseError>;
@@ -187,7 +197,8 @@ export interface AdminService {
     userId: string,
     adminUid: string,
     adminEmail?: string,
-  ) => Effect.Effect<void, MemberNotFoundError | DatabaseError | EmailError>;
+    options?: {resend?: boolean},
+  ) => Effect.Effect<RenewalEmailResult, MemberNotFoundError | DatabaseError | EmailError>;
 }
 
 // Service tag
@@ -1397,10 +1408,37 @@ const make = Effect.gen(function* () {
           action: entry.action as AuditEntry['action'],
           performedBy: (entry.details?.performedBy as string) || 'system',
           performedByEmail: entry.details?.performedByEmail as string | undefined,
+          targetUserId: entry.targetUserId,
+          targetEmail: entry.targetEmail,
+          targetName: entry.targetName,
           details: entry.details || {},
           timestamp:
             typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString(),
         }));
+      }),
+
+    getActionLog: (params) =>
+      Effect.gen(function* () {
+        const result = yield* db.getActionLog(params);
+
+        return {
+          total: result.total,
+          entries: result.entries.map((entry) => ({
+            id: entry.id,
+            action: entry.action as AuditEntry['action'],
+            performedBy: (entry.details?.performedBy as string) || entry.performedBy || 'system',
+            performedByEmail:
+              (entry.details?.performedByEmail as string | undefined) ||
+              entry.performedByEmail ||
+              undefined,
+            targetUserId: entry.targetUserId,
+            targetEmail: entry.targetEmail,
+            targetName: entry.targetName,
+            details: entry.details || {},
+            timestamp:
+              typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString(),
+          })),
+        };
       }),
 
     // Get payment history
@@ -1489,7 +1527,7 @@ const make = Effect.gen(function* () {
         });
       }),
 
-    sendRenewalEmail: (userId, adminUid, adminEmail) =>
+    sendRenewalEmail: (userId, adminUid, adminEmail, options) =>
       Effect.gen(function* () {
         const user = yield* db.getUser(userId);
         if (!user) {
@@ -1509,25 +1547,95 @@ const make = Effect.gen(function* () {
           daysUntilExpiration === 30 || daysUntilExpiration === 60 || daysUntilExpiration === 90
             ? daysUntilExpiration
             : undefined;
+        const campaignKey = buildRenewalEmailCampaignKey(user.id, membership);
+        const existingEmailLog = yield* db.getLatestEmailLog(
+          userId,
+          RENEWAL_EMAIL_TYPE,
+          campaignKey,
+        );
 
-        yield* emailService.sendRenewalEmail({
-          to: user.email,
-          name: user.name,
-          renewalUrl,
-          expirationDate: endDate?.toISOString(),
-          planName: membership ? getPlanNameForType(membership.planType) : undefined,
-          daysUntilExpiration: isCurrentMembershipStatus(membership?.status, membership?.endDate)
+        if (existingEmailLog && !options?.resend) {
+          return {
+            sent: false,
+            alreadySent: true,
+            deliveryType: 'send',
+            lastSentAt: existingEmailLog.timestamp,
+            lastSentByEmail: existingEmailLog.sentByEmail,
+          };
+        }
+
+        const deliveryType = existingEmailLog ? 'resend' : 'send';
+        const subject = getRenewalEmailSubject(
+          isCurrentMembershipStatus(membership?.status, membership?.endDate)
             ? reminderDays
             : undefined,
-          idempotencyKey: `admin-renewal/${user.id}/${new Date().toISOString().slice(0, 10)}`,
+        );
+        const idempotencyKey =
+          deliveryType === 'resend'
+            ? `admin-renewal/resend/${user.id}/${new Date().toISOString()}`
+            : `admin-renewal/send/${campaignKey}`;
+
+        yield* emailService
+          .sendRenewalEmail({
+            to: user.email,
+            name: user.name,
+            renewalUrl,
+            expirationDate: endDate?.toISOString(),
+            planName: membership ? getPlanNameForType(membership.planType) : undefined,
+            daysUntilExpiration: isCurrentMembershipStatus(membership?.status, membership?.endDate)
+              ? reminderDays
+              : undefined,
+            idempotencyKey,
+          })
+          .pipe(
+            Effect.catchAll((error) =>
+              db
+                .logEmailEvent(userId, {
+                  membershipId: membership?.id,
+                  emailType: RENEWAL_EMAIL_TYPE,
+                  deliveryType,
+                  campaignKey,
+                  recipientEmail: user.email,
+                  subject,
+                  status: 'failed',
+                  idempotencyKey,
+                  sentBy: adminUid,
+                  sentByEmail: adminEmail,
+                  errorMessage: error.message,
+                })
+                .pipe(Effect.zipRight(Effect.fail(error))),
+            ),
+          );
+
+        yield* db.logEmailEvent(userId, {
+          membershipId: membership?.id,
+          emailType: RENEWAL_EMAIL_TYPE,
+          deliveryType,
+          campaignKey,
+          recipientEmail: user.email,
+          subject,
+          status: 'sent',
+          idempotencyKey,
+          sentBy: adminUid,
+          sentByEmail: adminEmail,
         });
 
-        yield* db.logAuditEntry(userId, 'MEMBERSHIP_ADJUSTMENT', {
+        const action = deliveryType === 'resend' ? 'RENEWAL_EMAIL_RESENT' : 'RENEWAL_EMAIL_SENT';
+        yield* db.logAuditEntry(userId, action, {
           performedBy: adminUid,
           performedByEmail: adminEmail,
-          action: 'RENEWAL_EMAIL_SENT',
+          targetEmail: user.email,
+          deliveryType,
+          campaignKey,
+          reminderDays,
           timestamp: new Date().toISOString(),
         });
+
+        return {
+          sent: true,
+          alreadySent: false,
+          deliveryType,
+        };
       }),
   });
 });

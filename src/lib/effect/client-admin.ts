@@ -6,6 +6,8 @@
 import {Effect} from 'effect';
 
 import type {
+  ActionLogParams,
+  ActionLogResult,
   AuditEntry,
   BulkImportResult,
   BulkImportRow,
@@ -17,6 +19,7 @@ import type {
   PaymentHistoryItem,
   RefundRequest,
   RefundResponse,
+  RenewalEmailResult,
   UpdateMemberInput,
   UpdateMemberResponse,
 } from '@/src/types/admin';
@@ -391,6 +394,49 @@ export const getMemberAuditLog = (
   });
 
 /**
+ * Get global action log
+ */
+export const getActionLog = (
+  params: ActionLogParams = {},
+): Effect.Effect<ActionLogResult, DatabaseError | UnauthorizedError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const searchParams = new URLSearchParams();
+      if (params.action) searchParams.set('action', params.action);
+      if (params.actor) searchParams.set('actor', params.actor);
+      if (params.target) searchParams.set('target', params.target);
+      if (params.dateFrom) searchParams.set('dateFrom', params.dateFrom);
+      if (params.dateTo) searchParams.set('dateTo', params.dateTo);
+      if (params.page) searchParams.set('page', String(params.page));
+      if (params.pageSize) searchParams.set('pageSize', String(params.pageSize));
+
+      const response = await fetch(`/api/admin/action-log?${searchParams.toString()}`);
+
+      if (response.status === 401 || response.status === 403) {
+        const data = await response.json();
+        throw new UnauthorizedError({message: data.error || 'Unauthorized'});
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to get action log');
+      }
+
+      return await response.json();
+    },
+    catch: (error) => {
+      if (error instanceof UnauthorizedError) {
+        return error;
+      }
+      return new DatabaseError({
+        code: 'GET_ACTION_LOG_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to get action log',
+        cause: error,
+      });
+    },
+  });
+
+/**
  * Get member payment history
  */
 export const getPaymentHistory = (
@@ -463,11 +509,14 @@ export const sendPasswordReset = (
  */
 export const sendRenewalEmail = (
   userId: string,
-): Effect.Effect<void, AdminError | EmailError | UnauthorizedError> =>
+  options: {resend?: boolean} = {},
+): Effect.Effect<RenewalEmailResult, AdminError | EmailError | UnauthorizedError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch(`/api/admin/members/${userId}/renewal-email`, {
         method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(options),
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -479,6 +528,8 @@ export const sendRenewalEmail = (
         const data = await response.json();
         throw new Error(data.error || 'Failed to send renewal email');
       }
+
+      return await response.json();
     },
     catch: (error) => {
       if (error instanceof UnauthorizedError) {

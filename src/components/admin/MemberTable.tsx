@@ -9,6 +9,7 @@ import {
   NavigateBefore,
   NavigateNext,
   MarkEmailUnread,
+  Replay,
 } from '@mui/icons-material';
 import {
   Table,
@@ -44,6 +45,7 @@ interface MemberTableProps {
   onViewPayments?: (member: MemberWithMembership) => void;
   onSendPasswordReset?: (member: MemberWithMembership) => void;
   onSendRenewalEmail?: (member: MemberWithMembership) => void;
+  onResendRenewalEmail?: (member: MemberWithMembership) => void;
 }
 
 const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
@@ -73,6 +75,7 @@ export function MemberTable({
   onViewPayments,
   onSendPasswordReset,
   onSendRenewalEmail,
+  onResendRenewalEmail,
 }: MemberTableProps) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -95,6 +98,9 @@ export function MemberTable({
             {members.map((member) => {
               const endDate = member.membership?.endDate;
               const formattedEndDate = endDate ? new Date(endDate).toLocaleDateString() : '-';
+              const renewalEmailSentAt = member.renewalEmail?.lastSentAt
+                ? new Date(member.renewalEmail.lastSentAt)
+                : null;
 
               return (
                 <TableRow
@@ -149,7 +155,7 @@ export function MemberTable({
                           </IconButton>
                         </Tooltip>
                       )}
-                      {onSendRenewalEmail && (
+                      {onSendRenewalEmail && !member.renewalEmail && (
                         <Tooltip title="Send Renewal Email">
                           <IconButton
                             size="small"
@@ -157,6 +163,31 @@ export function MemberTable({
                             onClick={() => onSendRenewalEmail(member)}
                           >
                             <MarkEmailUnread fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {member.renewalEmail && (
+                        <Tooltip
+                          title={`Renewal email ${member.renewalEmail.deliveryType === 'resend' ? 'resent' : 'sent'} by ${
+                            member.renewalEmail.lastSentByEmail || member.renewalEmail.lastSentBy
+                          }`}
+                        >
+                          <Chip
+                            size="small"
+                            label={`Sent ${renewalEmailSentAt?.toLocaleDateString() || ''}`}
+                            color="info"
+                            variant="outlined"
+                          />
+                        </Tooltip>
+                      )}
+                      {onResendRenewalEmail && member.renewalEmail && (
+                        <Tooltip title="Resend Renewal Email">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            onClick={() => onResendRenewalEmail(member)}
+                          >
+                            <Replay fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}

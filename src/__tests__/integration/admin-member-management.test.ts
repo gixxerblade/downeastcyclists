@@ -767,6 +767,8 @@ describe('Admin Member Management Integration', () => {
             updatedAt: new Date().toISOString(),
           }),
         ),
+        getLatestEmailLog: vi.fn(() => Effect.succeed(null)),
+        logEmailEvent: vi.fn(() => Effect.void),
         logAuditEntry: vi.fn(() => Effect.void),
       });
 
@@ -802,8 +804,16 @@ describe('Admin Member Management Integration', () => {
       );
       expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
         userId,
-        'MEMBERSHIP_ADJUSTMENT',
-        expect.objectContaining({action: 'RENEWAL_EMAIL_SENT'}),
+        'RENEWAL_EMAIL_SENT',
+        expect.objectContaining({deliveryType: 'send'}),
+      );
+      expect(databaseService.logEmailEvent).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          emailType: 'membership_renewal',
+          deliveryType: 'send',
+          status: 'sent',
+        }),
       );
     });
   });
