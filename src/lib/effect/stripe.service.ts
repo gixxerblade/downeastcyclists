@@ -41,9 +41,7 @@ export interface StripeService {
     email: string,
   ) => Effect.Effect<Stripe.Customer | null, StripeError>;
 
-  readonly listCustomersByEmail: (
-    email: string,
-  ) => Effect.Effect<Stripe.Customer[], StripeError>;
+  readonly listCustomersByEmail: (email: string) => Effect.Effect<Stripe.Customer[], StripeError>;
 
   readonly listCustomerSubscriptions: (
     customerId: string,
@@ -290,7 +288,10 @@ const make = Effect.sync(() => {
       Effect.tryPromise({
         try: async () => {
           const {stripe} = getClient();
-          const customers = await stripe.customers.list({email: email.trim().toLowerCase(), limit: 1});
+          const customers = await stripe.customers.list({
+            email: email.trim().toLowerCase(),
+            limit: 1,
+          });
           return customers.data[0] || null;
         },
         catch: (error) =>

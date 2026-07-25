@@ -359,12 +359,10 @@ export function ReconciliationTool() {
                     : 'not attempted'}
                 </div>
                 <div>
-                  <strong>Email search customers:</strong>{' '}
-                  {lookupDiagnostics.emailCustomerCount}
+                  <strong>Email search customers:</strong> {lookupDiagnostics.emailCustomerCount}
                 </div>
                 <div>
-                  <strong>Listed subscriptions:</strong>{' '}
-                  {lookupDiagnostics.subscriptionLookupCount}
+                  <strong>Listed subscriptions:</strong> {lookupDiagnostics.subscriptionLookupCount}
                 </div>
               </Stack>
             </Box>

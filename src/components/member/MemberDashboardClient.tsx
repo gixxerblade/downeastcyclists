@@ -238,6 +238,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
               </Paper>
 
               <MembershipCard membership={currentMembership} />
+              <MembershipCard membership={currentMembership} />
 
               <Paper className="dec-card" sx={{p: 3}}>
                 <Typography variant="h4" component="h2" sx={{mb: 2}}>

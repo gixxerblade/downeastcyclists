@@ -3,29 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --dec-red: #F20E02;
+  --dec-red: #f20e02;
   --dec-red-dark: #b30a01;
-  --dec-amber: #F5A623;
-  --dec-teal: #2FBFA0;
-  --dec-bg: #FAF7F2;
-  --dec-admin-bg: #F4F1EC;
-  --dec-surface: #FFFFFF;
-  --dec-ink: #16130F;
-  --dec-muted: #5C554B;
-  --dec-muted-2: #8B8478;
-  --dec-border: #E7E0D5;
-  --dec-soft-border: #EAE3D8;
+  --dec-amber: #f5a623;
+  --dec-teal: #2fbfa0;
+  --dec-bg: #faf7f2;
+  --dec-admin-bg: #f4f1ec;
+  --dec-surface: #ffffff;
+  --dec-ink: #16130f;
+  --dec-muted: #5c554b;
+  --dec-muted-2: #8b8478;
+  --dec-border: #e7e0d5;
+  --dec-soft-border: #eae3d8;
 }
 
 .dark {
-  --dec-bg: #0E0E10;
-  --dec-admin-bg: #0B0B0D;
-  --dec-surface: #18181B;
-  --dec-ink: #F5F3EF;
-  --dec-muted: #C8C8CC;
-  --dec-muted-2: #8B8B90;
-  --dec-border: rgba(255,255,255,.1);
-  --dec-soft-border: rgba(255,255,255,.08);
+  --dec-bg: #0e0e10;
+  --dec-admin-bg: #0b0b0d;
+  --dec-surface: #18181b;
+  --dec-ink: #f5f3ef;
+  --dec-muted: #c8c8cc;
+  --dec-muted-2: #8b8b90;
+  --dec-border: rgba(255, 255, 255, 0.1);
+  --dec-soft-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
@@ -41,7 +41,7 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid rgba(242, 14, 2, .45);
+  outline: 3px solid rgba(242, 14, 2, 0.45);
   outline-offset: 3px;
 }
 
@@ -59,7 +59,7 @@ a {
 .dec-display {
   font-family: Anton, sans-serif;
   letter-spacing: 0;
-  line-height: .92;
+  line-height: 0.92;
   text-transform: uppercase;
 }
 

@@ -90,82 +90,87 @@ export function PostCheckoutLoader({sessionId}: PostCheckoutLoaderProps) {
 
   return (
     <Box className="dec-page">
-    <Container maxWidth="md" sx={{py: 6}}>
-      <Paper className="dec-card" elevation={0} sx={{p: {xs: 3, md: 5}}}>
-        <Box sx={{textAlign: 'center'}}>
-          {status === 'loading' && (
-            <>
-              <CircularProgress size={60} sx={{mb: 3}} />
-              <Typography variant="h1" sx={{fontSize: {xs: 44, md: 64}}} gutterBottom>
-                Processing Your Membership
-              </Typography>
-              <Typography variant="body1" color="text.secondary" paragraph>
-                We&apos;re setting up your account. This usually takes just a few seconds...
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Attempt {attempts} of {maxAttempts}
-              </Typography>
-            </>
-          )}
+      <Container maxWidth="md" sx={{py: 6}}>
+        <Paper className="dec-card" elevation={0} sx={{p: {xs: 3, md: 5}}}>
+          <Box sx={{textAlign: 'center'}}>
+            {status === 'loading' && (
+              <>
+                <CircularProgress size={60} sx={{mb: 3}} />
+                <Typography variant="h1" sx={{fontSize: {xs: 44, md: 64}}} gutterBottom>
+                  Processing Your Membership
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph>
+                  We&apos;re setting up your account. This usually takes just a few seconds...
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Attempt {attempts} of {maxAttempts}
+                </Typography>
+              </>
+            )}
 
-          {status === 'ready' && (
-            <>
-              <CheckCircle sx={{fontSize: 60, color: 'success.main', mb: 2}} />
-              <Typography variant="h1" sx={{fontSize: {xs: 44, md: 64}}} gutterBottom color="success.main">
-                Membership Activated!
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Redirecting you to your dashboard...
-              </Typography>
-            </>
-          )}
+            {status === 'ready' && (
+              <>
+                <CheckCircle sx={{fontSize: 60, color: 'success.main', mb: 2}} />
+                <Typography
+                  variant="h1"
+                  sx={{fontSize: {xs: 44, md: 64}}}
+                  gutterBottom
+                  color="success.main"
+                >
+                  Membership Activated!
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Redirecting you to your dashboard...
+                </Typography>
+              </>
+            )}
 
-          {status === 'timeout' && (
-            <>
-              <Alert severity="warning" sx={{mb: 3, textAlign: 'left'}}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Taking longer than expected
-                </Typography>
-                <Typography variant="body2">
-                  Your payment was successful, but we&apos;re still processing your membership. This
-                  can take up to a minute. You can wait or try refreshing the page.
-                </Typography>
-              </Alert>
-              <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
-                <Button variant="contained" onClick={handleManualRefresh}>
-                  Refresh Now
-                </Button>
-                <Button variant="outlined" href="mailto:support@downeastcyclists.org">
-                  Contact Support
-                </Button>
-              </Box>
-            </>
-          )}
+            {status === 'timeout' && (
+              <>
+                <Alert severity="warning" sx={{mb: 3, textAlign: 'left'}}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Taking longer than expected
+                  </Typography>
+                  <Typography variant="body2">
+                    Your payment was successful, but we&apos;re still processing your membership.
+                    This can take up to a minute. You can wait or try refreshing the page.
+                  </Typography>
+                </Alert>
+                <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
+                  <Button variant="contained" onClick={handleManualRefresh}>
+                    Refresh Now
+                  </Button>
+                  <Button variant="outlined" href="mailto:support@downeastcyclists.org">
+                    Contact Support
+                  </Button>
+                </Box>
+              </>
+            )}
 
-          {status === 'error' && (
-            <>
-              <Alert severity="error" sx={{mb: 3, textAlign: 'left'}}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Unable to verify membership
-                </Typography>
-                <Typography variant="body2">
-                  There was an issue checking your membership status. Your payment may still have
-                  been successful. Please try refreshing the page or contact support.
-                </Typography>
-              </Alert>
-              <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
-                <Button variant="contained" onClick={handleManualRefresh}>
-                  Try Again
-                </Button>
-                <Button variant="outlined" href="mailto:support@downeastcyclists.org">
-                  Contact Support
-                </Button>
-              </Box>
-            </>
-          )}
-        </Box>
-      </Paper>
-    </Container>
+            {status === 'error' && (
+              <>
+                <Alert severity="error" sx={{mb: 3, textAlign: 'left'}}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Unable to verify membership
+                  </Typography>
+                  <Typography variant="body2">
+                    There was an issue checking your membership status. Your payment may still have
+                    been successful. Please try refreshing the page or contact support.
+                  </Typography>
+                </Alert>
+                <Box sx={{display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap'}}>
+                  <Button variant="contained" onClick={handleManualRefresh}>
+                    Try Again
+                  </Button>
+                  <Button variant="outlined" href="mailto:support@downeastcyclists.org">
+                    Contact Support
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
+        </Paper>
+      </Container>
     </Box>
   );
 }

@@ -12,7 +12,11 @@ const stats = [
 const subPages = [
   {title: 'Leadership', href: '/about/leadership', copy: 'Meet the volunteers helping guide DEC.'},
   {title: 'Bylaws', href: '/about/bylaws', copy: 'How the club is organized and governed.'},
-  {title: 'Membership', href: '/about/membership', copy: 'Benefits, discounts, and renewal details.'},
+  {
+    title: 'Membership',
+    href: '/about/membership',
+    copy: 'Benefits, discounts, and renewal details.',
+  },
   {title: 'Privacy', href: '/about/privacy', copy: 'How member and visitor data is handled.'},
 ];
 
@@ -85,7 +89,11 @@ export default async function About() {
 
       <section className="dec-container grid gap-5 pb-20 md:grid-cols-4">
         {subPages.map((page) => (
-          <Link key={page.href} href={page.href} className="dec-card p-7 transition hover:border-[#F20E02]">
+          <Link
+            key={page.href}
+            href={page.href}
+            className="dec-card p-7 transition hover:border-[#F20E02]"
+          >
             <h3 className="font-[Anton] text-3xl">{page.title}</h3>
             <p className="mt-3 leading-7 text-[var(--dec-muted)]">{page.copy}</p>
           </Link>
