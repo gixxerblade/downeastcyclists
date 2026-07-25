@@ -1,7 +1,9 @@
 import {spawnSync} from 'node:child_process';
 
 if (process.env.CI === 'true') {
-  console.log('Skipping effect-tsgo patch in CI; CI uses unpatched TypeScript 7 from @typescript/native for typechecking.');
+  console.log(
+    'Skipping effect-tsgo patch in CI; CI uses unpatched TypeScript 7 from @typescript/native for typechecking.',
+  );
   process.exit(0);
 }
 

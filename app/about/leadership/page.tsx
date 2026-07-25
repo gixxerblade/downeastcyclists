@@ -9,15 +9,13 @@ export default async function Leaders() {
   return (
     <main className="dec-page">
       <section className="dec-container py-16 text-center md:py-20">
-        <div className="mb-4 text-sm font-bold tracking-[.1em] text-[#F20E02]">
-          CLUB LEADERSHIP
-        </div>
+        <div className="mb-4 text-sm font-bold tracking-[.1em] text-[#F20E02]">CLUB LEADERSHIP</div>
         <h1 className="dec-display mx-auto max-w-4xl text-6xl md:text-[92px]">
           Volunteers keeping DEC rolling
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg font-light leading-8 text-[var(--dec-muted)]">
-          Down East Cyclists is organized by club volunteers who coordinate rides, membership,
-          trail support, partnerships, and community events.
+          Down East Cyclists is organized by club volunteers who coordinate rides, membership, trail
+          support, partnerships, and community events.
         </p>
       </section>
 
@@ -54,7 +52,12 @@ export default async function Leaders() {
               );
 
               return leader.link?.url ? (
-                <Link key={leader.name} href={leader.link.url} target="_blank" rel="noopener noreferrer">
+                <Link
+                  key={leader.name}
+                  href={leader.link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {card}
                 </Link>
               ) : (
@@ -79,7 +82,10 @@ export default async function Leaders() {
             DEC runs on member involvement. Join the club, show up for rides, and ask where your
             time can support the next event or trail day.
           </p>
-          <Link href="/join" className="mt-7 inline-flex rounded-full bg-white px-6 py-3 font-bold text-[#F20E02]">
+          <Link
+            href="/join"
+            className="mt-7 inline-flex rounded-full bg-white px-6 py-3 font-bold text-[#F20E02]"
+          >
             Join the club →
           </Link>
         </div>

@@ -113,7 +113,11 @@ const make = Effect.gen(function* () {
     });
 
   return StatsService.of({
-    getStats: () => pipe(calculateStats(), Effect.catchAll(() => Effect.succeed(defaultStats))),
+    getStats: () =>
+      pipe(
+        calculateStats(),
+        Effect.catchAll(() => Effect.succeed(defaultStats)),
+      ),
 
     // Force recalculation from all memberships
     refreshStats: () =>

@@ -5,8 +5,20 @@ import TrailStatus from '@/src/components/TrailStatus';
 import {getB3Assets} from '@/src/contentful/b3';
 
 const trailLinks = [
-  {name: 'Inner Loop', difficulty: 'Beginner', miles: '1.6 mi', color: '#2FBFA0', href: 'https://www.strava.com/segments/28334000'},
-  {name: 'Outer Loop', difficulty: 'Intermediate', miles: '4.6 mi', color: '#F5A623', href: 'https://www.strava.com/segments/28334049'},
+  {
+    name: 'Inner Loop',
+    difficulty: 'Beginner',
+    miles: '1.6 mi',
+    color: '#2FBFA0',
+    href: 'https://www.strava.com/segments/28334000',
+  },
+  {
+    name: 'Outer Loop',
+    difficulty: 'Intermediate',
+    miles: '4.6 mi',
+    color: '#F5A623',
+    href: 'https://www.strava.com/segments/28334049',
+  },
 ];
 
 export default async function B3() {
@@ -19,11 +31,13 @@ export default async function B3() {
     <main className="dec-page">
       <section className="dec-container grid gap-10 py-16 md:grid-cols-[1.05fr_.95fr] md:items-center md:py-20">
         <div>
-          <div className="mb-4 text-sm font-bold tracking-[.1em] text-[#F20E02]">BIG BRANCH BIKE PARK</div>
+          <div className="mb-4 text-sm font-bold tracking-[.1em] text-[#F20E02]">
+            BIG BRANCH BIKE PARK
+          </div>
           <h1 className="dec-display text-6xl md:text-[92px]">B3 trails</h1>
           <p className="mt-6 max-w-xl text-lg font-light leading-8 text-[var(--dec-muted)]">
-            Beginner flow and intermediate single-track inside Onslow County&apos;s Burton Park area,
-            open dawn to dusk when trail conditions allow.
+            Beginner flow and intermediate single-track inside Onslow County&apos;s Burton Park
+            area, open dawn to dusk when trail conditions allow.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
@@ -62,9 +76,16 @@ export default async function B3() {
           <div className="dec-card p-6">
             <h2 className="font-[Anton] text-3xl">Trail rules</h2>
             <div className="mt-4 space-y-3 leading-7 text-[var(--dec-muted)]">
-              <p>The trail is open from dawn to dusk and the county usually locks the gate before dark.</p>
-              <p><strong>Direction:</strong> Monday, Wednesday, Friday, Sunday clockwise.</p>
-              <p><strong>Direction:</strong> Tuesday, Thursday, Saturday counter clockwise.</p>
+              <p>
+                The trail is open from dawn to dusk and the county usually locks the gate before
+                dark.
+              </p>
+              <p>
+                <strong>Direction:</strong> Monday, Wednesday, Friday, Sunday clockwise.
+              </p>
+              <p>
+                <strong>Direction:</strong> Tuesday, Thursday, Saturday counter clockwise.
+              </p>
             </div>
           </div>
 
@@ -83,7 +104,9 @@ export default async function B3() {
                     <span className="h-3 w-3 rounded-full" style={{backgroundColor: trail.color}} />
                     <span>
                       <span className="block font-bold">{trail.name}</span>
-                      <span className="text-sm text-[var(--dec-muted)]">{trail.difficulty} · {trail.miles}</span>
+                      <span className="text-sm text-[var(--dec-muted)]">
+                        {trail.difficulty} · {trail.miles}
+                      </span>
                     </span>
                   </span>
                   <span className="text-sm font-bold text-[#F20E02]">Strava ↗</span>

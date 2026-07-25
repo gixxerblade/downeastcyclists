@@ -72,7 +72,12 @@ export default async function Home() {
             <Link href="/join" className="dec-primary-button">
               Become a member →
             </Link>
-            <a href={meetupUrl} target="_blank" rel="noopener noreferrer" className="dec-secondary-button border-white/25 text-[#F5F3EF]">
+            <a
+              href={meetupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dec-secondary-button border-white/25 text-[#F5F3EF]"
+            >
               See rides on Meetup ↗
             </a>
           </div>
@@ -147,18 +152,26 @@ export default async function Home() {
                 <div className="text-lg font-bold">Individual</div>
                 <div className="text-sm text-[#7A7266]">One rider, all the miles</div>
               </div>
-              <div className="font-[Anton] text-4xl">$30<span className="font-sans text-sm text-[#7A7266]">/yr</span></div>
+              <div className="font-[Anton] text-4xl">
+                $30<span className="font-sans text-sm text-[#7A7266]">/yr</span>
+              </div>
             </div>
             <div className="flex items-center justify-between rounded-[18px] border-2 border-white bg-[#16130F] p-6">
               <div>
                 <div className="text-lg font-bold">
-                  Family <span className="rounded-full bg-[#F20E02] px-2 py-1 text-[10px]">POPULAR</span>
+                  Family{' '}
+                  <span className="rounded-full bg-[#F20E02] px-2 py-1 text-[10px]">POPULAR</span>
                 </div>
                 <div className="text-sm text-[#C4BCAE]">Up to 5 household riders</div>
               </div>
-              <div className="font-[Anton] text-4xl">$50<span className="font-sans text-sm text-[#C4BCAE]">/yr</span></div>
+              <div className="font-[Anton] text-4xl">
+                $50<span className="font-sans text-sm text-[#C4BCAE]">/yr</span>
+              </div>
             </div>
-            <Link href="/join" className="mt-1 rounded-xl bg-white px-5 py-4 text-center font-bold text-[#F20E02]">
+            <Link
+              href="/join"
+              className="mt-1 rounded-xl bg-white px-5 py-4 text-center font-bold text-[#F20E02]"
+            >
               Choose a plan and join →
             </Link>
           </div>
@@ -173,7 +186,12 @@ export default async function Home() {
             </div>
             <h2 className="dec-display text-5xl md:text-[52px]">The next five rides</h2>
           </div>
-          <a href={meetupUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-[#F20E02]">
+          <a
+            href={meetupUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold text-[#F20E02]"
+          >
             Full schedule on Meetup ↗
           </a>
         </div>
@@ -216,7 +234,12 @@ export default async function Home() {
         ) : (
           <div className="dec-card p-8 text-center">
             <p className="text-[var(--dec-muted)]">Ride listings are temporarily unavailable.</p>
-            <a href={meetupUrl} target="_blank" rel="noopener noreferrer" className="dec-primary-button mt-5">
+            <a
+              href={meetupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dec-primary-button mt-5"
+            >
               See rides on Meetup ↗
             </a>
           </div>

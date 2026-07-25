@@ -11,7 +11,11 @@ interface TrailStatusProps {
   maxItems?: number;
 }
 
-export default function TrailStatus({showTitle = true, variant = 'cards', maxItems}: TrailStatusProps) {
+export default function TrailStatus({
+  showTitle = true,
+  variant = 'cards',
+  maxItems,
+}: TrailStatusProps) {
   const {data: trails = [], isLoading, isError, error, refetch} = useTrails();
   const visibleTrails = maxItems ? trails.slice(0, maxItems) : trails;
 
@@ -163,30 +167,33 @@ export default function TrailStatus({showTitle = true, variant = 'cards', maxIte
       )}
 
       <Box sx={{display: 'grid', gap: 2}}>
-      {visibleTrails.map((trail) => (
-        <Card key={trail.id} sx={{bgcolor: 'var(--dec-surface)', borderColor: 'var(--dec-border)'}}>
-          <CardContent>
-            <Box
-              sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}
-            >
-              <Typography variant="h6" component="h3">
-                {trail.trail}
-              </Typography>
-              <Chip
-                label={trail.open ? 'Open' : 'Closed'}
-                color={trail.open ? 'success' : 'error'}
-                size="small"
-                sx={{fontWeight: 800, borderRadius: 999}}
-              />
-            </Box>
-            {trail.notes && (
-              <Typography variant="body2" color="text.secondary">
-                {trail.notes}
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+        {visibleTrails.map((trail) => (
+          <Card
+            key={trail.id}
+            sx={{bgcolor: 'var(--dec-surface)', borderColor: 'var(--dec-border)'}}
+          >
+            <CardContent>
+              <Box
+                sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}
+              >
+                <Typography variant="h6" component="h3">
+                  {trail.trail}
+                </Typography>
+                <Chip
+                  label={trail.open ? 'Open' : 'Closed'}
+                  color={trail.open ? 'success' : 'error'}
+                  size="small"
+                  sx={{fontWeight: 800, borderRadius: 999}}
+                />
+              </Box>
+              {trail.notes && (
+                <Typography variant="body2" color="text.secondary">
+                  {trail.notes}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </Box>
     </Box>
   );

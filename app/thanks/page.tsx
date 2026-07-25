@@ -50,15 +50,15 @@ export default function Thanks() {
   return (
     <main className="dec-page">
       <section className="dec-container py-16 md:py-20">
-      <Suspense
-        fallback={
-          <div className="flex justify-center items-center" style={{minHeight: '200px'}}>
-            <CircularProgress />
-          </div>
-        }
-      >
-        <ThanksContent />
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="flex justify-center items-center" style={{minHeight: '200px'}}>
+              <CircularProgress />
+            </div>
+          }
+        >
+          <ThanksContent />
+        </Suspense>
       </section>
     </main>
   );

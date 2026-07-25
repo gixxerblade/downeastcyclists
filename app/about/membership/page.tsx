@@ -119,7 +119,9 @@ export default function Membership() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h2 className="font-[Anton] text-4xl">{plan.name}</h2>
-                  <p className={`mt-2 ${plan.popular ? 'text-white/75' : 'text-[var(--dec-muted)]'}`}>
+                  <p
+                    className={`mt-2 ${plan.popular ? 'text-white/75' : 'text-[var(--dec-muted)]'}`}
+                  >
                     {plan.copy}
                   </p>
                 </div>
@@ -139,10 +141,16 @@ export default function Membership() {
             checkout.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link href="/join" className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 font-bold text-[#F20E02]">
+            <Link
+              href="/join"
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 font-bold text-[#F20E02]"
+            >
               Join or renew online →
             </Link>
-            <Link href="/contact" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/30 px-6 font-bold text-white">
+            <Link
+              href="/contact"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/30 px-6 font-bold text-white"
+            >
               Ask a membership question
             </Link>
           </div>

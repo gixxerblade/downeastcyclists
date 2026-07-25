@@ -32,7 +32,8 @@ function AuthHandlerContent() {
 
   return (
     <Container maxWidth="xs" className="dec-page">
-      <Box className="dec-card"
+      <Box
+        className="dec-card"
         sx={{
           marginTop: 8,
           p: 4,
