@@ -189,6 +189,19 @@ The following environment variables need to be set in Netlify:
 - `STRIPE_PRICE_FAMILY`: Stripe price ID for family membership
 - `ADMIN_EMAIL`: The single administrator account email. Organizer access is granted to member
   accounts from the administrator dashboard.
+- `RESEND_API_KEY`: Resend API key used for transactional email.
+- `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.
+- `RESEND_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for renewal reminders.
+- `RESEND_ORGANIZER_ACCESS_TEMPLATE_ID`: Resend template alias or ID for organizer access
+  notifications. Defaults to `organizer-access-granted`.
+- `SUPPORT_EMAIL`: Reply/support address shown in organizer access emails.
+
+Create or update the Resend templates with:
+
+```shell
+pnpm resend:setup-renewal-template
+pnpm resend:setup-organizer-template
+```
 
 ### Encrypted Credentials
 

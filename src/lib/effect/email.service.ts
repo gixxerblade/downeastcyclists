@@ -19,6 +19,16 @@ export interface EmailService {
     daysUntilExpiration?: 30 | 60 | 90;
     idempotencyKey: string;
   }) => Effect.Effect<void, EmailError>;
+
+  readonly sendOrganizerAccessGrantedEmail: (params: {
+    to: string;
+    name: string | undefined;
+    loginUrl: string;
+    dashboardUrl: string;
+    grantedByName: string | undefined;
+    supportEmail: string;
+    idempotencyKey: string;
+  }) => Effect.Effect<void, EmailError>;
 }
 
 export const EmailService = Context.GenericTag<EmailService>('EmailService');
@@ -32,6 +42,8 @@ const make = Effect.gen(function* () {
   const resend = apiKey ? new Resend(apiKey) : null;
   const from = process.env.EMAIL_FROM ?? 'Down East Cyclists <noreply@downeastcyclists.com>';
   const renewalTemplateId = process.env.RESEND_RENEWAL_TEMPLATE_ID;
+  const organizerTemplateId =
+    process.env.RESEND_ORGANIZER_ACCESS_TEMPLATE_ID ?? 'organizer-access-granted';
 
   const describeResendError = (error: unknown) =>
     error instanceof Error
@@ -188,6 +200,130 @@ const make = Effect.gen(function* () {
             });
           },
         });
+      }),
+
+    sendOrganizerAccessGrantedEmail: ({
+      to,
+      name,
+      loginUrl,
+      dashboardUrl,
+      grantedByName,
+      supportEmail,
+      idempotencyKey,
+    }) =>
+      Effect.gen(function* () {
+        if (!resend) {
+          yield* Effect.logWarning(
+            `Skipping organizer access email to ${to}: RESEND_API_KEY not configured`,
+          );
+          return;
+        }
+
+        const displayName = name?.trim() || 'there';
+        const actorName = grantedByName?.trim() || 'a site administrator';
+        const subject = 'You now have organizer access to Down East Cyclists';
+        const text = [
+          `Hi ${displayName},`,
+          '',
+          `You have been granted organizer access to Down East Cyclists by ${actorName}.`,
+          '',
+          'Sign in with your member account:',
+          loginUrl,
+          '',
+          'After signing in, open the organizer dashboard:',
+          dashboardUrl,
+          '',
+          'As an organizer, you can view membership reports, export member data, send password reset emails, refresh membership stats, and update trail status information.',
+          '',
+          `Use ${to} when signing in. If you do not have a password or prefer not to use one, choose the email sign-in link option on the login page.`,
+          '',
+          `If you believe you received this by mistake or need help accessing the dashboard, contact ${supportEmail}.`,
+          '',
+          'Down East Cyclists',
+        ].join('\n');
+
+        const html = `
+          <p>Hi ${escapeHtml(displayName)},</p>
+          <p>You have been granted organizer access to Down East Cyclists by ${escapeHtml(actorName)}.</p>
+          <p><a href="${escapeHtml(loginUrl)}">Sign in to your account</a></p>
+          <p>After signing in, open the organizer dashboard:</p>
+          <p><a href="${escapeHtml(dashboardUrl)}">Open organizer dashboard</a></p>
+          <p>As an organizer, you can view membership reports, export member data, send password reset emails, refresh membership stats, and update trail status information.</p>
+          <p>Use ${escapeHtml(to)} when signing in. If you do not have a password or prefer not to use one, choose the email sign-in link option on the login page.</p>
+          <p>If you believe you received this by mistake or need help accessing the dashboard, contact ${escapeHtml(supportEmail)}.</p>
+          <p>Down East Cyclists</p>
+        `.trim();
+
+        yield* Effect.tryPromise({
+          try: async () => {
+            const {error} = await resend.emails.send(
+              {
+                from,
+                to,
+                subject,
+                template: {
+                  id: organizerTemplateId,
+                  variables: {
+                    USER_NAME: displayName,
+                    USER_EMAIL: to,
+                    ORG_NAME: 'Down East Cyclists',
+                    LOGIN_URL: loginUrl,
+                    DASHBOARD_URL: dashboardUrl,
+                    GRANTED_BY_NAME: actorName,
+                    SUPPORT_EMAIL: supportEmail,
+                  },
+                },
+              },
+              {idempotencyKey},
+            );
+            if (error) {
+              throw error;
+            }
+          },
+          catch: (error) => {
+            const detail = describeResendError(error);
+            console.error('[EmailService] Resend organizer access error:', error);
+            return new EmailError({
+              code: 'SEND_ORGANIZER_ACCESS_FAILED',
+              message: `Failed to send organizer access email to ${to}: ${detail}`,
+              cause: error,
+            });
+          },
+        }).pipe(
+          Effect.catchTag('EmailError', (templateError) =>
+            Effect.gen(function* () {
+              yield* Effect.logWarning(
+                `Template organizer access email failed for ${to}; trying inline fallback: ${templateError.message}`,
+              );
+              yield* Effect.tryPromise({
+                try: async () => {
+                  const {error} = await resend.emails.send(
+                    {
+                      from,
+                      to,
+                      subject,
+                      html,
+                      text,
+                    },
+                    {idempotencyKey: `${idempotencyKey}/inline`},
+                  );
+                  if (error) {
+                    throw error;
+                  }
+                },
+                catch: (error) => {
+                  const detail = describeResendError(error);
+                  console.error('[EmailService] Resend organizer access fallback error:', error);
+                  return new EmailError({
+                    code: 'SEND_ORGANIZER_ACCESS_FAILED',
+                    message: `Failed to send organizer access email to ${to}: ${detail}`,
+                    cause: error,
+                  });
+                },
+              });
+            }),
+          ),
+        );
       }),
   });
 });

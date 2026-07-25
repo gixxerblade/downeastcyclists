@@ -239,6 +239,10 @@ function getSiteUrl() {
   ).replace(/\/$/, '');
 }
 
+function getSupportEmail() {
+  return process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || 'info@downeastcyclists.com';
+}
+
 function getSubscriptionPeriodDates(subscription: Stripe.Subscription): {
   periodStart?: number;
   periodEnd?: number;
@@ -642,6 +646,7 @@ const make = Effect.gen(function* () {
           }
         }
 
+        const wasOrganizer = member.isOrganizer === true;
         yield* db.updateUser(targetUid, {isOrganizer});
         yield* db.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
           performedBy: admin.uid,
@@ -654,6 +659,26 @@ const make = Effect.gen(function* () {
         yield* Effect.log(
           `Organizer role ${isOrganizer ? 'granted to' : 'revoked from'} ${targetUid} by ${admin.uid}`,
         );
+
+        if (isOrganizer && !wasOrganizer) {
+          yield* emailService
+            .sendOrganizerAccessGrantedEmail({
+              to: member.email,
+              name: member.name,
+              loginUrl: `${getSiteUrl()}/login`,
+              dashboardUrl: `${getSiteUrl()}/dashboard`,
+              grantedByName: admin.email,
+              supportEmail: getSupportEmail(),
+              idempotencyKey: `organizer-access-granted/${targetUid}`,
+            })
+            .pipe(
+              Effect.catchTag('EmailError', (error) =>
+                Effect.logWarning(
+                  `Organizer access email not sent to ${member.email}: ${JSON.stringify(error)}`,
+                ),
+              ),
+            );
+        }
       }),
 
     // Search members

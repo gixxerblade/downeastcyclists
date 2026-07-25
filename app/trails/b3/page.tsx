@@ -23,9 +23,9 @@ const trailLinks = [
 
 export default async function B3() {
   const [logo, trailMap, futureMap] = await getB3Assets();
-  const logoUrl = logo.fields.file?.url ? `https:${logo.fields.file.url}` : '';
-  const trailMapUrl = trailMap.fields.file?.url ? `https:${trailMap.fields.file.url}` : '';
-  const futureMapUrl = futureMap.fields.file?.url ? `https:${futureMap.fields.file.url}` : '';
+  const logoUrl = logo?.fields.file?.url ? `https:${logo.fields.file.url}` : '';
+  const trailMapUrl = trailMap?.fields.file?.url ? `https:${trailMap.fields.file.url}` : '';
+  const futureMapUrl = futureMap?.fields.file?.url ? `https:${futureMap.fields.file.url}` : '';
 
   return (
     <main className="dec-page">

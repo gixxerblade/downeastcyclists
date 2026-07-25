@@ -1,0 +1,23 @@
+Hi {{{USER_NAME}}},
+
+You have been granted organizer access to {{{ORG_NAME}}} by {{{GRANTED_BY_NAME}}}.
+
+Sign in with {{{USER_EMAIL}}}:
+{{{LOGIN_URL}}}
+
+After signing in, open the organizer dashboard:
+{{{DASHBOARD_URL}}}
+
+As an organizer, you can:
+
+- View membership reports and member details
+- Export member data
+- Send password reset emails
+- Refresh membership statistics
+- Update trail status information
+
+If you do not have a password or prefer not to use one, choose the email sign-in link option on the login page.
+
+If you believe you received this by mistake or need help accessing the dashboard, contact {{{SUPPORT_EMAIL}}}.
+
+Down East Cyclists
