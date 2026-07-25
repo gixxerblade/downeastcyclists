@@ -38,6 +38,7 @@ export const users = pgTable(
     addressState: varchar('address_state', {length: 50}),
     addressZip: varchar('address_zip', {length: 20}),
     stripeCustomerId: varchar('stripe_customer_id', {length: 255}),
+    isOrganizer: boolean('is_organizer').notNull().default(false),
     createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', {withTimezone: true}).defaultNow().notNull(),
   },

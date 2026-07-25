@@ -18,6 +18,7 @@ type AdminErrorTag =
   | 'QRError'
   | 'AdminError'
   | 'MemberNotFoundError'
+  | 'NotFoundError'
   | 'EmailConflictError'
   | 'EmailError'
   | 'StripeSubscriptionActiveError'
@@ -55,6 +56,8 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
   MemberNotFoundError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 404}),
+  NotFoundError: (error: {resource: string}) =>
+    Effect.succeed({error: `${error.resource} not found`, _tag: 'error' as const, status: 404}),
   EmailConflictError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 409}),
   StripeSubscriptionActiveError: (error: {message: string}) =>

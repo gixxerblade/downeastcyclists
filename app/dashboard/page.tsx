@@ -3,6 +3,7 @@
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DirectionsBikeIcon from '@mui/icons-material/DirectionsBike';
 import LogoutIcon from '@mui/icons-material/Logout';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -22,26 +23,20 @@ import {useMutation} from '@tanstack/react-query';
 import {Effect} from 'effect';
 import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
 import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
+import {OrganizerManagement} from '@/src/components/admin/OrganizerManagement';
 import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
 import {useAuth} from '@/src/components/auth/AuthProvider';
 import TrailStatus from '@/src/components/TrailStatus';
 import TrailStatusEditor from '@/src/components/TrailStatusEditor';
+import type {StaffRole} from '@/src/lib/access-control';
 import {refreshStats} from '@/src/lib/effect/client-admin';
 import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
 import type {MembershipStats} from '@/src/lib/effect/schemas';
 
-type AdminSection = 'overview' | 'members' | 'trails' | 'reconciliation';
+type AdminSection = 'overview' | 'members' | 'trails' | 'reconciliation' | 'organizers';
 
 interface DashboardStats {
   totalMembers: number;
@@ -59,11 +54,27 @@ interface DashboardStats {
   membershipGrowth?: ReadonlyArray<{readonly month: string; readonly count: number}>;
 }
 
-const sections: Array<{id: AdminSection; label: string; icon: React.ReactNode}> = [
+const allSections: Array<{
+  id: AdminSection;
+  label: string;
+  icon: React.ReactNode;
+  adminOnly?: boolean;
+}> = [
   {id: 'overview', label: 'Overview', icon: <DashboardIcon fontSize="small" />},
   {id: 'members', label: 'Members', icon: <PeopleAltIcon fontSize="small" />},
   {id: 'trails', label: 'Trail status', icon: <DirectionsBikeIcon fontSize="small" />},
-  {id: 'reconciliation', label: 'Reconciliation', icon: <SyncAltIcon fontSize="small" />},
+  {
+    id: 'reconciliation',
+    label: 'Reconciliation',
+    icon: <SyncAltIcon fontSize="small" />,
+    adminOnly: true,
+  },
+  {
+    id: 'organizers',
+    label: 'Organizers',
+    icon: <ManageAccountsIcon fontSize="small" />,
+    adminOnly: true,
+  },
 ];
 
 function AdminMark() {
@@ -85,7 +96,9 @@ function AdminMark() {
           DEC
         </Box>
       </Box>
-      <Box sx={{fontFamily: 'Anton, sans-serif', lineHeight: 1, letterSpacing: '.04em', fontSize: 13}}>
+      <Box
+        sx={{fontFamily: 'Anton, sans-serif', lineHeight: 1, letterSpacing: '.04em', fontSize: 13}}
+      >
         ADMIN
         <br />
         <Box component="span" sx={{color: '#8B8B90'}}>
@@ -108,12 +121,25 @@ function StatCard({
   dark?: boolean;
 }) {
   return (
-    <Card sx={{bgcolor: dark ? '#16130F' : 'var(--dec-surface)', color: dark ? '#fff' : 'var(--dec-ink)'}}>
+    <Card
+      sx={{
+        bgcolor: dark ? '#16130F' : 'var(--dec-surface)',
+        color: dark ? '#fff' : 'var(--dec-ink)',
+      }}
+    >
       <CardContent>
         <Typography variant="body2" sx={{color: dark ? '#B8B8BD' : 'var(--dec-muted-2)'}}>
           {label}
         </Typography>
-        <Typography sx={{fontFamily: 'Anton, sans-serif', fontSize: 34, color: accent || 'inherit', mt: .5, minHeight: 42}}>
+        <Typography
+          sx={{
+            fontFamily: 'Anton, sans-serif',
+            fontSize: 34,
+            color: accent || 'inherit',
+            mt: 0.5,
+            minHeight: 42,
+          }}
+        >
           {value ?? ''}
         </Typography>
       </CardContent>
@@ -126,7 +152,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const {user, loading, signOut} = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -171,13 +197,13 @@ export default function DashboardPage() {
           return;
         }
 
-        if (!data.isAdmin) {
+        if (data.role !== 'admin' && data.role !== 'organizer') {
           setAuthError('You are not authorized to access this dashboard.');
           signOut().then(() => router.replace('/login'));
           return;
         }
 
-        setIsAdmin(true);
+        setStaffRole(data.role);
       } catch (error) {
         console.error('Failed to check admin status:', error);
         setAuthError('Failed to verify admin access.');
@@ -218,8 +244,8 @@ export default function DashboardPage() {
       }
     };
 
-    if (isAdmin) fetchStats();
-  }, [isAdmin]);
+    if (staffRole) fetchStats();
+  }, [staffRole]);
 
   const handleLogout = async () => {
     try {
@@ -244,7 +270,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (authError || !isAdmin) {
+  if (authError || !staffRole) {
     return (
       <Container>
         <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8}}>
@@ -258,10 +284,14 @@ export default function DashboardPage() {
     );
   }
 
+  const sections = allSections.filter((item) => !item.adminOnly || staffRole === 'admin');
   const sectionTitle = sections.find((item) => item.id === section)?.label || 'Overview';
 
   return (
-    <Box className="dec-admin-page" sx={{display: 'flex', minHeight: 'calc(100vh - 76px)', mt: '-76px', pt: '76px'}}>
+    <Box
+      className="dec-admin-page"
+      sx={{display: 'flex', minHeight: 'calc(100vh - 76px)', mt: '-76px', pt: '76px'}}
+    >
       <Box
         component="aside"
         sx={{
@@ -279,10 +309,19 @@ export default function DashboardPage() {
         }}
       >
         <AdminMark />
-        <Typography sx={{px: 3, pb: 1, fontSize: 11, fontWeight: 800, letterSpacing: '.1em', color: '#6A6A6F'}}>
+        <Typography
+          sx={{
+            px: 3,
+            pb: 1,
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '.1em',
+            color: '#6A6A6F',
+          }}
+        >
           MANAGE
         </Typography>
-        <Box component="nav" sx={{display: 'flex', flexDirection: 'column', gap: .25, px: 1.5}}>
+        <Box component="nav" sx={{display: 'flex', flexDirection: 'column', gap: 0.25, px: 1.5}}>
           {sections.map((item) => (
             <Button
               key={item.id}
@@ -300,21 +339,45 @@ export default function DashboardPage() {
               {item.label}
             </Button>
           ))}
-          <Button disabled startIcon={<QrCodeScannerIcon fontSize="small" />} sx={{justifyContent: 'flex-start', px: 1.5}}>
+          <Button
+            disabled
+            startIcon={<QrCodeScannerIcon fontSize="small" />}
+            sx={{justifyContent: 'flex-start', px: 1.5}}
+          >
             Verify (QR) · SOON
           </Button>
         </Box>
 
         <Box sx={{mt: 'auto', px: 1.5}}>
-          <Box sx={{borderTop: '1px solid rgba(255,255,255,.1)', pt: 2, display: 'flex', gap: 1.25, alignItems: 'center'}}>
-            <Box sx={{width: 34, height: 34, borderRadius: '50%', bgcolor: '#F20E02', display: 'grid', placeItems: 'center', fontWeight: 800}}>
+          <Box
+            sx={{
+              borderTop: '1px solid rgba(255,255,255,.1)',
+              pt: 2,
+              display: 'flex',
+              gap: 1.25,
+              alignItems: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                bgcolor: '#F20E02',
+                display: 'grid',
+                placeItems: 'center',
+                fontWeight: 800,
+              }}
+            >
               {(user?.displayName || user?.email || 'A').slice(0, 1).toUpperCase()}
             </Box>
             <Box sx={{minWidth: 0, flex: 1}}>
               <Typography noWrap sx={{fontSize: 13, fontWeight: 800}}>
                 {user?.displayName || user?.email?.split('@')[0] || 'Admin'}
               </Typography>
-              <Typography sx={{fontSize: 11, color: '#8B8B90'}}>Administrator</Typography>
+              <Typography sx={{fontSize: 11, color: '#8B8B90'}}>
+                {staffRole === 'admin' ? 'Administrator' : 'Organizer'}
+              </Typography>
             </Box>
             <Button
               onClick={handleLogout}
@@ -355,7 +418,9 @@ export default function DashboardPage() {
           </Box>
           <Button
             variant="outlined"
-            startIcon={refreshStatsMutation.isPending ? <CircularProgress size={18} /> : <RefreshIcon />}
+            startIcon={
+              refreshStatsMutation.isPending ? <CircularProgress size={18} /> : <RefreshIcon />
+            }
             onClick={() => refreshStatsMutation.mutate()}
             disabled={refreshStatsMutation.isPending}
           >
@@ -363,7 +428,15 @@ export default function DashboardPage() {
           </Button>
         </Paper>
 
-        <Box sx={{display: {xs: 'flex', md: 'none'}, gap: 1, overflowX: 'auto', p: 2, borderBottom: '1px solid var(--dec-border)'}}>
+        <Box
+          sx={{
+            display: {xs: 'flex', md: 'none'},
+            gap: 1,
+            overflowX: 'auto',
+            p: 2,
+            borderBottom: '1px solid var(--dec-border)',
+          }}
+        >
           {sections.map((item) => (
             <Button
               key={item.id}
@@ -385,20 +458,36 @@ export default function DashboardPage() {
 
           {section === 'overview' && (
             <Box sx={{display: 'grid', gap: 3}}>
-              <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr 1fr', lg: 'repeat(5, minmax(0, 1fr))'}, gap: 2}}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {xs: '1fr 1fr', lg: 'repeat(5, minmax(0, 1fr))'},
+                  gap: 2,
+                }}
+              >
                 <StatCard label="Total members" value={dashboardStats.totalMembers} />
                 <StatCard label="Active" value={dashboardStats.activeMembers} accent="#1F8A5B" />
-                <StatCard label="Expiring (30d)" value={dashboardStats.expiringSoonMembers ?? ''} accent="#C7801A" />
+                <StatCard
+                  label="Expiring (30d)"
+                  value={dashboardStats.expiringSoonMembers ?? ''}
+                  accent="#C7801A"
+                />
                 <StatCard label="New this month" value={dashboardStats.newMembersThisMonth ?? ''} />
                 <StatCard
                   label="Annual revenue"
-                  value={dashboardStats.yearlyRevenue != null ? `$${dashboardStats.yearlyRevenue.toLocaleString()}` : ''}
+                  value={
+                    dashboardStats.yearlyRevenue != null
+                      ? `$${dashboardStats.yearlyRevenue.toLocaleString()}`
+                      : ''
+                  }
                   accent="#7CF3A0"
                   dark
                 />
               </Box>
 
-              <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', lg: '1.5fr 1fr'}, gap: 3}}>
+              <Box
+                sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', lg: '1.5fr 1fr'}, gap: 3}}
+              >
                 <Paper className="dec-card" sx={{p: 3}}>
                   <Typography variant="h4" component="h2" sx={{mb: 3}}>
                     Membership growth
@@ -442,8 +531,18 @@ export default function DashboardPage() {
                       </ResponsiveContainer>
                     </Box>
                   ) : (
-                    <Box sx={{minHeight: 220, display: 'grid', placeItems: 'center', border: '1px dashed var(--dec-border)', borderRadius: 2}}>
-                      <Typography color="text.secondary">No membership growth data available.</Typography>
+                    <Box
+                      sx={{
+                        minHeight: 220,
+                        display: 'grid',
+                        placeItems: 'center',
+                        border: '1px dashed var(--dec-border)',
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography color="text.secondary">
+                        No membership growth data available.
+                      </Typography>
                     </Box>
                   )}
                 </Paper>
@@ -459,9 +558,17 @@ export default function DashboardPage() {
                       Quick actions
                     </Typography>
                     <Box sx={{display: 'grid', gap: 1.5}}>
-                      <Button variant="contained" onClick={() => setSection('members')}>Manage members</Button>
-                      <Button variant="outlined" onClick={() => setSection('trails')}>Update trail status</Button>
-                      <Button variant="outlined" onClick={() => setSection('reconciliation')}>Run reconciliation</Button>
+                      <Button variant="contained" onClick={() => setSection('members')}>
+                        Manage members
+                      </Button>
+                      <Button variant="outlined" onClick={() => setSection('trails')}>
+                        Update trail status
+                      </Button>
+                      {staffRole === 'admin' && (
+                        <Button variant="outlined" onClick={() => setSection('reconciliation')}>
+                          Run reconciliation
+                        </Button>
+                      )}
                     </Box>
                   </Paper>
                 </Box>
@@ -469,7 +576,7 @@ export default function DashboardPage() {
             </Box>
           )}
 
-          {section === 'members' && <MembershipManagement />}
+          {section === 'members' && <MembershipManagement role={staffRole} />}
 
           {section === 'trails' && (
             <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', lg: '1fr 1fr'}, gap: 3}}>
@@ -485,7 +592,9 @@ export default function DashboardPage() {
             </Box>
           )}
 
-          {section === 'reconciliation' && <ReconciliationTool />}
+          {section === 'reconciliation' && staffRole === 'admin' && <ReconciliationTool />}
+
+          {section === 'organizers' && staffRole === 'admin' && <OrganizerManagement />}
         </Box>
       </Box>
     </Box>

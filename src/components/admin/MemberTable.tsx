@@ -37,7 +37,7 @@ interface MemberTableProps {
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
-  onEditMember: (member: MemberWithMembership) => void;
+  onEditMember?: (member: MemberWithMembership) => void;
   onDeleteMember?: (member: MemberWithMembership) => void;
   onViewAudit?: (member: MemberWithMembership) => void;
   onViewPayments?: (member: MemberWithMembership) => void;
@@ -117,15 +117,17 @@ export function MemberTable({
                   <TableCell>{formattedEndDate}</TableCell>
                   <TableCell align="center">
                     <Box sx={{display: 'flex', gap: 0.5, justifyContent: 'center'}}>
-                      <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => onEditMember(member)}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {onEditMember && (
+                        <Tooltip title="Edit">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => onEditMember(member)}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {onViewAudit && (
                         <Tooltip title="View Audit Log">
                           <IconButton size="small" onClick={() => onViewAudit(member)}>

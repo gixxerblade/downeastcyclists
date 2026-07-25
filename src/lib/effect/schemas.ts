@@ -33,6 +33,7 @@ export const UserDocument = S.Struct({
   phone: S.optional(S.String),
   address: S.optional(Address),
   stripeCustomerId: S.optional(S.String),
+  isOrganizer: S.optional(S.Boolean),
   createdAt: S.Any,
   updatedAt: S.Any,
 });
@@ -352,9 +353,7 @@ export const ReconciliationLookupDiagnostics = S.Struct({
   emailCustomerCount: S.Number,
   subscriptionLookupCount: S.Number,
 });
-export type ReconciliationLookupDiagnostics = S.Schema.Type<
-  typeof ReconciliationLookupDiagnostics
->;
+export type ReconciliationLookupDiagnostics = S.Schema.Type<typeof ReconciliationLookupDiagnostics>;
 
 // Database data snapshot for comparison
 export const DatabaseDataSnapshot = S.Struct({

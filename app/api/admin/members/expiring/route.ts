@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   return handleAdminRoute({
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'members:read');
         return yield* admin.getExpiringMemberships(days as 30 | 60 | 90);
       }),
     errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],

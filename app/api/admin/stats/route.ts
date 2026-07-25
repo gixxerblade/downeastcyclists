@@ -8,7 +8,7 @@ export async function GET() {
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
         const stats = yield* StatsService;
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'stats:read');
         return yield* stats.getStats();
       }),
     errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
@@ -21,7 +21,7 @@ export async function POST() {
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
         const stats = yield* StatsService;
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'stats:refresh');
         return yield* stats.refreshStats();
       }),
     errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],

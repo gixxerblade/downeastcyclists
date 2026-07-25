@@ -187,6 +187,8 @@ The following environment variables need to be set in Netlify:
 - `STRIPE_WEBHOOK_SECRET`: Stripe webhook signing secret
 - `STRIPE_PRICE_INDIVIDUAL`: Stripe price ID for individual membership
 - `STRIPE_PRICE_FAMILY`: Stripe price ID for family membership
+- `ADMIN_EMAIL`: The single administrator account email. Organizer access is granted to member
+  accounts from the administrator dashboard.
 
 ### Encrypted Credentials
 

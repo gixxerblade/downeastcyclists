@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, {params}: {params: Promise<{use
   return handleAdminRoute({
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'members:audit');
         return yield* admin.getMemberAuditLog(userId);
       }),
     errorTags: [

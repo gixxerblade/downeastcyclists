@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
         // Verify admin access
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'members:read');
 
         // Search members
         return yield* admin.searchMembers(params);

@@ -19,6 +19,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {Effect} from 'effect';
 import {useState} from 'react';
 
+import type {StaffRole} from '@/src/lib/access-control';
 import {refreshStats, getStats, getMembers, sendPasswordReset} from '@/src/lib/effect/client-admin';
 import type {
   AdminError,
@@ -38,7 +39,8 @@ import {MemberTable} from './MemberTable';
 import {PaymentHistoryPanel} from './PaymentHistoryPanel';
 import {StatsCards} from './StatsCards';
 
-export function MembershipManagement() {
+export function MembershipManagement({role}: {role: StaffRole}) {
+  const isAdmin = role === 'admin';
   const queryClient = useQueryClient();
   const [exporting, setExporting] = useState(false);
 
@@ -168,7 +170,16 @@ export function MembershipManagement() {
     <Box sx={{display: 'flex', flexDirection: 'column', gap: 3}}>
       {/* Stats Section */}
       <Box>
-        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: {xs: 'stretch', lg: 'center'}, mb: 2, gap: 2, flexDirection: {xs: 'column', lg: 'row'}}}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: {xs: 'stretch', lg: 'center'},
+            mb: 2,
+            gap: 2,
+            flexDirection: {xs: 'column', lg: 'row'},
+          }}
+        >
           <Typography variant="h5" component="h2">
             Membership Statistics
           </Typography>
@@ -192,28 +203,48 @@ export function MembershipManagement() {
 
       {/* Members Section */}
       <Box>
-        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: {xs: 'stretch', lg: 'center'}, mb: 2, gap: 2, flexDirection: {xs: 'column', lg: 'row'}}}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: {xs: 'stretch', lg: 'center'},
+            mb: 2,
+            gap: 2,
+            flexDirection: {xs: 'column', lg: 'row'},
+          }}
+        >
           <Typography variant="h5" component="h2">
             Members
           </Typography>
-          <Box sx={{display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: {xs: 'flex-start', lg: 'flex-end'}}}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setCreateModalOpen(true)}
-              startIcon={<Add />}
-              sx={{order: {xs: 1, lg: 5}}}
-            >
-              Create Member
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => setBulkImportModalOpen(true)}
-              startIcon={<Upload />}
-              sx={{order: {xs: 2, lg: 1}}}
-            >
-              Bulk Import
-            </Button>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              flexWrap: 'wrap',
+              justifyContent: {xs: 'flex-start', lg: 'flex-end'},
+            }}
+          >
+            {isAdmin && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setCreateModalOpen(true)}
+                startIcon={<Add />}
+                sx={{order: {xs: 1, lg: 5}}}
+              >
+                Create Member
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outlined"
+                onClick={() => setBulkImportModalOpen(true)}
+                startIcon={<Upload />}
+                sx={{order: {xs: 2, lg: 1}}}
+              >
+                Bulk Import
+              </Button>
+            )}
             <Button
               variant="outlined"
               onClick={() => setExpiringReportOpen(true)}
@@ -231,15 +262,17 @@ export function MembershipManagement() {
             >
               {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={() => handleExport('json')}
-              disabled={exporting}
-              sx={{order: {xs: 5, lg: 4}}}
-            >
-              {exporting ? 'Exporting...' : 'Export JSON'}
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => handleExport('json')}
+                disabled={exporting}
+                sx={{order: {xs: 5, lg: 4}}}
+              >
+                {exporting ? 'Exporting...' : 'Export JSON'}
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -353,10 +386,10 @@ export function MembershipManagement() {
               setPageSize(newSize);
               setPage(1);
             }}
-            onEditMember={(member) => setEditingMember(member)}
-            onDeleteMember={(member) => setDeletingMember(member)}
+            onEditMember={isAdmin ? (member) => setEditingMember(member) : undefined}
+            onDeleteMember={isAdmin ? (member) => setDeletingMember(member) : undefined}
             onViewAudit={(member) => setAuditMember(member)}
-            onViewPayments={(member) => setPaymentHistoryMember(member)}
+            onViewPayments={isAdmin ? (member) => setPaymentHistoryMember(member) : undefined}
             onSendPasswordReset={(member) =>
               member.user?.id && passwordResetMutation.mutate(member.user.id)
             }
@@ -365,26 +398,34 @@ export function MembershipManagement() {
       </Box>
 
       {/* Modals */}
-      <CreateMemberModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+      {isAdmin && (
+        <CreateMemberModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+      )}
 
-      <BulkImportModal open={bulkImportModalOpen} onClose={() => setBulkImportModalOpen(false)} />
+      {isAdmin && (
+        <BulkImportModal open={bulkImportModalOpen} onClose={() => setBulkImportModalOpen(false)} />
+      )}
 
       <ExpiringMembersReport
         open={expiringReportOpen}
         onClose={() => setExpiringReportOpen(false)}
       />
 
-      <EditMemberModal
-        open={!!editingMember}
-        member={editingMember}
-        onClose={() => setEditingMember(null)}
-      />
+      {isAdmin && (
+        <EditMemberModal
+          open={!!editingMember}
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+        />
+      )}
 
-      <DeleteMemberDialog
-        open={!!deletingMember}
-        member={deletingMember}
-        onClose={() => setDeletingMember(null)}
-      />
+      {isAdmin && (
+        <DeleteMemberDialog
+          open={!!deletingMember}
+          member={deletingMember}
+          onClose={() => setDeletingMember(null)}
+        />
+      )}
 
       <MemberAuditLog
         open={!!auditMember}
@@ -393,12 +434,14 @@ export function MembershipManagement() {
         onClose={() => setAuditMember(null)}
       />
 
-      <PaymentHistoryPanel
-        open={!!paymentHistoryMember}
-        userId={paymentHistoryMember?.user?.id || null}
-        memberName={paymentHistoryMember?.user?.name || paymentHistoryMember?.user?.email}
-        onClose={() => setPaymentHistoryMember(null)}
-      />
+      {isAdmin && (
+        <PaymentHistoryPanel
+          open={!!paymentHistoryMember}
+          userId={paymentHistoryMember?.user?.id || null}
+          memberName={paymentHistoryMember?.user?.name || paymentHistoryMember?.user?.email}
+          onClose={() => setPaymentHistoryMember(null)}
+        />
+      )}
     </Box>
   );
 }

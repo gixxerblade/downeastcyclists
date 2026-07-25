@@ -77,7 +77,7 @@ export default function Navbar() {
   const currentPath = pathname || '/';
   const router = useRouter();
   const {mode, toggleMode} = useThemeMode();
-  const {user, loading, signOut} = useAuth();
+  const {user, role, loading, signOut} = useAuth();
 
   const isActive = (href: string) => {
     if (href === '/trails/b3') return currentPath.startsWith('/trails');
@@ -139,7 +139,16 @@ export default function Navbar() {
                   {item.label}
                 </Box>
               ) : item.children ? (
-                <Box key={item.href} className="group" sx={{position: 'relative', minHeight: 44, display: 'inline-flex', alignItems: 'center'}}>
+                <Box
+                  key={item.href}
+                  className="group"
+                  sx={{
+                    position: 'relative',
+                    minHeight: 44,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                >
                   <Box
                     component={Link}
                     href={item.href}
@@ -150,7 +159,9 @@ export default function Navbar() {
                       minHeight: 44,
                       display: 'inline-flex',
                       alignItems: 'center',
-                      borderBottom: isActive(item.href) ? '2px solid #F20E02' : '2px solid transparent',
+                      borderBottom: isActive(item.href)
+                        ? '2px solid #F20E02'
+                        : '2px solid transparent',
                     }}
                   >
                     {item.label}
@@ -164,7 +175,7 @@ export default function Navbar() {
                       zIndex: 20,
                       minWidth: 210,
                       flexDirection: 'column',
-                      gap: .5,
+                      gap: 0.5,
                       p: 1,
                       bgcolor: 'var(--dec-surface)',
                       border: '1px solid var(--dec-border)',
@@ -184,7 +195,9 @@ export default function Navbar() {
                           color: currentPath === child.href ? '#F20E02' : 'var(--dec-muted)',
                           fontSize: 14,
                           fontWeight: 700,
-                          '&:hover': {bgcolor: 'color-mix(in srgb, var(--dec-border) 40%, transparent)'},
+                          '&:hover': {
+                            bgcolor: 'color-mix(in srgb, var(--dec-border) 40%, transparent)',
+                          },
                         }}
                       >
                         {child.label}
@@ -204,7 +217,9 @@ export default function Navbar() {
                     minHeight: 44,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    borderBottom: isActive(item.href) ? '2px solid #F20E02' : '2px solid transparent',
+                    borderBottom: isActive(item.href)
+                      ? '2px solid #F20E02'
+                      : '2px solid transparent',
                   }}
                 >
                   {item.label}
@@ -222,7 +237,7 @@ export default function Navbar() {
               {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
             </IconButton>
 
-            {!loading && user && (
+            {!loading && user && role !== 'admin' && (
               <Button
                 component={Link}
                 href="/member"
@@ -236,7 +251,7 @@ export default function Navbar() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {user.displayName || user.email?.split('@')[0] || 'My Account'}
+                My Account
               </Button>
             )}
 
@@ -267,25 +282,52 @@ export default function Navbar() {
               </Button>
             )}
 
-            <Button
-              component={Link}
-              href={user ? '/member' : '/join'}
-              variant="contained"
-              sx={{
-                bgcolor: '#F20E02',
-                borderRadius: 999,
-                px: {xs: 2, md: 2.75},
-                '&:hover': {bgcolor: '#b30a01'},
-              }}
-            >
-              {user ? 'My Account' : <Box component="span" sx={{display: {xs: 'none', sm: 'inline'}}}>Join the club</Box>}
-              {!user && <Box component="span" sx={{display: {xs: 'inline', sm: 'none'}}}>Join</Box>}
-            </Button>
+            {!loading && user && (role === 'admin' || role === 'organizer') && (
+              <Button
+                component={Link}
+                href="/dashboard"
+                variant="contained"
+                sx={{
+                  bgcolor: '#F20E02',
+                  borderRadius: 999,
+                  px: {xs: 2, md: 2.75},
+                  '&:hover': {bgcolor: '#b30a01'},
+                }}
+              >
+                Admin Dashboard
+              </Button>
+            )}
+
+            {!loading && !user && (
+              <Button
+                component={Link}
+                href="/join"
+                variant="contained"
+                sx={{
+                  bgcolor: '#F20E02',
+                  borderRadius: 999,
+                  px: {xs: 2, md: 2.75},
+                  '&:hover': {bgcolor: '#b30a01'},
+                }}
+              >
+                <Box component="span" sx={{display: {xs: 'none', sm: 'inline'}}}>
+                  Join the club
+                </Box>
+                <Box component="span" sx={{display: {xs: 'inline', sm: 'none'}}}>
+                  Join
+                </Box>
+              </Button>
+            )}
 
             <IconButton
               aria-label="Open navigation menu"
               onClick={(event) => setAnchorElNav(event.currentTarget)}
-              sx={{display: {xs: 'inline-flex', md: 'none'}, color: 'var(--dec-ink)', width: 44, height: 44}}
+              sx={{
+                display: {xs: 'inline-flex', md: 'none'},
+                color: 'var(--dec-ink)',
+                width: 44,
+                height: 44,
+              }}
             >
               {anchorElNav ? <CloseIcon /> : <MenuIcon />}
             </IconButton>
@@ -310,22 +352,32 @@ export default function Navbar() {
           >
             {navItems.map((item) => (
               <Box key={item.href}>
-              <MenuItem onClick={closeMenu} sx={{minHeight: 48}}>
-                {item.external ? (
-                  <a href={item.href} target="_blank" rel="noopener noreferrer">
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link href={item.href}>{item.label}</Link>
-                )}
-              </MenuItem>
-              {item.children?.map((child) => (
-                <MenuItem key={child.href} onClick={closeMenu} sx={{minHeight: 44, pl: 4}}>
-                  <Link href={child.href}>{child.label}</Link>
+                <MenuItem onClick={closeMenu} sx={{minHeight: 48}}>
+                  {item.external ? (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link href={item.href}>{item.label}</Link>
+                  )}
                 </MenuItem>
-              ))}
+                {item.children?.map((child) => (
+                  <MenuItem key={child.href} onClick={closeMenu} sx={{minHeight: 44, pl: 4}}>
+                    <Link href={child.href}>{child.label}</Link>
+                  </MenuItem>
+                ))}
               </Box>
             ))}
+            {user && role !== 'admin' && (
+              <MenuItem onClick={closeMenu} sx={{minHeight: 48}}>
+                <Link href="/member">My Account</Link>
+              </MenuItem>
+            )}
+            {user && (role === 'admin' || role === 'organizer') && (
+              <MenuItem onClick={closeMenu} sx={{minHeight: 48}}>
+                <Link href="/dashboard">Admin Dashboard</Link>
+              </MenuItem>
+            )}
             <MenuItem onClick={handleAuthClick} sx={{minHeight: 48}}>
               {user ? 'Log out' : 'Log in'}
             </MenuItem>
