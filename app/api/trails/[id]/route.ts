@@ -1,52 +1,61 @@
-import {cookies} from 'next/headers';
+import {Effect} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
+import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
+import {DatabaseError} from '@/src/lib/effect/errors';
 import {getFirestoreClient} from '@/src/lib/firestore-client';
 
-interface TrailUpdateData {
-  trail?: string;
-  open?: boolean;
-  notes?: string;
-}
-
 export async function PATCH(request: NextRequest, {params}: {params: Promise<{id: string}>}) {
-  try {
-    // Check authentication
-    const cookieStore = await cookies();
-    const authToken = cookieStore.get('session');
-
-    if (!authToken) {
-      return NextResponse.json({error: 'Authentication required'}, {status: 401});
-    }
-
-    // Get the trail ID from the URL params
-    const {id} = await params;
-    if (!id) {
-      return NextResponse.json({error: 'Trail ID is required'}, {status: 400});
-    }
-
-    // Parse the request body
-    const trailData: TrailUpdateData = await request.json();
-
-    const db = getFirestoreClient();
-
-    // Reference to the trail document
-    const trailRef = db.collection('trails').doc(id);
-
-    // Update the trail document
-    // Convert to a plain object to avoid TypeScript issues with Firestore
-    await trailRef.update(trailData as {[key: string]: any});
-
-    // Return success response
-    return NextResponse.json({success: true});
-  } catch (error) {
-    console.error('Error updating trail:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to update trail',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      {status: 500},
-    );
+  const {id} = await params;
+  if (!id) {
+    return NextResponse.json({error: 'Trail ID is required'}, {status: 400});
   }
+
+  const body: unknown = await request.json();
+  if (typeof body !== 'object' || body === null) {
+    return NextResponse.json({error: 'Invalid trail update'}, {status: 400});
+  }
+
+  const trailData: Record<string, string | boolean> = {};
+  if ('trail' in body) {
+    if (typeof body.trail !== 'string') {
+      return NextResponse.json({error: 'trail must be a string'}, {status: 400});
+    }
+    trailData.trail = body.trail;
+  }
+  if ('open' in body) {
+    if (typeof body.open !== 'boolean') {
+      return NextResponse.json({error: 'open must be a boolean'}, {status: 400});
+    }
+    trailData.open = body.open;
+  }
+  if ('notes' in body) {
+    if (typeof body.notes !== 'string') {
+      return NextResponse.json({error: 'notes must be a string'}, {status: 400});
+    }
+    trailData.notes = body.notes;
+  }
+  if (Object.keys(trailData).length === 0) {
+    return NextResponse.json({error: 'No supported trail fields provided'}, {status: 400});
+  }
+
+  return handleAdminRoute({
+    handler: (admin, sessionCookie) =>
+      Effect.gen(function* () {
+        yield* admin.authorize(sessionCookie, 'trails:update');
+        const db = getFirestoreClient();
+        const trailRef = db.collection('trails').doc(id);
+        yield* Effect.tryPromise({
+          try: () => trailRef.update(trailData),
+          catch: (cause) =>
+            new DatabaseError({
+              code: 'TRAIL_UPDATE_FAILED',
+              message: 'Failed to update trail',
+              cause,
+            }),
+        });
+        return {success: true};
+      }),
+    errorTags: ['UnauthorizedError', 'SessionError', 'AuthError', 'DatabaseError'],
+  });
 }

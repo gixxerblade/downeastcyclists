@@ -1,6 +1,7 @@
 import {redirect} from 'next/navigation';
 
 import {verifySession} from '@/src/actions/auth';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 
 export default async function MemberLayout({children}: {children: React.ReactNode}) {
   const session = await verifySession();
@@ -9,13 +10,7 @@ export default async function MemberLayout({children}: {children: React.ReactNod
     redirect('/login');
   }
 
-  // Check if user is admin and redirect to dashboard
-  const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
-    .toLowerCase()
-    .trim();
-  const userEmail = (session.email || '').toLowerCase().trim();
-
-  if (userEmail === adminEmail) {
+  if (isPrimaryAdminEmail(session.email)) {
     redirect('/dashboard');
   }
 

@@ -220,8 +220,10 @@ export const createTestPortalService = (
 export const createTestAdminService = (
   overrides: Partial<AdminServiceType> = {},
 ): AdminServiceType => ({
+  getAccess: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['getAccess'],
+  authorize: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['authorize'],
   verifyAdmin: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['verifyAdmin'],
-  setAdminRole: vi.fn(() => Effect.void),
+  setOrganizerRole: vi.fn(() => Effect.void),
   searchMembers: vi.fn(() => Effect.succeed({members: [], total: 0})),
   getMember: vi.fn(() =>
     Effect.fail(new NotFoundError({resource: 'user', id: ''})),

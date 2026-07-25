@@ -51,6 +51,7 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
       zip: row.addressZip ?? undefined,
     },
     stripeCustomerId: row.stripeCustomerId ?? undefined,
+    isOrganizer: row.isOrganizer,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

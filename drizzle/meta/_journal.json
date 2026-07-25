@@ -15,6 +15,13 @@
       "when": 1783980440012,
       "tag": "0001_supreme_leech",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784991424003,
+      "tag": "0002_graceful_timeslip",
+      "breakpoints": true
     }
   ]
 }

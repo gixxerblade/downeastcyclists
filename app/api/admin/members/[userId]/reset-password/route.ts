@@ -9,7 +9,7 @@ export async function POST(request: NextRequest, {params}: {params: Promise<{use
   return handleAdminRoute({
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
-        yield* admin.verifyAdmin(sessionCookie);
+        yield* admin.authorize(sessionCookie, 'members:password-reset');
         yield* admin.sendPasswordReset(userId);
         return {sent: true};
       }),

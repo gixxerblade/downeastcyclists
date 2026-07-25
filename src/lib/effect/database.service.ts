@@ -45,6 +45,7 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
       zip: row.addressZip ?? undefined,
     },
     stripeCustomerId: row.stripeCustomerId ?? undefined,
+    isOrganizer: row.isOrganizer,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -291,6 +292,7 @@ const make = Effect.sync(() => {
               addressState: data.address?.state ?? null,
               addressZip: data.address?.zip ?? null,
               stripeCustomerId: data.stripeCustomerId ?? null,
+              isOrganizer: data.isOrganizer ?? false,
               createdAt: now,
               updatedAt: now,
             })
@@ -318,6 +320,7 @@ const make = Effect.sync(() => {
           if (data.phone !== undefined) updates.phone = data.phone ?? null;
           if (data.stripeCustomerId !== undefined)
             updates.stripeCustomerId = data.stripeCustomerId ?? null;
+          if (data.isOrganizer !== undefined) updates.isOrganizer = data.isOrganizer;
 
           if (data.address) {
             if (data.address.street !== undefined)
@@ -352,6 +355,7 @@ const make = Effect.sync(() => {
             if (data.phone !== undefined) values.phone = data.phone ?? null;
             if (data.stripeCustomerId !== undefined)
               values.stripeCustomerId = data.stripeCustomerId ?? null;
+            if (data.isOrganizer !== undefined) values.isOrganizer = data.isOrganizer;
 
             if (data.address) {
               if (data.address.street !== undefined)
@@ -393,6 +397,7 @@ const make = Effect.sync(() => {
               addressState: data.address?.state ?? null,
               addressZip: data.address?.zip ?? null,
               stripeCustomerId: data.stripeCustomerId ?? null,
+              isOrganizer: data.isOrganizer ?? false,
               createdAt: now,
               updatedAt: now,
             });
@@ -462,6 +467,7 @@ const make = Effect.sync(() => {
               addressState: defaultData.address?.state ?? null,
               addressZip: defaultData.address?.zip ?? null,
               stripeCustomerId,
+              isOrganizer: defaultData.isOrganizer ?? false,
               createdAt: now,
               updatedAt: now,
             })

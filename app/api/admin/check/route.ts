@@ -2,6 +2,7 @@ import {Effect} from 'effect';
 import {cookies} from 'next/headers';
 import {NextResponse} from 'next/server';
 
+import {getDashboardCapabilities} from '@/src/lib/access-control';
 import {handleAdminRoute} from '@/src/lib/api/admin-route-handler';
 
 export async function GET() {
@@ -15,9 +16,17 @@ export async function GET() {
   return handleAdminRoute({
     handler: (admin, sessionCookie) =>
       Effect.gen(function* () {
-        const adminUser = yield* admin.verifyAdmin(sessionCookie);
-        return {isAdmin: true, authenticated: true, uid: adminUser.uid, email: adminUser.email};
-      }).pipe(Effect.catchAll(() => Effect.succeed({isAdmin: false, authenticated: true}))),
-    errorTags: [],
+        const access = yield* admin.getAccess(sessionCookie);
+        return {
+          authenticated: true,
+          isAdmin: access.role === 'admin',
+          isStaff: access.role === 'admin' || access.role === 'organizer',
+          uid: access.uid,
+          email: access.email,
+          role: access.role,
+          capabilities: getDashboardCapabilities(access.role),
+        };
+      }),
+    errorTags: ['SessionError', 'AuthError', 'DatabaseError'],
   });
 }

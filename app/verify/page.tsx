@@ -14,7 +14,11 @@ import {Effect} from 'effect';
 import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
 
-import {isValidSignInLink, completeMagicLinkSignIn} from '@/src/lib/effect/client-auth';
+import {
+  completeMagicLinkSignIn,
+  getCurrentAccessRole,
+  isValidSignInLink,
+} from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
 
 export default function VerifyPage() {
@@ -26,17 +30,9 @@ export default function VerifyPage() {
   // Mutation for completing sign-in
   const verifyMutation = useMutation<unknown, AuthError, string>({
     mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
-    onSuccess: (_, email) => {
-      // Check if user is admin - normalize email comparison
-      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
-        .toLowerCase()
-        .trim();
-      const userEmail = email.toLowerCase().trim();
-      const isAdmin = userEmail === adminEmail;
-
-      // Use window.location for a hard redirect to ensure it works
-      const redirectUrl = isAdmin ? '/dashboard' : '/member';
-      window.location.href = redirectUrl;
+    onSuccess: async () => {
+      const role = await Effect.runPromise(getCurrentAccessRole());
+      window.location.href = role === 'member' ? '/member' : '/dashboard';
     },
     onError: () => {
       // Clear the invalid link state and show error
@@ -134,57 +130,60 @@ export default function VerifyPage() {
   if (needsEmail) {
     return (
       <main className="dec-page">
-      <Container maxWidth="xs">
-        <Box
-          className="dec-card"
-          sx={{
-            marginTop: 8,
-            mb: 8,
-            p: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Typography variant="overline" sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}>
-            MAGIC LINK
-          </Typography>
-          <Typography component="h1" variant="h1" sx={{fontSize: 54}} gutterBottom>
-            Confirm your email
-          </Typography>
-          <Typography color="text.secondary" textAlign="center" sx={{mb: 2}}>
-            Please enter the email address you used to request the sign-in link.
-          </Typography>
-
-          {verifyMutation.error && (
-            <Alert severity="error" sx={{width: '100%', mb: 2}}>
-              {verifyMutation.error.message}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleEmailSubmit} sx={{width: '100%'}}>
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              disabled={verifyMutation.isPending}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{mt: 2}}
-              disabled={verifyMutation.isPending}
+        <Container maxWidth="xs">
+          <Box
+            className="dec-card"
+            sx={{
+              marginTop: 8,
+              mb: 8,
+              p: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}
             >
-              {verifyMutation.isPending ? 'Verifying...' : 'Continue'}
-            </Button>
+              MAGIC LINK
+            </Typography>
+            <Typography component="h1" variant="h1" sx={{fontSize: 54}} gutterBottom>
+              Confirm your email
+            </Typography>
+            <Typography color="text.secondary" textAlign="center" sx={{mb: 2}}>
+              Please enter the email address you used to request the sign-in link.
+            </Typography>
+
+            {verifyMutation.error && (
+              <Alert severity="error" sx={{width: '100%', mb: 2}}>
+                {verifyMutation.error.message}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleEmailSubmit} sx={{width: '100%'}}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                margin="normal"
+                required
+                disabled={verifyMutation.isPending}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{mt: 2}}
+                disabled={verifyMutation.isPending}
+              >
+                {verifyMutation.isPending ? 'Verifying...' : 'Continue'}
+              </Button>
+            </Box>
           </Box>
-        </Box>
-      </Container>
+        </Container>
       </main>
     );
   }

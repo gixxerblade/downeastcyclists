@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             const exportService = yield* ExportService;
 
             // Verify admin access
-            yield* admin.verifyAdmin(sessionCookie);
+            yield* admin.authorize(sessionCookie, 'members:export');
 
             // Generate export
             if (options.format === 'csv') {

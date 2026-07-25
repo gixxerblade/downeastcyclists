@@ -1,6 +1,13 @@
 import {Context, Effect, Layer, pipe} from 'effect';
 import type Stripe from 'stripe';
 
+import {
+  type AccessSession,
+  type DashboardCapability,
+  hasCurrentMembership,
+  hasDashboardCapability,
+} from '@/src/lib/access-control';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 import type {
   AuditEntry,
   BulkImportResult,
@@ -49,17 +56,29 @@ import {StripeService} from './stripe.service';
 
 // Service interface
 export interface AdminService {
+  readonly getAccess: (
+    sessionCookie: string,
+  ) => Effect.Effect<AccessSession, SessionError | AuthError | DatabaseError>;
+
+  readonly authorize: (
+    sessionCookie: string,
+    capability: DashboardCapability,
+  ) => Effect.Effect<AccessSession, UnauthorizedError | SessionError | AuthError | DatabaseError>;
+
   readonly verifyAdmin: (
     sessionCookie: string,
-  ) => Effect.Effect<{uid: string; email?: string}, UnauthorizedError | SessionError | AuthError>;
+  ) => Effect.Effect<
+    {uid: string; email?: string},
+    UnauthorizedError | SessionError | AuthError | DatabaseError
+  >;
 
-  readonly setAdminRole: (
+  readonly setOrganizerRole: (
     adminSessionCookie: string,
     targetUid: string,
-    isAdmin: boolean,
+    isOrganizer: boolean,
   ) => Effect.Effect<
     void,
-    UnauthorizedError | AdminError | SessionError | AuthError | DatabaseError
+    UnauthorizedError | AdminError | SessionError | AuthError | DatabaseError | NotFoundError
   >;
 
   readonly searchMembers: (
@@ -159,24 +178,6 @@ export interface AdminService {
 
 // Service tag
 export const AdminService = Context.GenericTag<AdminService>('AdminService');
-
-// Admin email whitelist for defense in depth
-// Loaded from ADMIN_EMAIL_WHITELIST env var (comma-separated list)
-const getAdminWhitelist = (): string[] => {
-  const whitelist = process.env.ADMIN_EMAIL_WHITELIST;
-  if (!whitelist) {
-    return [];
-  }
-  return whitelist.split(',').map((email) => email.trim().toLowerCase());
-};
-
-const isEmailInAdminWhitelist = (email: string | undefined): boolean => {
-  if (!email) return false;
-  const whitelist = getAdminWhitelist();
-  // If no whitelist is configured, fall back to claim-only verification
-  if (whitelist.length === 0) return true;
-  return whitelist.includes(email.toLowerCase());
-};
 
 // Helper functions for reconciliation
 
@@ -390,6 +391,44 @@ const make = Effect.gen(function* () {
   const cardService = yield* MembershipCardService;
   const emailService = yield* EmailService;
 
+  const getAccess = Effect.fn('AdminService.getAccess')(function* (sessionCookie: string) {
+    const session = yield* auth.verifyAdminClaim(sessionCookie);
+    const sessionEmail = session.email?.trim().toLowerCase();
+
+    if (session.isAdmin && isPrimaryAdminEmail(sessionEmail)) {
+      return {
+        uid: session.uid,
+        email: session.email,
+        role: 'admin' as const,
+      };
+    }
+
+    const user = yield* db.getUser(session.uid);
+    const membership =
+      user?.isOrganizer === true ? yield* db.getActiveMembership(session.uid) : null;
+    return {
+      uid: session.uid,
+      email: session.email,
+      role:
+        user?.isOrganizer === true && hasCurrentMembership(membership)
+          ? ('organizer' as const)
+          : ('member' as const),
+    };
+  });
+
+  const authorize = Effect.fn('AdminService.authorize')(function* (
+    sessionCookie: string,
+    capability: DashboardCapability,
+  ) {
+    const access = yield* getAccess(sessionCookie);
+    if (!hasDashboardCapability(access.role, capability)) {
+      return yield* new UnauthorizedError({
+        message: 'You do not have permission to perform this action',
+      });
+    }
+    return access;
+  });
+
   // Shared helper function to build reconciliation report
   // This avoids code duplication between validateStripeVsDatabase and reconcileMembership
   const buildReconciliationReport = (
@@ -475,9 +514,9 @@ const make = Effect.gen(function* () {
         lookupDiagnostics.subscriptionLookupCount += subscriptions.length;
         const activeSubscription =
           subscriptions.find(
-            (sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due',
-          ) ||
-          subscriptions[0];
+            (sub) =>
+              sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due',
+          ) || subscriptions[0];
 
         if (activeSubscription) {
           stripeCustomer = candidateCustomer;
@@ -529,7 +568,11 @@ const make = Effect.gen(function* () {
       }
 
       // Detect discrepancies
-      const discrepancies = detectDiscrepancies(stripeData, databaseData, stripeCustomers.length > 0);
+      const discrepancies = detectDiscrepancies(
+        stripeData,
+        databaseData,
+        stripeCustomers.length > 0,
+      );
       const reconcileActions = generateReconcileActions(discrepancies, stripeData, databaseData);
 
       return {
@@ -547,58 +590,48 @@ const make = Effect.gen(function* () {
     });
 
   return AdminService.of({
-    // Verify admin access with defense in depth (claim + whitelist)
+    getAccess,
+    authorize,
+
     verifyAdmin: (sessionCookie) =>
-      pipe(
-        auth.verifyAdminClaim(sessionCookie),
-        Effect.flatMap((session) => {
-          // First check: admin claim must be true
-          if (!session.isAdmin) {
-            return Effect.fail(
-              new UnauthorizedError({
-                message: 'Admin access required',
-              }),
-            );
-          }
-
-          // Second check: email must be in whitelist (if whitelist is configured)
-          if (!isEmailInAdminWhitelist(session.email)) {
-            return Effect.fail(
-              new UnauthorizedError({
-                message: 'Admin email not in authorized whitelist',
-              }),
-            );
-          }
-
-          return Effect.succeed({uid: session.uid, email: session.email});
-        }),
+      authorize(sessionCookie, 'organizers:manage').pipe(
+        Effect.map(({uid, email}) => ({uid, email})),
       ),
 
-    // Set admin role for a user
-    setAdminRole: (adminSessionCookie, targetUid, isAdmin) =>
+    setOrganizerRole: (adminSessionCookie, targetUid, isOrganizer) =>
       Effect.gen(function* () {
-        // Verify caller is admin
-        const admin = yield* pipe(
-          auth.verifyAdminClaim(adminSessionCookie),
-          Effect.flatMap((session) =>
-            session.isAdmin
-              ? Effect.succeed(session)
-              : Effect.fail(new UnauthorizedError({message: 'Admin access required'})),
-          ),
-        );
+        const admin = yield* authorize(adminSessionCookie, 'organizers:manage');
+        const member = yield* db.getUser(targetUid);
+        if (!member) {
+          return yield* new NotFoundError({resource: 'member', id: targetUid});
+        }
+        if (isPrimaryAdminEmail(member.email)) {
+          return yield* new AdminError({
+            code: 'ADMIN_ROLE_IMMUTABLE',
+            message: 'The administrator account cannot be assigned an organizer role',
+          });
+        }
+        if (isOrganizer) {
+          const membership = yield* db.getActiveMembership(targetUid);
+          if (!hasCurrentMembership(membership)) {
+            return yield* new AdminError({
+              code: 'ORGANIZER_MEMBERSHIP_REQUIRED',
+              message: 'Organizer access requires a current active membership',
+            });
+          }
+        }
 
-        // Set custom claim
-        yield* auth.setCustomClaims(targetUid, {admin: isAdmin});
-
-        // Log the action
+        yield* db.updateUser(targetUid, {isOrganizer});
         yield* db.logAuditEntry(targetUid, 'ADMIN_ROLE_CHANGE', {
-          changedBy: admin.uid,
-          newValue: isAdmin,
+          performedBy: admin.uid,
+          performedByEmail: admin.email,
+          role: 'organizer',
+          newValue: isOrganizer,
           timestamp: new Date().toISOString(),
         });
 
         yield* Effect.log(
-          `Admin role ${isAdmin ? 'granted to' : 'revoked from'} ${targetUid} by ${admin.uid}`,
+          `Organizer role ${isOrganizer ? 'granted to' : 'revoked from'} ${targetUid} by ${admin.uid}`,
         );
       }),
 

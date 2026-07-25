@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {useState, useEffect} from 'react';
 
-import {loginWithPassword, sendMagicLink} from '@/src/lib/effect/client-auth';
+import {getCurrentAccessRole, loginWithPassword, sendMagicLink} from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
 import {auth} from '@/src/utils/firebase';
 
@@ -56,15 +56,8 @@ export function LoginForm() {
           if (response.ok) {
             const data = await response.json();
             if (data.authenticated) {
-              const adminEmail = (
-                process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com'
-              )
-                .toLowerCase()
-                .trim();
-              const userEmail = (data.email || '').toLowerCase().trim();
-              const isAdmin = userEmail === adminEmail;
-
-              window.location.href = isAdmin ? '/dashboard' : '/member';
+              const role = await Effect.runPromise(getCurrentAccessRole());
+              window.location.href = role === 'member' ? '/member' : '/dashboard';
             }
           }
         } catch {
@@ -79,17 +72,9 @@ export function LoginForm() {
   // Email/Password Login Mutation - using Effect
   const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
-    onSuccess: (_, variables) => {
-      // Check if user is admin - normalize email comparison
-      const adminEmail = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com')
-        .toLowerCase()
-        .trim();
-      const userEmail = variables.email.toLowerCase().trim();
-      const isAdmin = userEmail === adminEmail;
-
-      // Use window.location for a hard redirect to ensure it works
-      const redirectUrl = isAdmin ? '/dashboard' : '/member';
-      window.location.href = redirectUrl;
+    onSuccess: async () => {
+      const role = await Effect.runPromise(getCurrentAccessRole());
+      window.location.href = role === 'member' ? '/member' : '/dashboard';
     },
   });
 

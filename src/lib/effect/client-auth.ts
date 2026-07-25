@@ -5,6 +5,7 @@ import {
   type UserCredential,
 } from 'firebase/auth';
 
+import type {AccessRole} from '@/src/lib/access-control';
 import {auth} from '@/src/utils/firebase';
 
 import {AuthError} from './errors';
@@ -22,6 +23,30 @@ interface LoginCredentials {
   email: string;
   password: string;
 }
+
+export const getCurrentAccessRole = (): Effect.Effect<AccessRole, AuthError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const response = await fetch('/api/admin/check');
+      if (!response.ok) return 'member';
+      const data: unknown = await response.json();
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        'role' in data &&
+        (data.role === 'admin' || data.role === 'organizer' || data.role === 'member')
+      ) {
+        return data.role;
+      }
+      return 'member';
+    },
+    catch: (error) =>
+      new AuthError({
+        code: 'ACCESS_CHECK_FAILED',
+        message: 'Failed to determine account access',
+        cause: error,
+      }),
+  });
 
 // Sign in with email/password
 export const signInWithPassword = (
