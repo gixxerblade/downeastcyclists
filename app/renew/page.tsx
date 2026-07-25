@@ -1,7 +1,8 @@
 import {Alert} from '@mui/material';
 import {redirect} from 'next/navigation';
 
-import {getMemberDashboard} from '@/src/actions/portal';
+import {verifySession} from '@/src/actions/auth';
+import {getRenewalDashboard} from '@/src/actions/portal';
 import {RenewMembershipClient} from '@/src/components/membership/RenewMembershipClient';
 
 export const metadata = {
@@ -10,14 +11,17 @@ export const metadata = {
 };
 
 interface RenewPageProps {
-  searchParams: Promise<{canceled?: string}>;
+  searchParams: Promise<{canceled?: string; userId?: string}>;
 }
 
 export default async function RenewPage({searchParams}: RenewPageProps) {
   const params = await searchParams;
-  const dashboardData = await getMemberDashboard();
+  const isDirectRenewal = Boolean(params.userId);
+  const session = params.userId ? null : await verifySession();
+  const renewalUserId = params.userId || session?.userId;
+  const dashboardData = renewalUserId ? await getRenewalDashboard(renewalUserId) : null;
 
-  if ('error' in dashboardData) {
+  if (dashboardData && 'error' in dashboardData) {
     return (
       <main className="dec-page">
         <section className="dec-container py-16">
@@ -28,6 +32,8 @@ export default async function RenewPage({searchParams}: RenewPageProps) {
   }
 
   if (
+    dashboardData &&
+    !isDirectRenewal &&
     dashboardData.membership &&
     dashboardData.membership.status !== 'expired' &&
     dashboardData.membership.daysRemaining > 0
@@ -47,11 +53,12 @@ export default async function RenewPage({searchParams}: RenewPageProps) {
 
       <section className="dec-container pb-20">
         <RenewMembershipClient
-          userId={dashboardData.user.id}
-          email={dashboardData.user.email}
-          name={dashboardData.user.name}
+          userId={dashboardData?.user.id}
+          email={dashboardData?.user.email}
+          name={dashboardData?.user.name ?? null}
           canceled={params.canceled === 'true'}
-          expiredOn={dashboardData.membership?.endDate}
+          expiredOn={dashboardData?.membership?.endDate}
+          publicRenewal={isDirectRenewal || !session?.authenticated}
         />
       </section>
     </main>

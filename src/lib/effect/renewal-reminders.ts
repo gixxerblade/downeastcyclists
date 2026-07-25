@@ -6,6 +6,7 @@ import {
   isRenewalReminderDay,
   parseMembershipDate,
 } from '../membership-status';
+import {buildRenewalUrl} from '../renewal-link';
 
 import {DatabaseService} from './database.service';
 import {EmailService} from './email.service';
@@ -16,21 +17,11 @@ export interface RenewalReminderResult {
   errors: Array<{email: string; message: string}>;
 }
 
-function getSiteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    process.env.URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
-}
-
 export const sendScheduledRenewalReminders = Effect.gen(function* () {
   const db = yield* DatabaseService;
   const email = yield* EmailService;
   const now = new Date();
   const members = yield* db.getExpiringMemberships(90);
-  const renewalUrl = `${getSiteUrl()}/renew`;
   const initial: RenewalReminderResult = {sent: 0, skipped: 0, errors: []};
 
   return yield* Effect.reduce(members, initial, (result, member) =>
@@ -49,7 +40,7 @@ export const sendScheduledRenewalReminders = Effect.gen(function* () {
         .sendRenewalEmail({
           to: member.user.email,
           name: member.user.name,
-          renewalUrl,
+          renewalUrl: buildRenewalUrl(member.user.id),
           expirationDate,
           planName: getPlanNameForType(member.membership.planType),
           daysUntilExpiration,

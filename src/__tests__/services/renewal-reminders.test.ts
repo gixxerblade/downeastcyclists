@@ -80,6 +80,7 @@ describe('sendScheduledRenewalReminders', () => {
       expect.objectContaining({
         to: 'thirty@example.com',
         daysUntilExpiration: 30,
+        renewalUrl: expect.stringContaining('/renew?userId=user_30'),
       }),
     );
   });

@@ -9,6 +9,7 @@ import {
   FormControlLabel,
   Grid,
   Paper,
+  TextField,
   Typography,
 } from '@mui/material';
 import {useMutation, useQuery} from '@tanstack/react-query';
@@ -17,11 +18,12 @@ import {useEffect, useState} from 'react';
 import {PlanCard, type MembershipPlan} from './PlanCard';
 
 interface RenewMembershipClientProps {
-  userId: string;
-  email: string;
+  userId?: string;
+  email?: string;
   name: string | null;
   canceled: boolean;
   expiredOn?: string;
+  publicRenewal: boolean;
 }
 
 interface CheckoutResponse {
@@ -34,12 +36,14 @@ export function RenewMembershipClient({
   name,
   canceled,
   expiredOn,
+  publicRenewal,
 }: RenewMembershipClientProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
   const [selectedPlanPrice, setSelectedPlanPrice] = useState(0);
   const [coverFees, setCoverFees] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [checkoutEmail, setCheckoutEmail] = useState('');
 
   const plansQuery = useQuery<MembershipPlan[]>({
     queryKey: ['membership-plans'],
@@ -58,16 +62,21 @@ export function RenewMembershipClient({
         throw new Error('Please select a membership plan');
       }
 
+      const emailForCheckout = (email || checkoutEmail).trim();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const renewalParams = new URLSearchParams(userId ? {userId} : {});
+      const renewalQuery = renewalParams.toString();
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           priceId: selectedPriceId,
           userId,
-          email,
-          successUrl: `${siteUrl}/member?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${siteUrl}/renew?canceled=true`,
+          email: emailForCheckout,
+          successUrl: publicRenewal
+            ? `${siteUrl}/renew/complete?${userId ? `userId=${encodeURIComponent(userId)}&` : ''}session_id={CHECKOUT_SESSION_ID}`
+            : `${siteUrl}/member?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${siteUrl}/renew?${renewalQuery ? `${renewalQuery}&` : ''}canceled=true`,
           coverFees,
           planPrice: selectedPlanPrice,
         }),
@@ -100,8 +109,15 @@ export function RenewMembershipClient({
 
   const processingFee = selectedPlanPrice > 0 ? selectedPlanPrice * 0.027 + 0.05 : 0;
   const errorMessage = validationError || checkoutMutation.error?.message || null;
+  const needsEmail = !email;
+  const emailForCheckout = (email || checkoutEmail).trim();
 
   const handleSubmit = () => {
+    if (needsEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForCheckout)) {
+      setValidationError('Please enter a valid email address');
+      return;
+    }
+
     if (!selectedPriceId) {
       setValidationError('Please select a membership plan');
       return;
@@ -159,8 +175,22 @@ export function RenewMembershipClient({
         <Box sx={{display: 'grid', gap: 1.5, my: 3}}>
           <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
             <Typography color="text.secondary">Account</Typography>
-            <Typography fontWeight={700}>{name || email}</Typography>
+            <Typography fontWeight={700}>{name || email || 'Enter email below'}</Typography>
           </Box>
+          {needsEmail && (
+            <TextField
+              label="Email"
+              type="email"
+              value={checkoutEmail}
+              onChange={(event) => {
+                setCheckoutEmail(event.target.value);
+                setValidationError(null);
+              }}
+              disabled={checkoutMutation.isPending}
+              fullWidth
+              required
+            />
+          )}
           {expiredOn && (
             <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
               <Typography color="text.secondary">Expired</Typography>

@@ -797,7 +797,7 @@ describe('Admin Member Management Integration', () => {
         expect.objectContaining({
           to: 'expired@example.com',
           name: 'Expired Member',
-          renewalUrl: expect.stringContaining('/renew'),
+          renewalUrl: expect.stringContaining('/renew?userId=user_renew'),
         }),
       );
       expect(databaseService.logAuditEntry).toHaveBeenCalledWith(

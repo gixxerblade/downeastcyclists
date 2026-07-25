@@ -14,6 +14,8 @@ import {
   parseMembershipDate,
 } from '@/src/lib/membership-status';
 import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
+import {buildRenewalUrl} from '@/src/lib/renewal-link';
+import {getSiteUrl} from '@/src/lib/site-url';
 import type {
   AuditEntry,
   BulkImportResult,
@@ -228,15 +230,6 @@ function describeStripeError(error: StripeError): string {
         : undefined;
 
   return causeMessage ? `${error.message}: ${causeMessage}` : error.message;
-}
-
-function getSiteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    process.env.URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
 }
 
 function getSupportEmail() {
@@ -1507,7 +1500,7 @@ const make = Effect.gen(function* () {
         }
 
         const membership = yield* db.getActiveMembership(userId);
-        const renewalUrl = `${getSiteUrl()}/renew`;
+        const renewalUrl = buildRenewalUrl(user.id);
         const endDate = membership ? parseMembershipDate(membership.endDate) : null;
         const daysUntilExpiration = membership
           ? getMembershipDaysUntilExpiration(membership.endDate)
