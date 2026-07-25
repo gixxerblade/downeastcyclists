@@ -1,5 +1,6 @@
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -18,6 +19,11 @@ import {
   membershipStatusEnum,
   planIntervalEnum,
   planTypeEnum,
+  trailIssueEventTypeEnum,
+  trailIssuePriorityEnum,
+  trailIssueStatusEnum,
+  trailIssueTypeEnum,
+  trailLocationSourceEnum,
   webhookStatusEnum,
 } from './enums';
 
@@ -251,4 +257,157 @@ export const meetupEvents = pgTable(
     lastSeenAt: timestamp('last_seen_at', {withTimezone: true}).defaultNow().notNull(),
   },
   (table) => [index('meetup_events_start_date_idx').on(table.startDate)],
+);
+
+// ---------------------------------------------------------------------------
+// 11. Trail Maintenance
+// ---------------------------------------------------------------------------
+
+export const trailSystems = pgTable(
+  'trail_systems',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', {length: 80}).notNull().unique(),
+    name: varchar('name', {length: 160}).notNull(),
+    description: text('description'),
+    isActive: boolean('is_active').notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('trail_systems_slug_idx').on(table.slug),
+    index('trail_systems_active_sort_idx').on(table.isActive, table.sortOrder),
+  ],
+);
+
+export const trailSegments = pgTable(
+  'trail_segments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    trailSystemId: uuid('trail_system_id')
+      .notNull()
+      .references(() => trailSystems.id, {onDelete: 'cascade'}),
+    slug: varchar('slug', {length: 80}).notNull(),
+    name: varchar('name', {length: 160}).notNull(),
+    colorLabel: varchar('color_label', {length: 80}),
+    isActive: boolean('is_active').notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('trail_segments_system_slug_idx').on(table.trailSystemId, table.slug),
+    index('trail_segments_system_active_sort_idx').on(
+      table.trailSystemId,
+      table.isActive,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const trailMaintenanceReports = pgTable(
+  'trail_maintenance_reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    publicId: varchar('public_id', {length: 24}).notNull().unique(),
+    trailSystemId: uuid('trail_system_id')
+      .notNull()
+      .references(() => trailSystems.id, {onDelete: 'restrict'}),
+    trailSegmentId: uuid('trail_segment_id').references(() => trailSegments.id, {
+      onDelete: 'set null',
+    }),
+    issueType: trailIssueTypeEnum('issue_type').notNull(),
+    issueTypeOther: varchar('issue_type_other', {length: 160}),
+    status: trailIssueStatusEnum('status').notNull().default('new'),
+    priority: trailIssuePriorityEnum('priority').notNull().default('normal'),
+    observedAt: timestamp('observed_at', {withTimezone: true}).notNull(),
+    description: text('description'),
+    locationSource: trailLocationSourceEnum('location_source').notNull().default('manual'),
+    locationNotes: text('location_notes'),
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
+    locationAccuracyMeters: doublePrecision('location_accuracy_meters'),
+    reporterName: varchar('reporter_name', {length: 160}),
+    reporterContact: varchar('reporter_contact', {length: 255}),
+    userAgent: text('user_agent'),
+    submitterIpHash: varchar('submitter_ip_hash', {length: 128}),
+    assignedToUserId: uuid('assigned_to_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    countyEmailGeneratedAt: timestamp('county_email_generated_at', {withTimezone: true}),
+    countyEmailSentAt: timestamp('county_email_sent_at', {withTimezone: true}),
+    resolvedByUserId: uuid('resolved_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    resolvedAt: timestamp('resolved_at', {withTimezone: true}),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('trail_maintenance_reports_public_id_idx').on(table.publicId),
+    index('trail_maintenance_reports_status_idx').on(table.status),
+    index('trail_maintenance_reports_priority_idx').on(table.priority),
+    index('trail_maintenance_reports_created_at_idx').on(table.createdAt),
+    index('trail_maintenance_reports_system_status_idx').on(table.trailSystemId, table.status),
+  ],
+);
+
+export const trailMaintenancePhotos = pgTable(
+  'trail_maintenance_photos',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    reportId: uuid('report_id')
+      .notNull()
+      .references(() => trailMaintenanceReports.id, {onDelete: 'cascade'}),
+    bucketName: varchar('bucket_name', {length: 160}).notNull(),
+    objectKey: text('object_key').notNull(),
+    originalFilename: varchar('original_filename', {length: 255}),
+    contentType: varchar('content_type', {length: 120}).notNull(),
+    byteSize: integer('byte_size').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    index('trail_maintenance_photos_report_idx').on(table.reportId),
+    uniqueIndex('trail_maintenance_photos_object_key_idx').on(table.objectKey),
+  ],
+);
+
+export const trailMaintenanceNotes = pgTable(
+  'trail_maintenance_notes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    reportId: uuid('report_id')
+      .notNull()
+      .references(() => trailMaintenanceReports.id, {onDelete: 'cascade'}),
+    authorUserId: uuid('author_user_id').references(() => users.id, {onDelete: 'set null'}),
+    authorEmail: varchar('author_email', {length: 255}),
+    note: text('note').notNull(),
+    isPublic: boolean('is_public').notNull().default(false),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    index('trail_maintenance_notes_report_idx').on(table.reportId),
+    index('trail_maintenance_notes_created_at_idx').on(table.createdAt),
+  ],
+);
+
+export const trailMaintenanceEvents = pgTable(
+  'trail_maintenance_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    reportId: uuid('report_id')
+      .notNull()
+      .references(() => trailMaintenanceReports.id, {onDelete: 'cascade'}),
+    eventType: trailIssueEventTypeEnum('event_type').notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, {onDelete: 'set null'}),
+    actorLabel: varchar('actor_label', {length: 255}).notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    index('trail_maintenance_events_report_idx').on(table.reportId),
+    index('trail_maintenance_events_created_at_idx').on(table.createdAt),
+  ],
 );

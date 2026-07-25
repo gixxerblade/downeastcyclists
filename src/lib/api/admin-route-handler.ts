@@ -34,6 +34,14 @@ type ErrorResult = {
   status: number;
 };
 
+function messageFromUnknown(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'An unexpected error occurred';
+}
+
 /**
  * Common error handlers for admin routes
  */
@@ -143,7 +151,13 @@ export async function handleAdminRoute(options: AdminRouteOptions): Promise<Next
     }),
   );
 
-  const result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
+  let result: unknown;
+  try {
+    result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
+  } catch (error) {
+    console.error('Unhandled admin route failure:', error);
+    return NextResponse.json({error: messageFromUnknown(error)}, {status: 500});
+  }
 
   if (
     typeof result === 'object' &&

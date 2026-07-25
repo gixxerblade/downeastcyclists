@@ -4,6 +4,7 @@ const path = require('path');
 const nextConfig = {
   // Configuration for Netlify deployment
   distDir: '.next',
+  outputFileTracingRoot: __dirname,
   images: {
     remotePatterns: [
       {

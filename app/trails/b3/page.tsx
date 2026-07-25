@@ -39,17 +39,26 @@ export default async function B3() {
             Beginner flow and intermediate single-track inside Onslow County&apos;s Burton Park
             area, open dawn to dusk when trail conditions allow.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <a
               href="https://maps.google.com/?q=Big+Branch+Bike+Park"
               target="_blank"
               rel="noopener noreferrer"
-              className="dec-primary-button"
+              className="dec-primary-button min-h-14 whitespace-nowrap px-4 text-base leading-none"
             >
               Get directions ↗
             </a>
-            <Link href="/join" className="dec-secondary-button">
+            <Link
+              href="/join"
+              className="dec-secondary-button min-h-14 whitespace-nowrap px-4 text-base leading-none"
+            >
               Support the trail
+            </Link>
+            <Link
+              href="/report-trail-issue?system=big-branch-bike-park"
+              className="dec-secondary-button min-h-14 whitespace-nowrap px-4 text-base leading-none sm:col-span-2 xl:col-span-1"
+            >
+              ⚠️ Report Trail Issue
             </Link>
           </div>
         </div>
