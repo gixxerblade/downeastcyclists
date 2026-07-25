@@ -32,7 +32,7 @@ export default function VerifyPage() {
     mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
     onSuccess: async () => {
       const role = await Effect.runPromise(getCurrentAccessRole());
-      window.location.href = role === 'member' ? '/member' : '/dashboard';
+      router.replace(role === 'member' ? '/member' : '/dashboard');
     },
     onError: () => {
       // Clear the invalid link state and show error

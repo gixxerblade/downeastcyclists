@@ -21,18 +21,19 @@ function AuthHandlerContent() {
     // Check if this is a sign-in action
     if (mode === 'signIn' && oobCode) {
       // Forward to the verify page with all parameters
-      router.push(`/verify${window.location.search}`);
+      router.replace(`/verify${window.location.search}`);
     } else if (mode === 'resetPassword' && oobCode) {
-      router.push(`/reset-password${window.location.search}`);
+      router.replace(`/reset-password${window.location.search}`);
     } else {
       // Unknown mode or missing parameters
-      router.push('/login');
+      router.replace('/login');
     }
   }, [searchParams, router]);
 
   return (
     <Container maxWidth="xs" className="dec-page">
-      <Box className="dec-card"
+      <Box
+        className="dec-card"
         sx={{
           marginTop: 8,
           p: 4,

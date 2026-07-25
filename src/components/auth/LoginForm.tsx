@@ -34,7 +34,7 @@ export function LoginForm() {
       if (hasFirebaseActionParams) {
         // Firebase redirected us here with auth parameters
         // Forward to the verify page to handle the magic link
-        router.push(`/verify${window.location.search}`);
+        router.replace(`/verify${window.location.search}`);
         return;
       }
 
@@ -44,7 +44,7 @@ export function LoginForm() {
 
       if (isMagicLink) {
         // Redirect to verify page to handle the magic link
-        router.push(`/verify${window.location.search}`);
+        router.replace(`/verify${window.location.search}`);
         return;
       }
 
@@ -57,7 +57,7 @@ export function LoginForm() {
             const data = await response.json();
             if (data.authenticated) {
               const role = await Effect.runPromise(getCurrentAccessRole());
-              window.location.href = role === 'member' ? '/member' : '/dashboard';
+              router.replace(role === 'member' ? '/member' : '/dashboard');
             }
           }
         } catch {
@@ -74,7 +74,7 @@ export function LoginForm() {
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
     onSuccess: async () => {
       const role = await Effect.runPromise(getCurrentAccessRole());
-      window.location.href = role === 'member' ? '/member' : '/dashboard';
+      router.replace(role === 'member' ? '/member' : '/dashboard');
     },
   });
 
