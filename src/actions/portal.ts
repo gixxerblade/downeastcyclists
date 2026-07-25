@@ -8,6 +8,29 @@ import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
 import type {MemberDashboardResponse} from '@/src/lib/effect/schemas';
 
+function dashboardErrorFromExit(exit: Exit.Exit<MemberDashboardResponse, unknown>) {
+  if (!Exit.isFailure(exit)) {
+    return null;
+  }
+
+  const cause = exit.cause;
+  const failure = cause._tag === 'Fail' ? cause.error : null;
+
+  if (failure && typeof failure === 'object' && '_tag' in failure) {
+    if (failure._tag === 'SessionError') {
+      redirect('/login');
+    }
+    if (failure._tag === 'NotFoundError' && 'resource' in failure) {
+      return {error: `${failure.resource} not found`};
+    }
+    if (failure._tag === 'DatabaseError' && 'message' in failure) {
+      return {error: failure.message as string};
+    }
+  }
+
+  return {error: 'An unexpected error occurred'};
+}
+
 // Get member dashboard data - Effect.gen for complex flow
 export async function getMemberDashboard(): Promise<MemberDashboardResponse | {error: string}> {
   const cookieStore = await cookies();
@@ -28,27 +51,39 @@ export async function getMemberDashboard(): Promise<MemberDashboardResponse | {e
   });
 
   const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(LiveLayer)));
+  const error = dashboardErrorFromExit(exit);
 
-  if (Exit.isFailure(exit)) {
-    const cause = exit.cause;
-    // Check the error type from the cause
-    const failure = cause._tag === 'Fail' ? cause.error : null;
-
-    if (failure && typeof failure === 'object' && '_tag' in failure) {
-      if (failure._tag === 'SessionError') {
-        redirect('/login');
-      }
-      if (failure._tag === 'NotFoundError' && 'resource' in failure) {
-        return {error: `${failure.resource} not found`};
-      }
-      if (failure._tag === 'DatabaseError' && 'message' in failure) {
-        return {error: failure.message as string};
-      }
-    }
-    return {error: 'An unexpected error occurred'};
+  if (error) {
+    return error;
   }
 
-  return exit.value;
+  if (Exit.isSuccess(exit)) {
+    return exit.value;
+  }
+
+  return {error: 'An unexpected error occurred'};
+}
+
+export async function getRenewalDashboard(
+  userId: string,
+): Promise<MemberDashboardResponse | {error: string}> {
+  const program = Effect.gen(function* () {
+    const portal = yield* PortalService;
+    return yield* portal.getMemberDashboard(userId);
+  });
+
+  const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(LiveLayer)));
+  const error = dashboardErrorFromExit(exit);
+
+  if (error) {
+    return error;
+  }
+
+  if (Exit.isSuccess(exit)) {
+    return exit.value;
+  }
+
+  return {error: 'An unexpected error occurred'};
 }
 
 // Redirect to Stripe Customer Portal
