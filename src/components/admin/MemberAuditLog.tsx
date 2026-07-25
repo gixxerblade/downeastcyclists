@@ -42,15 +42,23 @@ const actionColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'd
   BULK_IMPORT: 'success',
   ADMIN_ROLE_CHANGE: 'warning',
   MEMBERSHIP_ADJUSTMENT: 'info',
+  RENEWAL_EMAIL_SENT: 'info',
+  RENEWAL_EMAIL_RESENT: 'warning',
+  AUTOMATED_RENEWAL_EMAIL_SENT: 'success',
   RECONCILIATION: 'info',
 };
 
 function AuditEntryItem({entry}: {entry: AuditEntry}) {
   const [expanded, setExpanded] = useState(false);
 
-  const hasDetails =
+  const hasDetails = Boolean(
     entry.details &&
-    (entry.details.previousValues || entry.details.newValues || entry.details.reason);
+    (entry.details.previousValues ||
+      entry.details.newValues ||
+      entry.details.reason ||
+      entry.details.reminderDays ||
+      entry.details.deliveryType),
+  );
 
   return (
     <Paper sx={{p: 2, mb: 1}} elevation={1}>
@@ -67,9 +75,14 @@ function AuditEntryItem({entry}: {entry: AuditEntry}) {
             </Typography>
           </Box>
           <Typography variant="body2">By: {entry.performedByEmail || entry.performedBy}</Typography>
-          {entry.details?.reason && (
+          {typeof entry.details?.reason === 'string' && (
             <Typography variant="body2" color="text.secondary">
-              Reason: {entry.details.reason as string}
+              Reason: {entry.details.reason}
+            </Typography>
+          )}
+          {typeof entry.details?.reminderDays === 'number' && (
+            <Typography variant="body2" color="text.secondary">
+              {entry.details.reminderDays}-day automated renewal reminder
             </Typography>
           )}
         </Box>

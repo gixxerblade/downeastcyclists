@@ -275,11 +275,21 @@ export const MemberSearchParams = S.Struct({
 });
 export type MemberSearchParams = S.Schema.Type<typeof MemberSearchParams>;
 
+export const RenewalEmailSummary = S.Struct({
+  lastSentAt: S.String,
+  lastSentBy: S.String,
+  lastSentByEmail: S.NullOr(S.String),
+  deliveryType: S.String,
+  campaignKey: S.String,
+});
+export type RenewalEmailSummary = S.Schema.Type<typeof RenewalEmailSummary>;
+
 // Member with membership (joined data)
 export const MemberWithMembership = S.Struct({
   user: S.NullOr(UserDocument),
   membership: S.NullOr(MembershipDocument),
   card: S.NullOr(MembershipCard),
+  renewalEmail: S.optional(S.NullOr(RenewalEmailSummary)),
 });
 export type MemberWithMembership = S.Schema.Type<typeof MemberWithMembership>;
 

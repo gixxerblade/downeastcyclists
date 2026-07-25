@@ -3,7 +3,14 @@ import {Context, Effect, Layer} from 'effect';
 
 import {users} from '@/src/db/schema/tables';
 
-import {type AuditEntryDocument, createAuditMethods} from './database-audit.methods';
+import {
+  type ActionLogParams,
+  type ActionLogResult,
+  type AuditEntryDocument,
+  type EmailLogDocument,
+  type LogEmailEventInput,
+  createAuditMethods,
+} from './database-audit.methods';
 import {createCardMethods} from './database-card.methods';
 import {createMembershipMethods} from './database-membership.methods';
 import {createStatsMethods} from './database-stats.methods';
@@ -17,7 +24,13 @@ import type {
   UserDocument,
 } from './schemas';
 
-export type {AuditEntryDocument} from './database-audit.methods';
+export type {
+  ActionLogParams,
+  ActionLogResult,
+  AuditEntryDocument,
+  EmailLogDocument,
+  LogEmailEventInput,
+} from './database-audit.methods';
 
 // Lazy db loader — avoids triggering Neon connection at import time
 function getDb() {
@@ -187,6 +200,19 @@ export interface DatabaseService {
   readonly getMemberAuditLog: (
     userId: string,
   ) => Effect.Effect<AuditEntryDocument[], DatabaseError>;
+
+  readonly getActionLog: (params: ActionLogParams) => Effect.Effect<ActionLogResult, DatabaseError>;
+
+  readonly getLatestEmailLog: (
+    userId: string,
+    emailType: string,
+    campaignKey: string,
+  ) => Effect.Effect<EmailLogDocument | null, DatabaseError>;
+
+  readonly logEmailEvent: (
+    userId: string,
+    input: LogEmailEventInput,
+  ) => Effect.Effect<void, DatabaseError>;
 
   // Admin operations
   readonly getAllUsers: () => Effect.Effect<UserDocument[], DatabaseError>;

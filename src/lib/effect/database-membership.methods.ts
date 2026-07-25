@@ -1,8 +1,9 @@
 import {and, desc, eq, gte, ilike, inArray, lt, lte, or, sql} from 'drizzle-orm';
 import {Effect} from 'effect';
 
-import {membershipCards, memberships, users} from '@/src/db/schema/tables';
+import {emailLog, membershipCards, memberships, users} from '@/src/db/schema/tables';
 import {getEffectiveMembershipStatus, toStoredMembershipStatus} from '@/src/lib/membership-status';
+import {buildRenewalEmailCampaignKey, RENEWAL_EMAIL_TYPE} from '@/src/lib/renewal-email';
 
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
@@ -350,10 +351,50 @@ export function createMembershipMethods() {
             .limit(pageSize)
             .offset(offset);
 
+          const visibleUserIds = rows.map((row) => row.user.id);
+          const renewalEmailRows =
+            visibleUserIds.length > 0
+              ? await db
+                  .select()
+                  .from(emailLog)
+                  .where(
+                    and(
+                      inArray(emailLog.userId, visibleUserIds),
+                      eq(emailLog.emailType, RENEWAL_EMAIL_TYPE),
+                      eq(emailLog.status, 'sent'),
+                    ),
+                  )
+                  .orderBy(desc(emailLog.createdAt))
+              : [];
+          const latestRenewalEmailByCampaign = new Map<string, (typeof renewalEmailRows)[number]>();
+
+          for (const log of renewalEmailRows) {
+            const key = `${log.userId}:${log.campaignKey}`;
+            if (!latestRenewalEmailByCampaign.has(key)) {
+              latestRenewalEmailByCampaign.set(key, log);
+            }
+          }
+
           const members: MemberWithMembership[] = rows.map((row) => ({
             user: row.user ? rowToUserDocument(row.user) : null,
             membership: row.membership ? rowToMembershipDocument(row.membership, now) : null,
             card: row.card ? rowToCardDocument(row.card, now) : null,
+            renewalEmail: (() => {
+              if (!row.membership) return null;
+              const campaignKey = buildRenewalEmailCampaignKey(
+                row.user.firebaseUid,
+                row.membership,
+              );
+              const latest = latestRenewalEmailByCampaign.get(`${row.user.id}:${campaignKey}`);
+              if (!latest) return null;
+              return {
+                lastSentAt: latest.createdAt.toISOString(),
+                lastSentBy: latest.sentBy,
+                lastSentByEmail: latest.sentByEmail ?? null,
+                deliveryType: latest.deliveryType,
+                campaignKey: latest.campaignKey,
+              };
+            })(),
           }));
 
           return {members, total};
@@ -395,6 +436,7 @@ export function createMembershipMethods() {
             user: row.user ? rowToUserDocument(row.user) : null,
             membership: row.membership ? rowToMembershipDocument(row.membership, now) : null,
             card: row.card ? rowToCardDocument(row.card, now) : null,
+            renewalEmail: null,
           }));
         },
         catch: (error) =>

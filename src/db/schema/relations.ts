@@ -1,11 +1,12 @@
 import {relations} from 'drizzle-orm';
 
-import {auditLog, membershipCards, memberships, users} from './tables';
+import {auditLog, emailLog, membershipCards, memberships, users} from './tables';
 
 export const usersRelations = relations(users, ({many}) => ({
   memberships: many(memberships),
   membershipCards: many(membershipCards),
   auditLogs: many(auditLog),
+  emailLogs: many(emailLog),
 }));
 
 export const membershipsRelations = relations(memberships, ({one, many}) => ({
@@ -31,5 +32,16 @@ export const auditLogRelations = relations(auditLog, ({one}) => ({
   user: one(users, {
     fields: [auditLog.userId],
     references: [users.id],
+  }),
+}));
+
+export const emailLogRelations = relations(emailLog, ({one}) => ({
+  user: one(users, {
+    fields: [emailLog.userId],
+    references: [users.id],
+  }),
+  membership: one(memberships, {
+    fields: [emailLog.membershipId],
+    references: [memberships.id],
   }),
 }));

@@ -204,7 +204,38 @@ export const auditLog = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// 9. Meetup Events
+// 9. Email Log
+// ---------------------------------------------------------------------------
+
+export const emailLog = pgTable(
+  'email_log',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    membershipId: uuid('membership_id').references(() => memberships.id, {onDelete: 'set null'}),
+    emailType: varchar('email_type', {length: 80}).notNull(),
+    deliveryType: varchar('delivery_type', {length: 20}).notNull(),
+    campaignKey: varchar('campaign_key', {length: 255}).notNull(),
+    recipientEmail: varchar('recipient_email', {length: 255}).notNull(),
+    subject: varchar('subject', {length: 255}).notNull(),
+    status: varchar('status', {length: 20}).notNull(),
+    idempotencyKey: varchar('idempotency_key', {length: 255}).notNull(),
+    sentBy: varchar('sent_by', {length: 128}).notNull(),
+    sentByEmail: varchar('sent_by_email', {length: 255}),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    index('email_log_user_type_campaign_idx').on(table.userId, table.emailType, table.campaignKey),
+    index('email_log_membership_idx').on(table.membershipId),
+    index('email_log_created_at_idx').on(table.createdAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// 10. Meetup Events
 // ---------------------------------------------------------------------------
 
 export const meetupEvents = pgTable(

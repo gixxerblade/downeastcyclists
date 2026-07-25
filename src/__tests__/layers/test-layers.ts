@@ -29,6 +29,7 @@ import {
   WebhookIdempotencyService,
   type WebhookIdempotencyService as WebhookIdempotencyServiceType,
 } from '@/src/lib/effect/webhook-idempotency.service';
+import type {RenewalEmailResult} from '@/src/types/admin';
 
 // Test service implementations with controllable behavior
 export const createTestStripeService = (
@@ -99,6 +100,9 @@ export const createTestDatabaseService = (
   updateStats: vi.fn(() => Effect.void),
   logAuditEntry: vi.fn(() => Effect.void),
   getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+  getActionLog: vi.fn(() => Effect.succeed({entries: [], total: 0})),
+  getLatestEmailLog: vi.fn(() => Effect.succeed(null)),
+  logEmailEvent: vi.fn(() => Effect.void),
   getExpiringMemberships: vi.fn(() => Effect.succeed([])),
   softDeleteMember: vi.fn(() => Effect.void),
   getAllUsers: vi.fn(() => Effect.succeed([])),
@@ -251,10 +255,13 @@ export const createTestAdminService = (
   ) as unknown as AdminServiceType['bulkImportMembers'],
   getExpiringMemberships: vi.fn(() => Effect.succeed([])),
   getMemberAuditLog: vi.fn(() => Effect.succeed([])),
+  getActionLog: vi.fn(() => Effect.succeed({entries: [], total: 0})),
   getPaymentHistory: vi.fn(() => Effect.succeed([])),
   issueRefund: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['issueRefund'],
   sendPasswordReset: vi.fn(() => Effect.void),
-  sendRenewalEmail: vi.fn(() => Effect.void),
+  sendRenewalEmail: vi.fn(() =>
+    Effect.succeed<RenewalEmailResult>({sent: true, alreadySent: false, deliveryType: 'send'}),
+  ),
   ...overrides,
 });
 

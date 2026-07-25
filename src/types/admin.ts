@@ -88,6 +88,9 @@ export type AuditAction =
   | 'BULK_IMPORT'
   | 'ADMIN_ROLE_CHANGE'
   | 'MEMBERSHIP_ADJUSTMENT'
+  | 'RENEWAL_EMAIL_SENT'
+  | 'RENEWAL_EMAIL_RESENT'
+  | 'AUTOMATED_RENEWAL_EMAIL_SENT'
   | 'RECONCILIATION';
 
 // Audit entry from database
@@ -96,6 +99,9 @@ export interface AuditEntry {
   action: AuditAction;
   performedBy: string; // Admin UID
   performedByEmail?: string;
+  targetUserId?: string;
+  targetEmail?: string;
+  targetName?: string;
   details: {
     previousValues?: Record<string, unknown>;
     newValues?: Record<string, unknown>;
@@ -103,6 +109,29 @@ export interface AuditEntry {
     [key: string]: unknown;
   };
   timestamp: string;
+}
+
+export interface ActionLogParams {
+  action?: AuditAction;
+  actor?: string;
+  target?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ActionLogResult {
+  entries: AuditEntry[];
+  total: number;
+}
+
+export interface RenewalEmailResult {
+  sent: boolean;
+  alreadySent: boolean;
+  deliveryType: 'send' | 'resend';
+  lastSentAt?: string;
+  lastSentByEmail?: string | null;
 }
 
 // Payment history item from Stripe

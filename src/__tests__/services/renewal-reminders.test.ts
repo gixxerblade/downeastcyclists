@@ -38,6 +38,7 @@ describe('sendScheduledRenewalReminders', () => {
               updatedAt: now.toISOString(),
             },
             card: null,
+            renewalEmail: null,
           },
           {
             user: {
@@ -59,6 +60,7 @@ describe('sendScheduledRenewalReminders', () => {
               updatedAt: now.toISOString(),
             },
             card: null,
+            renewalEmail: null,
           },
         ]),
       ),
@@ -81,6 +83,22 @@ describe('sendScheduledRenewalReminders', () => {
         to: 'thirty@example.com',
         daysUntilExpiration: 30,
         renewalUrl: expect.stringContaining('/renew?userId=user_30'),
+      }),
+    );
+    expect(databaseService.logEmailEvent).toHaveBeenCalledWith(
+      'user_30',
+      expect.objectContaining({
+        deliveryType: 'automated',
+        status: 'sent',
+        emailType: 'membership_renewal',
+      }),
+    );
+    expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
+      'user_30',
+      'AUTOMATED_RENEWAL_EMAIL_SENT',
+      expect.objectContaining({
+        performedBy: 'system',
+        reminderDays: 30,
       }),
     );
   });

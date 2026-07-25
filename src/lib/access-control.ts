@@ -19,6 +19,7 @@ export type DashboardCapability =
   | 'members:payments'
   | 'members:refund'
   | 'members:import'
+  | 'action-log:view'
   | 'stats:read'
   | 'stats:refresh'
   | 'trails:update'
@@ -31,6 +32,7 @@ const organizerCapabilities: ReadonlySet<DashboardCapability> = new Set([
   'members:export',
   'members:audit',
   'members:password-reset',
+  'action-log:view',
   'stats:read',
   'stats:refresh',
   'trails:update',

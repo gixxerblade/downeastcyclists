@@ -34,6 +34,7 @@ import type {
   UnauthorizedError,
 } from '@/src/lib/effect/errors';
 import type {MembershipStats, MemberWithMembership} from '@/src/lib/effect/schemas';
+import type {RenewalEmailResult} from '@/src/types/admin';
 
 import {BulkImportModal} from './BulkImportModal';
 import {CreateMemberModal} from './CreateMemberModal';
@@ -139,12 +140,23 @@ export function MembershipManagement({role}: {role: StaffRole}) {
   });
 
   const renewalEmailMutation = useMutation<
-    void,
+    RenewalEmailResult,
     AdminError | EmailError | UnauthorizedError,
-    string
+    {userId: string; resend?: boolean}
   >({
-    mutationFn: (userId) => Effect.runPromise(sendRenewalEmail(userId)),
-    onSuccess: () => setResetEmailFeedback({message: 'Renewal email sent.', severity: 'success'}),
+    mutationFn: ({userId, resend}) => Effect.runPromise(sendRenewalEmail(userId, {resend})),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({queryKey: ['admin', 'members']});
+      queryClient.invalidateQueries({queryKey: ['admin', 'action-log']});
+      setResetEmailFeedback({
+        message: result.alreadySent
+          ? 'Renewal email was already sent.'
+          : result.deliveryType === 'resend'
+            ? 'Renewal email resent.'
+            : 'Renewal email sent.',
+        severity: 'success',
+      });
+    },
     onError: (err) =>
       setResetEmailFeedback({
         message: err.message || 'Failed to send renewal email.',
@@ -416,7 +428,21 @@ export function MembershipManagement({role}: {role: StaffRole}) {
             }
             onSendRenewalEmail={
               isAdmin
-                ? (member) => member.user?.id && renewalEmailMutation.mutate(member.user.id)
+                ? (member) =>
+                    member.user?.id && renewalEmailMutation.mutate({userId: member.user.id})
+                : undefined
+            }
+            onResendRenewalEmail={
+              isAdmin
+                ? (member) => {
+                    if (!member.user?.id) return;
+                    const shouldResend = window.confirm(
+                      `Resend the renewal email to ${member.user.email}?`,
+                    );
+                    if (shouldResend) {
+                      renewalEmailMutation.mutate({userId: member.user.id, resend: true});
+                    }
+                  }
                 : undefined
             }
           />

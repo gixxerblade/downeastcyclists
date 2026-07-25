@@ -6,6 +6,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import {
@@ -25,6 +26,7 @@ import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
+import {ActionLog} from '@/src/components/admin/ActionLog';
 import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
 import {OrganizerManagement} from '@/src/components/admin/OrganizerManagement';
 import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
@@ -36,7 +38,13 @@ import {refreshStats} from '@/src/lib/effect/client-admin';
 import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
 import type {MembershipStats} from '@/src/lib/effect/schemas';
 
-type AdminSection = 'overview' | 'members' | 'trails' | 'reconciliation' | 'organizers';
+type AdminSection =
+  | 'overview'
+  | 'members'
+  | 'action-log'
+  | 'trails'
+  | 'reconciliation'
+  | 'organizers';
 
 interface DashboardStats {
   totalMembers: number;
@@ -62,6 +70,7 @@ const allSections: Array<{
 }> = [
   {id: 'overview', label: 'Overview', icon: <DashboardIcon fontSize="small" />},
   {id: 'members', label: 'Members', icon: <PeopleAltIcon fontSize="small" />},
+  {id: 'action-log', label: 'Action Log', icon: <ReceiptLongIcon fontSize="small" />},
   {id: 'trails', label: 'Trail status', icon: <DirectionsBikeIcon fontSize="small" />},
   {
     id: 'reconciliation',
@@ -577,6 +586,8 @@ export default function DashboardPage() {
           )}
 
           {section === 'members' && <MembershipManagement role={staffRole} />}
+
+          {section === 'action-log' && <ActionLog />}
 
           {section === 'trails' && (
             <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', lg: '1fr 1fr'}, gap: 3}}>
