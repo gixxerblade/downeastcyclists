@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>You now have organizer access to {{{ORG_NAME}}}</title>
+  </head>
+  <body style="margin: 0; background: #f4f1ec; font-family: Arial, sans-serif; color: #16130f">
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      style="background: #f4f1ec"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            style="max-width: 620px; background: #ffffff; border: 1px solid #ddd6cb"
+          >
+            <tr>
+              <td style="background: #16130f; color: #ffffff; padding: 24px 28px">
+                <div
+                  style="
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                    color: #f20e02;
+                  "
+                >
+                  {{{ORG_NAME}}}
+                </div>
+                <h1 style="margin: 8px 0 0; font-size: 28px; line-height: 1.2">
+                  Organizer access granted
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 28px">
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5">
+                  Hi {{{USER_NAME}}},
+                </p>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5">
+                  You have been granted organizer access to {{{ORG_NAME}}} by {{{GRANTED_BY_NAME}}}.
+                </p>
+                <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.5">
+                  Sign in with {{{USER_EMAIL}}}. If you do not have a password or prefer not to use
+                  one, choose the email sign-in link option on the login page.
+                </p>
+                <p style="margin: 0 0 28px">
+                  <a
+                    href="{{{LOGIN_URL}}}"
+                    style="
+                      display: inline-block;
+                      background: #f20e02;
+                      color: #ffffff;
+                      text-decoration: none;
+                      font-weight: 700;
+                      padding: 13px 18px;
+                    "
+                  >
+                    Sign in
+                  </a>
+                </p>
+                <h2 style="margin: 0 0 12px; font-size: 18px; line-height: 1.3">
+                  Organizer dashboard
+                </h2>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5">
+                  After signing in, you can open the dashboard here:
+                  <a href="{{{DASHBOARD_URL}}}" style="color: #c20b02; font-weight: 700"
+                    >{{{DASHBOARD_URL}}}</a
+                  >
+                </p>
+                <p style="margin: 0 0 12px; font-size: 16px; line-height: 1.5">
+                  As an organizer, you can:
+                </p>
+                <ul style="margin: 0 0 24px; padding-left: 22px; font-size: 16px; line-height: 1.5">
+                  <li>View membership reports and member details</li>
+                  <li>Export member data</li>
+                  <li>Send password reset emails</li>
+                  <li>Refresh membership statistics</li>
+                  <li>Update trail status information</li>
+                </ul>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5">
+                  If you believe you received this by mistake or need help accessing the dashboard,
+                  contact
+                  <a href="mailto:{{{SUPPORT_EMAIL}}}" style="color: #c20b02; font-weight: 700"
+                    >{{{SUPPORT_EMAIL}}}</a
+                  >.
+                </p>
+                <p style="margin: 24px 0 0; font-size: 16px; line-height: 1.5">
+                  Down East Cyclists
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

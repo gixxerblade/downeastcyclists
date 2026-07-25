@@ -33,6 +33,7 @@ const stats = {
 function makeLayer(
   authService: ReturnType<typeof createTestAuthService>,
   databaseService: ReturnType<typeof createTestDatabaseService>,
+  emailService = createTestEmailService(),
 ) {
   const statsService = StatsService.of({
     getStats: () => Effect.succeed(stats),
@@ -47,7 +48,7 @@ function makeLayer(
     TestStripeLayer(createTestStripeService()),
     Layer.succeed(MembershipCardService, createTestCardService()),
     Layer.succeed(StatsService, statsService),
-    TestEmailLayer(createTestEmailService()),
+    TestEmailLayer(emailService),
   );
 }
 
@@ -55,11 +56,12 @@ function runWithAdminService<A, E>(
   program: Effect.Effect<A, E, AdminService>,
   authService: ReturnType<typeof createTestAuthService>,
   databaseService: ReturnType<typeof createTestDatabaseService>,
+  emailService = createTestEmailService(),
 ) {
   return Effect.runPromise(
     program.pipe(
       Effect.provide(AdminServiceLive),
-      Effect.provide(makeLayer(authService, databaseService)),
+      Effect.provide(makeLayer(authService, databaseService, emailService)),
     ),
   );
 }
@@ -161,6 +163,7 @@ describe('AdminService access control', () => {
   it('lets the administrator grant organizer access and records the change', async () => {
     const updateUser = vi.fn(() => Effect.void);
     const logAuditEntry = vi.fn(() => Effect.void);
+    const emailService = createTestEmailService();
     const authService = createTestAuthService({
       verifyAdminClaim: () =>
         Effect.succeed({uid: 'admin_uid', email: 'admin@example.com', isAdmin: true}),
@@ -178,6 +181,7 @@ describe('AdminService access control', () => {
       ),
       authService,
       databaseService,
+      emailService,
     );
 
     expect(updateUser).toHaveBeenCalledWith('member_uid', {isOrganizer: true});
@@ -191,6 +195,38 @@ describe('AdminService access control', () => {
         newValue: true,
       }),
     );
+    expect(emailService.sendOrganizerAccessGrantedEmail).toHaveBeenCalledWith({
+      to: 'test@example.com',
+      name: 'Test User',
+      loginUrl: 'http://localhost:3000/login',
+      dashboardUrl: 'http://localhost:3000/dashboard',
+      grantedByName: 'admin@example.com',
+      supportEmail: 'admin@example.com',
+      idempotencyKey: 'organizer-access-granted/member_uid',
+    });
+  });
+
+  it('does not resend organizer access email when the member is already an organizer', async () => {
+    const emailService = createTestEmailService();
+    const authService = createTestAuthService({
+      verifyAdminClaim: () =>
+        Effect.succeed({uid: 'admin_uid', email: 'admin@example.com', isAdmin: true}),
+    });
+    const databaseService = createTestDatabaseService({
+      getUser: () => Effect.succeed(createMockUserDocument({id: 'member_uid', isOrganizer: true})),
+      getActiveMembership: () => Effect.succeed(createMockMembershipDocument()),
+    });
+
+    await runWithAdminService(
+      Effect.flatMap(AdminService, (service) =>
+        service.setOrganizerRole('session', 'member_uid', true),
+      ),
+      authService,
+      databaseService,
+      emailService,
+    );
+
+    expect(emailService.sendOrganizerAccessGrantedEmail).not.toHaveBeenCalled();
   });
 
   it('rejects organizer grants for members without a current membership', async () => {

@@ -139,6 +139,7 @@ export const createTestEmailService = (
 ): EmailServiceType => ({
   sendWelcomeEmail: vi.fn(() => Effect.void),
   sendRenewalEmail: vi.fn(() => Effect.void),
+  sendOrganizerAccessGrantedEmail: vi.fn(() => Effect.void),
   ...overrides,
 });
 

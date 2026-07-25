@@ -26,7 +26,7 @@ const whyJoin = [
 
 export default async function Home() {
   const [video, rides] = await Promise.all([getHeroVideo(), getUpcomingMeetupRides()]);
-  const videoUrl = video.fields.file?.url
+  const videoUrl = video?.fields.file?.url
     ? video.fields.file.url.startsWith('//')
       ? `https:${video.fields.file.url}`
       : video.fields.file.url

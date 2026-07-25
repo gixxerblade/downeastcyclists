@@ -1,0 +1,17 @@
+Hi {{{MEMBER_NAME}}},
+
+Your {{{PLAN_NAME}}} expires or has expired on {{{EXPIRATION_DATE}}}.
+
+Renew online to keep access to your member benefits, digital membership card, club updates, and the local rides and trail work your dues help support.
+
+Renew here:
+{{{RENEW_URL}}}
+
+What your membership supports:
+
+- Group rides and club communication
+- Big Branch Bike Park trail stewardship
+- Safer, stronger cycling in Eastern North Carolina
+- Your digital membership card and member access
+
+Down East Cyclists
