@@ -16,6 +16,7 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> 
   incomplete: 'warning',
   incomplete_expired: 'error',
   unpaid: 'error',
+  expired: 'error',
 };
 
 export function MembershipCard({membership}: MembershipCardProps) {

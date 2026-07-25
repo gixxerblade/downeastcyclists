@@ -49,7 +49,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
     queryKey: ['digitalCard'],
     queryFn: () => Effect.runPromise(getDigitalCard()),
     // Only fetch when membership exists and not in error state
-    enabled: !('error' in data) && !!data.membership,
+    enabled: !('error' in data) && !!data.membership && data.membership.status !== 'expired',
     // Refetch when window regains focus (e.g., returning from Stripe)
     refetchOnWindowFocus: true,
     // Don't retry on 401/404 errors
@@ -113,6 +113,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
   }
 
   const {user, membership, canManageSubscription} = data;
+  const currentMembership = membership?.status === 'expired' ? null : membership;
 
   // Show loading state if polling for membership after checkout
   if (isPolling && sessionId) {
@@ -173,7 +174,13 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
           {membership && (
             <Chip
               label={membership.status.replace('_', ' ')}
-              color={membership.status === 'active' ? 'success' : 'warning'}
+              color={
+                membership.status === 'expired'
+                  ? 'error'
+                  : membership.status === 'active'
+                    ? 'success'
+                    : 'warning'
+              }
               sx={{
                 alignSelf: {xs: 'flex-start', md: 'center'},
                 fontWeight: 800,
@@ -184,7 +191,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
           )}
         </Box>
 
-        {membership ? (
+        {currentMembership ? (
           <Box
             sx={{
               display: 'grid',
@@ -209,12 +216,12 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
                   </Box>
                   <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
                     <Typography color="text.secondary">Plan</Typography>
-                    <Typography fontWeight={700}>{membership.planName}</Typography>
+                    <Typography fontWeight={700}>{currentMembership.planName}</Typography>
                   </Box>
                   <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
                     <Typography color="text.secondary">Renews</Typography>
                     <Typography fontWeight={700}>
-                      {new Date(membership.endDate).toLocaleDateString()}
+                      {new Date(currentMembership.endDate).toLocaleDateString()}
                     </Typography>
                   </Box>
                 </Box>
@@ -230,7 +237,8 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
                 </Box>
               </Paper>
 
-              <MembershipCard membership={membership} />
+              <MembershipCard membership={currentMembership} />
+              <MembershipCard membership={currentMembership} />
 
               <Paper className="dec-card" sx={{p: 3}}>
                 <Typography variant="h4" component="h2" sx={{mb: 2}}>
@@ -294,13 +302,15 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
         ) : (
           <Paper sx={{p: 3, textAlign: 'center'}}>
             <Typography variant="h6" gutterBottom>
-              No Active Membership
+              {membership?.status === 'expired' ? 'Membership Expired' : 'No Active Membership'}
             </Typography>
             <Typography color="text.secondary" sx={{mb: 2}}>
-              You don&apos;t have an active membership yet.
+              {membership?.status === 'expired'
+                ? 'Renew your membership to restore your digital card and member benefits.'
+                : 'You don&apos;t have an active membership yet.'}
             </Typography>
-            <Button component={Link} href="/join" variant="contained" color="primary">
-              View Membership Plans
+            <Button component={Link} href="/renew" variant="contained" color="primary">
+              Renew Membership
             </Button>
           </Paper>
         )}

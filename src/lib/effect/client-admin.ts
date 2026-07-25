@@ -459,6 +459,40 @@ export const sendPasswordReset = (
   });
 
 /**
+ * Send a renewal email to an existing member
+ */
+export const sendRenewalEmail = (
+  userId: string,
+): Effect.Effect<void, AdminError | EmailError | UnauthorizedError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const response = await fetch(`/api/admin/members/${userId}/renewal-email`, {
+        method: 'POST',
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        const data = await response.json();
+        throw new UnauthorizedError({message: data.error || 'Unauthorized'});
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send renewal email');
+      }
+    },
+    catch: (error) => {
+      if (error instanceof UnauthorizedError) {
+        return error;
+      }
+      return new AdminError({
+        code: 'SEND_RENEWAL_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to send renewal email',
+        cause: error,
+      });
+    },
+  });
+
+/**
  * Issue a refund for a payment
  */
 export const issueRefund = (

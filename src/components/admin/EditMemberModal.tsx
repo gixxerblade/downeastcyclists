@@ -242,6 +242,9 @@ export function EditMemberModal({open, member, onClose}: EditMemberModalProps) {
                   onChange={(e) => handleInputChange('status', e.target.value)}
                 >
                   <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="expired" disabled>
+                    Expired (based on end date)
+                  </MenuItem>
                   <MenuItem value="past_due">Past Due</MenuItem>
                   <MenuItem value="canceled">Canceled</MenuItem>
                   <MenuItem value="incomplete">Incomplete</MenuItem>

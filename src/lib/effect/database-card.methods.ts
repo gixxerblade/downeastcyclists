@@ -2,10 +2,11 @@ import {eq, sql} from 'drizzle-orm';
 import {Effect} from 'effect';
 
 import {membershipCards, membershipCounters, memberships, users} from '@/src/db/schema/tables';
+import {getEffectiveMembershipStatus, toStoredMembershipStatus} from '@/src/lib/membership-status';
 
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
-import type {MembershipCard, MembershipStatus} from './schemas';
+import type {MembershipCard} from './schemas';
 
 // Lazy db loader — avoids triggering Neon connection at import time
 function getDb() {
@@ -24,7 +25,7 @@ function rowToCardDocument(row: typeof membershipCards.$inferSelect): Membership
     memberName: row.memberName,
     email: row.email,
     planType: row.planType,
-    status: row.status as MembershipStatus,
+    status: getEffectiveMembershipStatus(row.status, row.validUntil),
     validFrom: row.validFrom.toISOString(),
     validUntil: row.validUntil.toISOString(),
     qrCodeData: row.qrCodeData,
@@ -91,7 +92,7 @@ export function createCardMethods() {
                   memberName: card.memberName,
                   email: card.email,
                   planType: card.planType,
-                  status: card.status,
+                  status: toStoredMembershipStatus(card.status),
                   validFrom: new Date(card.validFrom),
                   validUntil: new Date(card.validUntil),
                   qrCodeData: card.qrCodeData,
@@ -122,7 +123,7 @@ export function createCardMethods() {
                 memberName: card.memberName,
                 email: card.email,
                 planType: card.planType,
-                status: card.status,
+                status: toStoredMembershipStatus(card.status),
                 validFrom: new Date(card.validFrom),
                 validUntil: new Date(card.validUntil),
                 qrCodeData: card.qrCodeData,
@@ -156,7 +157,7 @@ export function createCardMethods() {
             if (data.memberName !== undefined) updates.memberName = data.memberName;
             if (data.email !== undefined) updates.email = data.email;
             if (data.planType !== undefined) updates.planType = data.planType;
-            if (data.status !== undefined) updates.status = data.status;
+            if (data.status !== undefined) updates.status = toStoredMembershipStatus(data.status);
             if (data.validFrom !== undefined) updates.validFrom = new Date(data.validFrom);
             if (data.validUntil !== undefined) updates.validUntil = new Date(data.validUntil);
             if (data.qrCodeData !== undefined) updates.qrCodeData = data.qrCodeData;

@@ -8,6 +8,7 @@ import {
   getConfiguredPriceIds,
   getPlanNameForType,
 } from '../membership-plans-config';
+import {isCurrentMembershipStatus} from '../membership-status';
 
 import {MembershipCardService} from './card.service';
 import {DatabaseService} from './database.service';
@@ -339,7 +340,9 @@ const make = Effect.gen(function* () {
         return {
           userId,
           email: user.email,
-          isActive: hasActiveMembershipAccess(membershipData?.status ?? null),
+          isActive:
+            hasActiveMembershipAccess(membershipData?.status ?? null) &&
+            isCurrentMembershipStatus(membershipData?.status, membershipData?.endDate),
           membership: membershipData,
         };
       }),

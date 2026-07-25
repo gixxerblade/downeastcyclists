@@ -10,8 +10,10 @@ import {
   createTestAuthService,
   createTestDatabaseService,
   createTestEmailService,
+  createTestCardService,
   createTestStripeService,
   TestAuthLayer,
+  TestCardLayer,
   TestDatabaseLayer,
   TestEmailLayer,
   TestStripeLayer,
@@ -735,6 +737,74 @@ describe('Admin Member Management Integration', () => {
       expect(result[0].daysUntilExpiration).toBe(29);
       expect(result[1].daysUntilExpiration).toBe(29);
       expect(databaseService.getExpiringMemberships).toHaveBeenCalledWith(30);
+    });
+  });
+
+  describe('Renewal Emails', () => {
+    it('should send a renewal email and audit the action', async () => {
+      const userId = 'user_renew';
+      const emailService = createTestEmailService();
+      const databaseService = createTestDatabaseService({
+        getUser: vi.fn(() =>
+          Effect.succeed({
+            id: userId,
+            email: 'expired@example.com',
+            name: 'Expired Member',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }),
+        ),
+        getActiveMembership: vi.fn(() =>
+          Effect.succeed({
+            id: 'mem_renew',
+            stripeSubscriptionId: 'sub_renew',
+            planType: 'individual' as const,
+            status: 'expired' as const,
+            startDate: '2025-01-01T00:00:00.000Z',
+            endDate: '2026-01-01T00:00:00.000Z',
+            autoRenew: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }),
+        ),
+        logAuditEntry: vi.fn(() => Effect.void),
+      });
+
+      const statsService = {
+        getStats: vi.fn(() => Effect.succeed({} as any)),
+        incrementStat: vi.fn(() => Effect.void),
+        decrementStat: vi.fn(() => Effect.void),
+        refreshStats: vi.fn(() => Effect.succeed({} as any)),
+      };
+
+      const testLayer = Layer.mergeAll(
+        TestDatabaseLayer(databaseService),
+        TestAuthLayer(createTestAuthService()),
+        TestStripeLayer(createTestStripeService()),
+        TestCardLayer(createTestCardService()),
+        Layer.succeed(StatsService, statsService),
+        TestEmailLayer(emailService),
+      );
+
+      const program = Effect.gen(function* () {
+        const admin = yield* AdminService;
+        yield* admin.sendRenewalEmail(userId, 'admin_123', 'admin@example.com');
+      });
+
+      await Effect.runPromise(Effect.provide(Effect.provide(program, AdminServiceLive), testLayer));
+
+      expect(emailService.sendRenewalEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'expired@example.com',
+          name: 'Expired Member',
+          renewalUrl: expect.stringContaining('/renew'),
+        }),
+      );
+      expect(databaseService.logAuditEntry).toHaveBeenCalledWith(
+        userId,
+        'MEMBERSHIP_ADJUSTMENT',
+        expect.objectContaining({action: 'RENEWAL_EMAIL_SENT'}),
+      );
     });
   });
 

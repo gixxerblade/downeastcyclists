@@ -138,6 +138,7 @@ export const createTestEmailService = (
   overrides: Partial<EmailServiceType> = {},
 ): EmailServiceType => ({
   sendWelcomeEmail: vi.fn(() => Effect.void),
+  sendRenewalEmail: vi.fn(() => Effect.void),
   ...overrides,
 });
 
@@ -252,6 +253,7 @@ export const createTestAdminService = (
   getPaymentHistory: vi.fn(() => Effect.succeed([])),
   issueRefund: vi.fn(() => Effect.die('Not mocked')) as unknown as AdminServiceType['issueRefund'],
   sendPasswordReset: vi.fn(() => Effect.void),
+  sendRenewalEmail: vi.fn(() => Effect.void),
   ...overrides,
 });
 

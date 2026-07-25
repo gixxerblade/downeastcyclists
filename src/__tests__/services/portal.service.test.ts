@@ -190,6 +190,42 @@ describe('PortalService', () => {
       expect(result.membership?.daysRemaining).toBeLessThanOrEqual(31);
     });
 
+    it('should return expired status for stale active memberships', async () => {
+      const mockUser = createMockUserDocument();
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 10);
+      const mockMembership = createMockMembershipDocument({
+        status: 'expired',
+        endDate: pastDate.toISOString(),
+      });
+
+      const authService = createTestAuthService();
+      const stripeService = createTestStripeService();
+      const databaseService = createTestDatabaseService({
+        getUser: vi.fn(() => Effect.succeed(mockUser)),
+        getActiveMembership: vi.fn(() => Effect.succeed(mockMembership)),
+      });
+
+      const testLayer = Layer.mergeAll(
+        TestAuthLayer(authService),
+        TestStripeLayer(stripeService),
+        TestDatabaseLayer(databaseService),
+      );
+
+      const program = Effect.gen(function* () {
+        const service = yield* PortalService;
+        return yield* service.getMemberDashboard('user_123');
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(Effect.provide(program, PortalServiceLive), testLayer),
+      );
+
+      expect(result.membership?.status).toBe('expired');
+      expect(result.membership?.daysRemaining).toBe(0);
+      expect(result.canManageSubscription).toBe(false);
+    });
+
     it('should set canManageSubscription based on stripeCustomerId', async () => {
       const mockUserWithStripe = createMockUserDocument({
         stripeCustomerId: 'cus_123',

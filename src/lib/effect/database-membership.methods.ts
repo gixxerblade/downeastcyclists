@@ -1,7 +1,8 @@
-import {and, desc, eq, gte, ilike, inArray, lte, or, sql} from 'drizzle-orm';
+import {and, desc, eq, gte, ilike, inArray, lt, lte, or, sql} from 'drizzle-orm';
 import {Effect} from 'effect';
 
 import {membershipCards, memberships, users} from '@/src/db/schema/tables';
+import {getEffectiveMembershipStatus, toStoredMembershipStatus} from '@/src/lib/membership-status';
 
 import {resolveUserId} from './database.service';
 import {DatabaseError} from './errors';
@@ -9,7 +10,6 @@ import type {
   MemberSearchParams,
   MemberWithMembership,
   MembershipDocument,
-  MembershipStatus,
   UserDocument,
 } from './schemas';
 
@@ -22,13 +22,39 @@ function getDb() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+type DatabaseMembershipStatus = typeof memberships.$inferSelect.status;
+
+const currentDatabaseStatuses: DatabaseMembershipStatus[] = [
+  'active',
+  'trialing',
+  'past_due',
+  'complimentary',
+  'legacy',
+];
+
+const databaseStatuses: ReadonlySet<string> = new Set([
+  ...currentDatabaseStatuses,
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'unpaid',
+  'deleted',
+]);
+
+function isDatabaseMembershipStatus(status: string): status is DatabaseMembershipStatus {
+  return databaseStatuses.has(status);
+}
+
 /** Maps a Postgres membership row to the MembershipDocument schema shape. */
-function rowToMembershipDocument(row: typeof memberships.$inferSelect): MembershipDocument {
+function rowToMembershipDocument(
+  row: typeof memberships.$inferSelect,
+  now: Date = new Date(),
+): MembershipDocument {
   return {
     id: row.id,
     stripeSubscriptionId: row.stripeSubscriptionId ?? '',
     planType: row.planType,
-    status: row.status as MembershipStatus,
+    status: getEffectiveMembershipStatus(row.status, row.endDate, now),
     startDate: row.startDate.toISOString(),
     endDate: row.endDate.toISOString(),
     autoRenew: row.autoRenew,
@@ -58,7 +84,7 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
 }
 
 /** Maps a Postgres membership card row to the MembershipCard schema shape. */
-function rowToCardDocument(row: typeof membershipCards.$inferSelect) {
+function rowToCardDocument(row: typeof membershipCards.$inferSelect, now: Date = new Date()) {
   return {
     id: row.id,
     userId: row.userId,
@@ -66,7 +92,7 @@ function rowToCardDocument(row: typeof membershipCards.$inferSelect) {
     memberName: row.memberName,
     email: row.email,
     planType: row.planType,
-    status: row.status as MembershipStatus,
+    status: getEffectiveMembershipStatus(row.status, row.validUntil, now),
     validFrom: row.validFrom.toISOString(),
     validUntil: row.validUntil.toISOString(),
     qrCodeData: row.qrCodeData,
@@ -171,7 +197,7 @@ export function createMembershipMethods() {
                 .update(memberships)
                 .set({
                   planType: data.planType,
-                  status: data.status,
+                  status: toStoredMembershipStatus(data.status),
                   startDate: new Date(data.startDate as string),
                   endDate: new Date(data.endDate as string),
                   autoRenew: data.autoRenew,
@@ -183,7 +209,7 @@ export function createMembershipMethods() {
                 userId: userRow.id,
                 stripeSubscriptionId: subId,
                 planType: data.planType,
-                status: data.status,
+                status: toStoredMembershipStatus(data.status),
                 startDate: new Date(data.startDate as string),
                 endDate: new Date(data.endDate as string),
                 autoRenew: data.autoRenew,
@@ -214,7 +240,7 @@ export function createMembershipMethods() {
             if (data.stripeSubscriptionId !== undefined)
               updates.stripeSubscriptionId = data.stripeSubscriptionId || null;
             if (data.planType !== undefined) updates.planType = data.planType;
-            if (data.status !== undefined) updates.status = data.status;
+            if (data.status !== undefined) updates.status = toStoredMembershipStatus(data.status);
             if (data.startDate !== undefined)
               updates.startDate = new Date(data.startDate as string);
             if (data.endDate !== undefined) updates.endDate = new Date(data.endDate as string);
@@ -254,10 +280,19 @@ export function createMembershipMethods() {
     getAllMemberships: (params: MemberSearchParams) =>
       Effect.tryPromise({
         try: async () => {
+          const now = new Date();
           const conditions = [];
 
           if (params.status) {
-            conditions.push(eq(memberships.status, params.status));
+            if (params.status === 'expired') {
+              conditions.push(inArray(memberships.status, currentDatabaseStatuses));
+              conditions.push(lt(memberships.endDate, now));
+            } else if (isDatabaseMembershipStatus(params.status)) {
+              conditions.push(eq(memberships.status, params.status));
+              if (currentDatabaseStatuses.includes(params.status)) {
+                conditions.push(gte(memberships.endDate, now));
+              }
+            }
           }
 
           if (params.planType) {
@@ -267,6 +302,7 @@ export function createMembershipMethods() {
           if (params.expiringWithinDays) {
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + params.expiringWithinDays);
+            conditions.push(gte(memberships.endDate, new Date()));
             conditions.push(lte(memberships.endDate, expiryDate));
           }
 
@@ -316,8 +352,8 @@ export function createMembershipMethods() {
 
           const members: MemberWithMembership[] = rows.map((row) => ({
             user: row.user ? rowToUserDocument(row.user) : null,
-            membership: row.membership ? rowToMembershipDocument(row.membership) : null,
-            card: row.card ? rowToCardDocument(row.card) : null,
+            membership: row.membership ? rowToMembershipDocument(row.membership, now) : null,
+            card: row.card ? rowToCardDocument(row.card, now) : null,
           }));
 
           return {members, total};
@@ -348,7 +384,7 @@ export function createMembershipMethods() {
             .leftJoin(membershipCards, eq(membershipCards.membershipId, memberships.id))
             .where(
               and(
-                inArray(memberships.status, ['active', 'past_due']),
+                inArray(memberships.status, currentDatabaseStatuses),
                 gte(memberships.endDate, now),
                 lte(memberships.endDate, expiryDate),
               ),
@@ -357,8 +393,8 @@ export function createMembershipMethods() {
 
           return rows.map((row) => ({
             user: row.user ? rowToUserDocument(row.user) : null,
-            membership: row.membership ? rowToMembershipDocument(row.membership) : null,
-            card: row.card ? rowToCardDocument(row.card) : null,
+            membership: row.membership ? rowToMembershipDocument(row.membership, now) : null,
+            card: row.card ? rowToCardDocument(row.card, now) : null,
           }));
         },
         catch: (error) =>
