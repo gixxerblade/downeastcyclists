@@ -411,3 +411,22 @@ export const trailMaintenanceEvents = pgTable(
     index('trail_maintenance_events_created_at_idx').on(table.createdAt),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// 12. Distributed API rate limits
+// ---------------------------------------------------------------------------
+
+export const rateLimitBuckets = pgTable(
+  'rate_limit_buckets',
+  {
+    scope: varchar('scope', {length: 80}).notNull(),
+    identifierHash: varchar('identifier_hash', {length: 64}).notNull(),
+    windowStart: timestamp('window_start', {withTimezone: true}).notNull(),
+    requestCount: integer('request_count').notNull().default(1),
+    expiresAt: timestamp('expires_at', {withTimezone: true}).notNull(),
+  },
+  (table) => [
+    uniqueIndex('rate_limit_buckets_scope_identifier_idx').on(table.scope, table.identifierHash),
+    index('rate_limit_buckets_expires_at_idx').on(table.expiresAt),
+  ],
+);

@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
         status: 404,
       }),
     ),
-    Effect.catchTag('StripeError', (error) =>
+    Effect.catchTag('StripeError', () =>
       Effect.succeed({
-        error: error.message,
+        error: 'Unable to open the billing portal',
         _tag: 'error' as const,
         status: 500,
       }),

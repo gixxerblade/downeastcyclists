@@ -1,4 +1,7 @@
-import {createHash, createHmac} from 'crypto';
+import {createHash, createHmac} from 'node:crypto';
+import {basename} from 'node:path';
+
+import sharp from 'sharp';
 
 import {TRAIL_MAINTENANCE_PHOTO_MAX_BYTES, TRAIL_MAINTENANCE_PHOTO_LIMIT} from './constants';
 
@@ -20,6 +23,20 @@ interface R2Config {
 
 const R2_REGION = 'auto';
 const R2_SERVICE = 's3';
+const ALLOWED_SOURCE_FORMATS = new Set(['jpeg', 'png', 'webp']);
+const MAX_INPUT_PIXELS = 40_000_000;
+
+export class TrailPhotoValidationError extends Error {
+  readonly name = 'TrailPhotoValidationError';
+}
+
+export interface NormalizedTrailPhoto {
+  readonly body: Uint8Array;
+  readonly contentType: 'image/webp';
+  readonly extension: 'webp';
+  readonly originalFilename: string;
+  readonly byteSize: number;
+}
 
 function getR2Config(): R2Config | null {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -39,8 +56,14 @@ function getR2Config(): R2Config | null {
   };
 }
 
-function hash(value: string | Buffer): string {
+function hash(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function copyToArrayBuffer(value: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(value.byteLength);
+  copy.set(value);
+  return copy.buffer;
 }
 
 function hmac(key: string | Buffer, value: string): Buffer {
@@ -167,14 +190,14 @@ async function putObject({
 }: {
   readonly config: R2Config;
   readonly objectKey: string;
-  readonly body: ArrayBuffer;
+  readonly body: Uint8Array;
   readonly contentType: string;
 }): Promise<void> {
-  const payloadHash = hash(Buffer.from(body));
+  const payloadHash = hash(body);
   const response = await fetch(r2Endpoint(config, objectKey), {
     method: 'PUT',
     headers: putObjectHeaders({config, objectKey, contentType, payloadHash}),
-    body,
+    body: copyToArrayBuffer(body),
   });
 
   if (!response.ok) {
@@ -187,12 +210,54 @@ async function putObject({
   }
 }
 
-export function isAllowedTrailPhoto(file: File): boolean {
-  return (
-    file.type.startsWith('image/') &&
-    file.size > 0 &&
-    file.size <= TRAIL_MAINTENANCE_PHOTO_MAX_BYTES
-  );
+export async function normalizeTrailPhoto(file: File): Promise<NormalizedTrailPhoto> {
+  if (file.size <= 0 || file.size > TRAIL_MAINTENANCE_PHOTO_MAX_BYTES) {
+    throw new TrailPhotoValidationError('Photos must be no larger than 10 MB');
+  }
+
+  const input = Buffer.from(await file.arrayBuffer());
+  const image = sharp(input, {
+    animated: false,
+    failOn: 'error',
+    limitInputPixels: MAX_INPUT_PIXELS,
+  });
+
+  let metadata: Awaited<ReturnType<typeof image.metadata>>;
+  try {
+    metadata = await image.metadata();
+  } catch {
+    throw new TrailPhotoValidationError('Photos must be valid JPEG, PNG, or WebP images');
+  }
+
+  if (
+    !metadata.format ||
+    !ALLOWED_SOURCE_FORMATS.has(metadata.format) ||
+    (metadata.pages ?? 1) > 1
+  ) {
+    throw new TrailPhotoValidationError('Photos must be valid JPEG, PNG, or WebP images');
+  }
+
+  let output: Buffer;
+  try {
+    output = await image.rotate().webp({quality: 85}).toBuffer();
+  } catch {
+    throw new TrailPhotoValidationError('Photos must be valid JPEG, PNG, or WebP images');
+  }
+
+  if (output.length > TRAIL_MAINTENANCE_PHOTO_MAX_BYTES) {
+    throw new TrailPhotoValidationError('The processed photo is too large');
+  }
+
+  const filenameStem = basename(file.name.replaceAll('\\', '/')).replace(/\.[^.]*$/, '');
+  const safeStem = filenameStem.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 250) || 'photo';
+
+  return {
+    body: Uint8Array.from(output),
+    contentType: 'image/webp',
+    extension: 'webp',
+    originalFilename: `${safeStem}.webp`,
+    byteSize: output.length,
+  };
 }
 
 export async function storeTrailMaintenancePhotos({
@@ -215,32 +280,22 @@ export async function storeTrailMaintenancePhotos({
 
   const uploads: StoredTrailPhoto[] = [];
   for (const [index, file] of files.entries()) {
-    if (!isAllowedTrailPhoto(file)) {
-      throw new Error('Photos must be image files no larger than 10 MB');
-    }
-
-    const extension =
-      file.name
-        .split('.')
-        .pop()
-        ?.toLowerCase()
-        .replace(/[^a-z0-9]/g, '') || 'jpg';
-    const objectKey = `trail-maintenance/${publicId}/${index + 1}.${extension}`;
-    const body = await file.arrayBuffer();
+    const normalized = await normalizeTrailPhoto(file);
+    const objectKey = `trail-maintenance/${publicId}/${index + 1}.${normalized.extension}`;
 
     await putObject({
       config,
       objectKey,
-      body,
-      contentType: file.type,
+      body: normalized.body,
+      contentType: normalized.contentType,
     });
 
     uploads.push({
       bucketName: config.bucketName,
       objectKey,
-      originalFilename: file.name,
-      contentType: file.type,
-      byteSize: file.size,
+      originalFilename: normalized.originalFilename,
+      contentType: normalized.contentType,
+      byteSize: normalized.byteSize,
       sortOrder: index,
     });
   }

@@ -23,11 +23,13 @@ export async function POST(request: NextRequest) {
   const result = await Effect.runPromise(
     runMeetupIngestion.pipe(
       Effect.catchAll((error) =>
-        Effect.succeed({
-          error: error.message,
-          _tag: 'error' as const,
-          status: 500,
-        }),
+        Effect.sync(() => console.error('[MeetupIngest] Ingestion failed:', error)).pipe(
+          Effect.as({
+            error: 'Meetup ingestion failed',
+            _tag: 'error' as const,
+            status: 500,
+          }),
+        ),
       ),
     ),
   );

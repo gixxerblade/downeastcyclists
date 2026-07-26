@@ -71,7 +71,21 @@ export const MembershipPlanDocument = S.Struct({
 });
 export type MembershipPlanDocument = S.Schema.Type<typeof MembershipPlanDocument>;
 
-// API Request schemas
+// Public checkout request. Member identity is derived server-side from either
+// the session cookie or a signed renewal token.
+export const CheckoutApiRequest = S.Struct({
+  priceId: S.String,
+  email: S.optional(S.String),
+  successUrl: S.String,
+  cancelUrl: S.String,
+  coverFees: S.optional(S.Boolean),
+  planPrice: S.optional(S.Number),
+  renewalToken: S.optional(S.String),
+});
+export type CheckoutApiRequest = S.Schema.Type<typeof CheckoutApiRequest>;
+
+// Internal request passed to the membership and Stripe services after the API
+// boundary has authenticated the member identity.
 export const CheckoutSessionRequest = S.Struct({
   priceId: S.String,
   userId: S.optional(S.String),

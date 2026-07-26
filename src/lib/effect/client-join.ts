@@ -2,6 +2,7 @@ import {Effect} from 'effect';
 
 import {auth} from '@/src/utils/firebase';
 
+import {createSessionCookie} from './client-auth';
 import {createAccount} from './client-signup';
 import {AuthError} from './errors';
 
@@ -51,7 +52,6 @@ const createDatabaseUser = (
 // Create checkout session via API
 const createCheckoutSession = (params: {
   priceId: string;
-  userId: string;
   email: string;
   successUrl: string;
   cancelUrl: string;
@@ -65,7 +65,6 @@ const createCheckoutSession = (params: {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           priceId: params.priceId,
-          userId: params.userId,
           email: params.email,
           successUrl: params.successUrl,
           cancelUrl: params.cancelUrl,
@@ -119,10 +118,13 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
     // Step 3: Create user document
     yield* createDatabaseUser(idToken, request.name);
 
-    // Step 4: Create Stripe checkout session
+    // Step 4: Establish the server-side session before checkout. The checkout
+    // endpoint derives the new member identity from this verified cookie.
+    yield* createSessionCookie(idToken);
+
+    // Step 5: Create Stripe checkout session
     const checkout = yield* createCheckoutSession({
       priceId: request.priceId,
-      userId: user.uid,
       email: user.email,
       successUrl: request.successUrl,
       cancelUrl: request.cancelUrl,

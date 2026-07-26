@@ -36,6 +36,13 @@
       "when": 1785007477217,
       "tag": "0004_lame_lethal_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785082085918,
+      "tag": "0005_first_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

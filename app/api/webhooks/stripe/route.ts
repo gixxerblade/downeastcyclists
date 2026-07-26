@@ -156,11 +156,19 @@ export async function POST(request: NextRequest) {
     }),
     Effect.catchTag('StripeError', (error) => {
       console.error('Stripe error in webhook:', error);
-      return Effect.succeed({error: error.message, _tag: 'error' as const, status: 400});
+      return Effect.succeed({
+        error: 'Invalid webhook request',
+        _tag: 'error' as const,
+        status: 400,
+      });
     }),
     Effect.catchTag('DatabaseError', (error) => {
       console.error('Database error in webhook:', error);
-      return Effect.succeed({error: error.message, _tag: 'error' as const, status: 500});
+      return Effect.succeed({
+        error: 'Webhook processing failed',
+        _tag: 'error' as const,
+        status: 500,
+      });
     }),
   );
 

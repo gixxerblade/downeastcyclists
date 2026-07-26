@@ -2,64 +2,66 @@ import {Schema as S} from 'effect';
 import {Effect, pipe} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
+import {getTrustedClientIdentifier} from '@/src/lib/api/client-identity';
 import {ValidationError} from '@/src/lib/effect/errors';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {MembershipService} from '@/src/lib/effect/membership.service';
-import {CheckoutSessionRequest} from '@/src/lib/effect/schemas';
+import {CheckoutApiRequest} from '@/src/lib/effect/schemas';
 import {getFirebaseAdmin} from '@/src/lib/firebase-admin';
+import {consumeRateLimit} from '@/src/lib/rate-limit';
+import {verifyRenewalToken} from '@/src/lib/renewal-token';
 
-// Simple in-memory rate limiter for unauthenticated requests
-const rateLimitStore = new Map<string, {count: number; resetTime: number}>();
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute for unauthenticated
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(ip, {count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS});
-    return false;
-  }
-
-  entry.count++;
-  return entry.count > RATE_LIMIT_MAX_REQUESTS;
-}
+const RATE_LIMIT_MAX_REQUESTS = 10;
 
 export async function POST(request: NextRequest) {
-  // Check for authentication (optional - allows guest checkout)
-  const sessionCookie = request.cookies.get('session')?.value;
-  let isAuthenticated = false;
+  try {
+    const rateLimit = await consumeRateLimit({
+      scope: 'checkout',
+      identifier: getTrustedClientIdentifier(request),
+      limit: RATE_LIMIT_MAX_REQUESTS,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {error: 'Too many checkout requests. Please wait and try again.'},
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.max(1, Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000)),
+            ),
+          },
+        },
+      );
+    }
+  } catch (error) {
+    console.error('[Checkout] Rate-limit check failed:', error);
+    return NextResponse.json({error: 'Checkout is temporarily unavailable'}, {status: 503});
+  }
 
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({error: 'Invalid request body'}, {status: 400});
+  }
+
+  let sessionUserId: string | undefined;
+  const sessionCookie = request.cookies.get('session')?.value;
   if (sessionCookie) {
     try {
       const {auth} = getFirebaseAdmin();
-      await auth.verifySessionCookie(sessionCookie, true);
-      isAuthenticated = true;
+      const session = await auth.verifySessionCookie(sessionCookie, true);
+      sessionUserId = session.uid;
     } catch {
-      // Session invalid - treat as unauthenticated guest checkout
+      sessionUserId = undefined;
     }
   }
 
-  // Rate limit unauthenticated requests
-  if (!isAuthenticated) {
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (isRateLimited(clientIp)) {
-      return NextResponse.json(
-        {error: 'Too many checkout requests. Please wait and try again.'},
-        {status: 429},
-      );
-    }
-  }
-
-  // Parse request body
-  const body = await request.json();
-
-  // Define the Effect program
   const program = pipe(
     Effect.gen(function* () {
-      // Step 1: Validate input with Effect Schema
-      const validatedRequest = yield* S.decodeUnknown(CheckoutSessionRequest)(body).pipe(
+      const validatedRequest = yield* S.decodeUnknown(CheckoutApiRequest)(body).pipe(
         Effect.mapError(
           (error) =>
             new ValidationError({
@@ -70,9 +72,35 @@ export async function POST(request: NextRequest) {
         ),
       );
 
-      // Step 2: Create checkout session
+      let renewalUserId: string | undefined;
+      if (validatedRequest.renewalToken) {
+        const verification = verifyRenewalToken(validatedRequest.renewalToken);
+        if (!verification.ok) {
+          return yield* new ValidationError({
+            field: 'renewalToken',
+            message: 'This renewal link is invalid or has expired',
+          });
+        }
+        renewalUserId = verification.payload.sub;
+      }
+
+      if (sessionUserId && renewalUserId && sessionUserId !== renewalUserId) {
+        return yield* new ValidationError({
+          field: 'renewalToken',
+          message: 'This renewal link does not match the signed-in account',
+        });
+      }
+
       const membershipService = yield* MembershipService;
-      return yield* membershipService.createCheckoutSession(validatedRequest);
+      return yield* membershipService.createCheckoutSession({
+        priceId: validatedRequest.priceId,
+        email: validatedRequest.email,
+        successUrl: validatedRequest.successUrl,
+        cancelUrl: validatedRequest.cancelUrl,
+        coverFees: validatedRequest.coverFees,
+        planPrice: validatedRequest.planPrice,
+        userId: renewalUserId ?? sessionUserId,
+      });
     }),
 
     // Step 3: Handle specific errors with catchTag
@@ -85,19 +113,22 @@ export async function POST(request: NextRequest) {
       }),
     ),
     Effect.catchTag('StripeError', (error) =>
-      Effect.succeed({
-        error: error.message,
-        code: error.code,
-        _tag: 'error' as const,
-        status: 500,
-      }),
+      Effect.sync(() => console.error('[Checkout] Stripe failure:', error)).pipe(
+        Effect.as({
+          error: 'Unable to create checkout session',
+          _tag: 'error' as const,
+          status: 500,
+        }),
+      ),
     ),
     Effect.catchTag('DatabaseError', (error) =>
-      Effect.succeed({
-        error: error.message,
-        _tag: 'error' as const,
-        status: 500,
-      }),
+      Effect.sync(() => console.error('[Checkout] Database failure:', error)).pipe(
+        Effect.as({
+          error: 'Unable to create checkout session',
+          _tag: 'error' as const,
+          status: 500,
+        }),
+      ),
     ),
   );
 

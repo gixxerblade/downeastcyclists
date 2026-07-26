@@ -8,6 +8,8 @@ process.env.STRIPE_PRICE_FAMILY = 'price_family_test';
 process.env.GOOGLE_PROJECT_ID = 'test-project';
 process.env.GOOGLE_CLIENT_EMAIL = 'test@test.iam.gserviceaccount.com';
 process.env.GOOGLE_PRIVATE_KEY = 'test-private-key';
+process.env.RENEWAL_LINK_SECRET = 'test-renewal-secret-that-is-at-least-32-characters';
+process.env.RATE_LIMIT_SECRET = 'test-rate-limit-secret-that-is-at-least-32-characters';
 
 // Reset mocks between tests
 beforeEach(() => {

@@ -38,8 +38,8 @@ export async function GET() {
       if (failure._tag === 'NotFoundError' && 'resource' in failure) {
         return NextResponse.json({error: `${failure.resource} not found`}, {status: 404});
       }
-      if (failure._tag === 'DatabaseError' && 'message' in failure) {
-        return NextResponse.json({error: failure.message as string}, {status: 500});
+      if (failure._tag === 'DatabaseError') {
+        return NextResponse.json({error: 'Unable to load member information'}, {status: 500});
       }
     }
     return NextResponse.json({error: 'An unexpected error occurred'}, {status: 500});

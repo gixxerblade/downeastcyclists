@@ -82,7 +82,7 @@ describe('sendScheduledRenewalReminders', () => {
       expect.objectContaining({
         to: 'thirty@example.com',
         daysUntilExpiration: 30,
-        renewalUrl: expect.stringContaining('/renew?userId=user_30'),
+        renewalUrl: expect.stringMatching(/\/renew\?token=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/),
       }),
     );
     expect(databaseService.logEmailEvent).toHaveBeenCalledWith(
