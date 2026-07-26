@@ -7,10 +7,9 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -20,8 +19,6 @@ import {
   Paper,
   Typography,
 } from '@mui/material';
-import {useMutation} from '@tanstack/react-query';
-import {Effect} from 'effect';
 import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
@@ -30,19 +27,18 @@ import {ActionLog} from '@/src/components/admin/ActionLog';
 import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
 import {OrganizerManagement} from '@/src/components/admin/OrganizerManagement';
 import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
+import {TrailMaintenanceManagement} from '@/src/components/admin/TrailMaintenanceManagement';
 import {useAuth} from '@/src/components/auth/AuthProvider';
 import TrailStatus from '@/src/components/TrailStatus';
 import TrailStatusEditor from '@/src/components/TrailStatusEditor';
 import type {StaffRole} from '@/src/lib/access-control';
-import {refreshStats} from '@/src/lib/effect/client-admin';
-import type {DatabaseError, UnauthorizedError} from '@/src/lib/effect/errors';
-import type {MembershipStats} from '@/src/lib/effect/schemas';
 
 type AdminSection =
   | 'overview'
   | 'members'
   | 'action-log'
   | 'trails'
+  | 'trail-maintenance'
   | 'reconciliation'
   | 'organizers';
 
@@ -72,6 +68,11 @@ const allSections: Array<{
   {id: 'members', label: 'Members', icon: <PeopleAltIcon fontSize="small" />},
   {id: 'action-log', label: 'Action Log', icon: <ReceiptLongIcon fontSize="small" />},
   {id: 'trails', label: 'Trail status', icon: <DirectionsBikeIcon fontSize="small" />},
+  {
+    id: 'trail-maintenance',
+    label: 'Maintenance',
+    icon: <ReportProblemIcon fontSize="small" />,
+  },
   {
     id: 'reconciliation',
     label: 'Reconciliation',
@@ -170,29 +171,6 @@ export default function DashboardPage() {
     trails: 1,
     events: 12,
     blogPosts: 36,
-  });
-
-  const refreshStatsMutation = useMutation<
-    MembershipStats,
-    DatabaseError | UnauthorizedError,
-    void
-  >({
-    mutationFn: () => Effect.runPromise(refreshStats()),
-    onSuccess: (data) => {
-      setDashboardStats((prev) => ({
-        ...prev,
-        totalMembers: data.totalMembers || 0,
-        activeMembers: data.activeMembers || 0,
-        expiredMembers: data.expiredMembers,
-        canceledMembers: data.canceledMembers,
-        individualCount: data.individualCount,
-        familyCount: data.familyCount,
-        yearlyRevenue: data.yearlyRevenue,
-        expiringSoonMembers: data.expiringSoonMembers,
-        newMembersThisMonth: data.newMembersThisMonth,
-        membershipGrowth: data.membershipGrowth,
-      }));
-    },
   });
 
   useEffect(() => {
@@ -297,10 +275,7 @@ export default function DashboardPage() {
   const sectionTitle = sections.find((item) => item.id === section)?.label || 'Overview';
 
   return (
-    <Box
-      className="dec-admin-page"
-      sx={{display: 'flex', minHeight: 'calc(100vh - 76px)', mt: '-76px', pt: '76px'}}
-    >
+    <Box className="dec-admin-page" sx={{display: 'flex', minHeight: 'calc(100vh - 76px)'}}>
       <Box
         component="aside"
         sx={{
@@ -401,41 +376,18 @@ export default function DashboardPage() {
       </Box>
 
       <Box sx={{flex: 1, minWidth: 0}}>
-        <Paper
-          square
+        <Box
           sx={{
-            position: 'sticky',
-            top: 76,
-            zIndex: 2,
             px: {xs: 2, md: 4},
-            py: 2.5,
+            py: {xs: 2, md: 2.5},
             borderBottom: '1px solid var(--dec-border)',
-            bgcolor: 'var(--dec-surface)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 2,
-            alignItems: 'center',
+            bgcolor: 'var(--dec-admin-bg)',
           }}
         >
-          <Box>
-            <Typography variant="h2" sx={{fontSize: 32, lineHeight: 1}}>
-              {sectionTitle}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {dashboardStats.totalMembers} total · {dashboardStats.activeMembers} active
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            startIcon={
-              refreshStatsMutation.isPending ? <CircularProgress size={18} /> : <RefreshIcon />
-            }
-            onClick={() => refreshStatsMutation.mutate()}
-            disabled={refreshStatsMutation.isPending}
-          >
-            Refresh
-          </Button>
-        </Paper>
+          <Typography variant="h2" sx={{fontSize: {xs: 28, md: 32}, lineHeight: 1}}>
+            {sectionTitle}
+          </Typography>
+        </Box>
 
         <Box
           sx={{
@@ -459,12 +411,6 @@ export default function DashboardPage() {
         </Box>
 
         <Box sx={{p: {xs: 2, md: 4}}}>
-          {refreshStatsMutation.error && (
-            <Alert severity="error" sx={{mb: 2}}>
-              {refreshStatsMutation.error.message}
-            </Alert>
-          )}
-
           {section === 'overview' && (
             <Box sx={{display: 'grid', gap: 3}}>
               <Box
@@ -573,6 +519,9 @@ export default function DashboardPage() {
                       <Button variant="outlined" onClick={() => setSection('trails')}>
                         Update trail status
                       </Button>
+                      <Button variant="outlined" onClick={() => setSection('trail-maintenance')}>
+                        Review trail reports
+                      </Button>
                       {staffRole === 'admin' && (
                         <Button variant="outlined" onClick={() => setSection('reconciliation')}>
                           Run reconciliation
@@ -602,6 +551,8 @@ export default function DashboardPage() {
               </Paper>
             </Box>
           )}
+
+          {section === 'trail-maintenance' && <TrailMaintenanceManagement />}
 
           {section === 'reconciliation' && staffRole === 'admin' && <ReconciliationTool />}
 
