@@ -6,7 +6,7 @@ This repository contains the official website for Down East Cyclists, a recreati
 
 ## Site Overview
 
-The Down East Cyclists website is built with Next.js and deployed on Netlify. It serves as the online hub for the cycling club, providing information about the club, trails, membership management with Stripe-powered payments, and admin tools. The site integrates with Contentful CMS for content management, Firestore for dynamic data, and Effect-TS for type-safe error handling throughout the stack.
+The Down East Cyclists website is built with Next.js and deployed on Netlify. It serves as the online hub for the cycling club, providing information about the club, trails, membership management with Stripe-powered payments, public trail maintenance reporting, and admin tools. The site integrates with Contentful CMS for content management, Neon Postgres for membership and operations data, Firestore for trail status, Cloudflare Turnstile for public report protection, R2-compatible object storage for trail issue photos, Resend for transactional email, and Effect-TS for type-safe error handling throughout the stack.
 
 ## Page Descriptions
 
@@ -15,6 +15,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - Features a full-screen video background showcasing cycling in Eastern NC
 - Displays the club's mission statement
 - Shows real-time trail status at the bottom of the page
+- Highlights upcoming rides imported from the club's Meetup calendar
 
 ### About Section
 
@@ -37,6 +38,13 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Shows real-time trail status (open/closed)
   - Links to Strava segments for the trails
 
+### Trail Maintenance
+
+- **Report Trail Issue** (`/report-trail-issue`): Public form for riders to report Big Branch trail maintenance issues
+  - Supports issue type selection, observed date/time, trail segment, location notes, browser geolocation, optional reporter contact, and up to three photos
+  - Uses Cloudflare Turnstile when configured
+  - Redirects submitters to a public confirmation/status page (`/report-trail-issue/[publicId]`)
+
 ### Contact
 
 - Contact form for visitors to reach out to the club
@@ -47,7 +55,10 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 - **Join** (`/join`): Membership signup flow with Stripe checkout (individual and family plans)
 - **Member Portal** (`/member`): Authenticated member dashboard with digital membership card and QR code
+- **Renew** (`/renew`): Frictionless membership renewal flow that can be linked directly from renewal emails
+- **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
+- **Reset Password** (`/reset-password`): Firebase password reset flow for members
 
 ### Admin
 
@@ -55,11 +66,19 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Member management (view, edit, import, export)
   - Payment and subscription management via Stripe
   - Trail status editing
+  - Trail maintenance report triage, priority/status updates, internal notes, embedded maps, and county escalation email drafts
+  - Organizer access management for current members
   - QR code membership verification
   - Membership statistics and reporting
+  - Expiring member reports and manual renewal email sends
   - Payment reconciliation and refunds
-  - Audit trails for member changes
+  - Audit trails for member, payment, renewal email, reconciliation, import, and role changes
 - **Login** (`/login`): Authentication page for admin access
+
+### Scheduled Jobs
+
+- **Membership renewal reminders** (`netlify/functions/membership-renewal-reminders.ts`): Daily Netlify scheduled function that sends 90-, 60-, and 30-day renewal reminders through Resend and records email/audit events
+- **Meetup event ingest** (`netlify/functions/meetup-events-ingest.ts`): Daily Netlify scheduled function that imports upcoming public events from the Down East Cyclists Meetup RSS feed. The same ingestion can be triggered through the protected internal endpoint at `/api/internal/meetup-ingest`.
 
 ## Technical Stack
 
@@ -69,6 +88,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Database**: PostgreSQL via Neon (serverless) with Drizzle ORM; Google Firestore for trail status
 - **Authentication**: Firebase Authentication
 - **Payments**: Stripe (subscriptions, checkout, customer portal, webhooks)
+- **Email**: Resend transactional email for welcome emails, renewal reminders, and organizer access notifications
+- **Bot Protection**: hCaptcha for contact forms; Cloudflare Turnstile for trail issue reports
+- **Object Storage**: R2-compatible storage for trail maintenance report photos
 - **Error Handling**: Effect-TS for type-safe, composable operations
 - **State Management**: TanStack React Query
 - **Forms**: React Hook Form with Zod validation
@@ -187,14 +209,35 @@ The following environment variables need to be set in Netlify:
 - `STRIPE_WEBHOOK_SECRET`: Stripe webhook signing secret
 - `STRIPE_PRICE_INDIVIDUAL`: Stripe price ID for individual membership
 - `STRIPE_PRICE_FAMILY`: Stripe price ID for family membership
+
+**Email and admin access:**
+
 - `ADMIN_EMAIL`: The single administrator account email. Organizer access is granted to member
   accounts from the administrator dashboard.
+- `ADMIN_EMAIL_WHITELIST`: Optional comma-separated list of additional admin/report notification recipients.
 - `RESEND_API_KEY`: Resend API key used for transactional email.
 - `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.
 - `RESEND_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for renewal reminders.
 - `RESEND_ORGANIZER_ACCESS_TEMPLATE_ID`: Resend template alias or ID for organizer access
   notifications. Defaults to `organizer-access-granted`.
 - `SUPPORT_EMAIL`: Reply/support address shown in organizer access emails.
+
+**Trail maintenance reports:**
+
+- `NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY`: Public Turnstile site key used by the trail issue report form.
+- `CLOUDFLARE_TURNSTILE_SECRET_KEY`: Server-side Turnstile verification secret.
+- `CLOUDFLARE_TURNSTILE_ALLOWED_HOSTNAMES`: Optional comma-separated list of hostnames accepted during Turnstile verification.
+- `TRAIL_MAINTENANCE_SKIP_TURNSTILE`: Set to `true` outside production to bypass Turnstile during local testing.
+- `R2_ACCOUNT_ID`: Cloudflare R2 account ID for trail issue photo storage.
+- `R2_ACCESS_KEY_ID`: R2 access key ID.
+- `R2_SECRET_ACCESS_KEY`: R2 secret access key.
+- `R2_BUCKET_NAME`: R2 bucket name for uploaded report photos.
+- `QR_SIGNING_SECRET`: Secret used when signing trail report rate-limit identifiers and QR/prefill tokens.
+- `ONSLOW_PARKS_EMAIL`: Recipient used when drafting Onslow County Parks and Recreation escalation emails.
+
+**Meetup event ingestion:**
+
+- `MEETUP_INGEST_SECRET`: Optional bearer/header secret for manually triggering `/api/internal/meetup-ingest`.
 
 Create or update the Resend templates with:
 
