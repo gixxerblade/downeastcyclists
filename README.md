@@ -118,6 +118,7 @@ pnpm test:run         # Run tests once
 pnpm test:coverage    # Generate coverage report
 pnpm types:contentful # Regenerate Contentful TypeScript types
 pnpm db:generate      # Generate Drizzle migration files
+pnpm db:migrations:check # Ensure schema changes have committed migrations
 pnpm db:migrate       # Run pending database migrations
 pnpm db:push          # Push schema directly to database
 pnpm db:studio        # Launch Drizzle Studio UI
@@ -138,10 +139,11 @@ This command generates TypeScript types based on your Contentful content models.
 The primary database is PostgreSQL via Neon (serverless), managed with Drizzle ORM. Schema definitions live in `src/db/schema/` and migrations are in `drizzle/`.
 
 ```bash
-pnpm db:generate   # Generate migration from schema changes
-pnpm db:migrate    # Apply pending migrations
-pnpm db:push       # Push schema directly (development)
-pnpm db:studio     # Browse data with Drizzle Studio
+pnpm db:generate         # Generate migration from schema changes
+pnpm db:migrations:check # Ensure schema changes have committed migrations
+pnpm db:migrate          # Apply pending migrations
+pnpm db:push             # Push schema directly (development)
+pnpm db:studio           # Browse data with Drizzle Studio
 ```
 
 Trail status is stored separately in Google Firestore and managed through the admin dashboard.
@@ -150,11 +152,11 @@ Trail status is stored separately in Google Firestore and managed through the ad
 
 ### Build Configuration
 
-- **Build command**: `scripts/decrypt-credentials.sh && pnpm build`
+- **Build command**: `scripts/decrypt-credentials.sh && if [ "$CONTEXT" = "production" ]; then pnpm db:migrate; fi && pnpm build`
 - **Publish directory**: `.next`
 - **Functions directory**: `netlify/functions`
 
-Pushes to the connected GitHub repository trigger automatic builds and deploys.
+Pushes to the connected GitHub repository trigger automatic builds and deploys. Netlify applies pending committed Drizzle migrations before production builds, and GitHub CI runs `pnpm db:migrations:check` to catch schema changes that forgot to commit a matching migration file.
 
 ### Environment Variables
 

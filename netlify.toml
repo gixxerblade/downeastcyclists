@@ -1,5 +1,5 @@
 [build]
-command = "chmod +x scripts/decrypt-credentials.sh && scripts/decrypt-credentials.sh && pnpm build"
+command = "chmod +x scripts/decrypt-credentials.sh && scripts/decrypt-credentials.sh && if [ \"$CONTEXT\" = \"production\" ]; then pnpm db:migrate; fi && pnpm build"
 publish = ".next"
 functions = "netlify/functions"
 

@@ -21,6 +21,7 @@
     "tsc": "node node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
     "tsgo": "node node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
+    "db:migrations:check": "sh scripts/check-drizzle-migrations.sh",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
