@@ -11,15 +11,15 @@ export const metadata = {
 };
 
 interface RenewPageProps {
-  searchParams: Promise<{canceled?: string; userId?: string}>;
+  searchParams: Promise<{canceled?: string; token?: string}>;
 }
 
 export default async function RenewPage({searchParams}: RenewPageProps) {
   const params = await searchParams;
-  const isDirectRenewal = Boolean(params.userId);
-  const session = params.userId ? null : await verifySession();
-  const renewalUserId = params.userId || session?.userId;
-  const dashboardData = renewalUserId ? await getRenewalDashboard(renewalUserId) : null;
+  const isDirectRenewal = Boolean(params.token);
+  const session = params.token ? null : await verifySession();
+  const canLoadRenewal = Boolean(params.token || session?.authenticated);
+  const dashboardData = canLoadRenewal ? await getRenewalDashboard(params.token) : null;
 
   if (dashboardData && 'error' in dashboardData) {
     return (
@@ -53,7 +53,7 @@ export default async function RenewPage({searchParams}: RenewPageProps) {
 
       <section className="dec-container pb-20">
         <RenewMembershipClient
-          userId={dashboardData?.user.id}
+          renewalToken={params.token}
           email={dashboardData?.user.email}
           name={dashboardData?.user.name ?? null}
           canceled={params.canceled === 'true'}

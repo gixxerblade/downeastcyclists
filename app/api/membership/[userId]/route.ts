@@ -44,9 +44,9 @@ export async function GET(request: NextRequest, {params}: RouteParams) {
         status: 404,
       }),
     ),
-    Effect.catchTag('DatabaseError', (error) =>
+    Effect.catchTag('DatabaseError', () =>
       Effect.succeed({
-        error: error.message,
+        error: 'Unable to load membership',
         _tag: 'error' as const,
         status: 500,
       }),

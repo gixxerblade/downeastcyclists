@@ -34,14 +34,6 @@ type ErrorResult = {
   status: number;
 };
 
-function messageFromUnknown(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'An unexpected error occurred';
-}
-
 /**
  * Common error handlers for admin routes
  */
@@ -52,16 +44,16 @@ const errorHandlers = {
     Effect.succeed({error: 'Session expired', _tag: 'error' as const, status: 401}),
   AuthError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 401}),
-  StripeError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-  DatabaseError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-  CardError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-  QRError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
-  AdminError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+  StripeError: () =>
+    Effect.succeed({error: 'Payment provider request failed', _tag: 'error' as const, status: 500}),
+  DatabaseError: () =>
+    Effect.succeed({error: 'Database request failed', _tag: 'error' as const, status: 500}),
+  CardError: () =>
+    Effect.succeed({error: 'Membership card request failed', _tag: 'error' as const, status: 500}),
+  QRError: () =>
+    Effect.succeed({error: 'QR code request failed', _tag: 'error' as const, status: 500}),
+  AdminError: () =>
+    Effect.succeed({error: 'Admin request failed', _tag: 'error' as const, status: 500}),
   MemberNotFoundError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 404}),
   NotFoundError: (error: {resource: string}) =>
@@ -74,8 +66,8 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
   ValidationError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
-  EmailError: (error: {message: string}) =>
-    Effect.succeed({error: error.message, _tag: 'error' as const, status: 500}),
+  EmailError: () =>
+    Effect.succeed({error: 'Email request failed', _tag: 'error' as const, status: 500}),
 };
 
 /**
@@ -142,9 +134,8 @@ export async function handleAdminRoute(options: AdminRouteOptions): Promise<Next
     // Catch-all for unexpected errors
     Effect.catchAll((error: unknown) => {
       console.error('Unexpected error in admin route:', error);
-      const message = error instanceof Error ? error.message : 'An unexpected error occurred';
       return Effect.succeed({
-        error: message,
+        error: 'An unexpected error occurred',
         _tag: 'error' as const,
         status: 500,
       });
@@ -156,7 +147,7 @@ export async function handleAdminRoute(options: AdminRouteOptions): Promise<Next
     result = await Effect.runPromise(program.pipe(Effect.provide(LiveLayer)));
   } catch (error) {
     console.error('Unhandled admin route failure:', error);
-    return NextResponse.json({error: messageFromUnknown(error)}, {status: 500});
+    return NextResponse.json({error: 'An unexpected error occurred'}, {status: 500});
   }
 
   if (

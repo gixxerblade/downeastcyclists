@@ -8,14 +8,14 @@ export const metadata = {
 };
 
 interface RenewalCompletePageProps {
-  searchParams: Promise<{session_id?: string; userId?: string}>;
+  searchParams: Promise<{session_id?: string; token?: string}>;
 }
 
 export default async function RenewalCompletePage({searchParams}: RenewalCompletePageProps) {
   const params = await searchParams;
 
   if (!params.session_id) {
-    redirect(params.userId ? `/renew?userId=${encodeURIComponent(params.userId)}` : '/renew');
+    redirect(params.token ? `/renew?token=${encodeURIComponent(params.token)}` : '/renew');
   }
 
   return (

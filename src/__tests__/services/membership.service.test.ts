@@ -354,6 +354,50 @@ describe('MembershipService', () => {
       expect(databaseService.setMembership).toHaveBeenCalled();
     });
 
+    it('should link a guest renewal to an existing member regardless of email case', async () => {
+      const existingUser = createMockUserDocument({
+        id: 'existing_user',
+        email: 'member@example.com',
+      });
+      const mockSubscription = createMockSubscription({status: 'active'});
+
+      const stripeService = createTestStripeService({
+        retrieveSubscription: vi.fn(() => Effect.succeed(mockSubscription)),
+      });
+      const databaseService = createTestDatabaseService({
+        getUserByEmail: vi.fn(() => Effect.succeed(existingUser)),
+        setUser: vi.fn(() => Effect.void),
+        setMembership: vi.fn(() => Effect.void),
+      });
+
+      const testLayer = Layer.mergeAll(
+        TestStripeLayer(stripeService),
+        TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
+      );
+
+      const mockSession = createMockCheckoutSession({
+        customer_email: 'Member@Example.COM',
+        metadata: {},
+      });
+
+      const program = Effect.gen(function* () {
+        const service = yield* MembershipService;
+        return yield* service.processCheckoutCompleted(mockSession);
+      });
+
+      await Effect.runPromise(
+        Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
+      );
+
+      expect(databaseService.getUserByEmail).toHaveBeenCalledWith('member@example.com');
+      expect(databaseService.setMembership).toHaveBeenCalledWith(
+        'existing_user',
+        mockSubscription.id,
+        expect.any(Object),
+      );
+    });
+
     it('should add processing fee invoice item when present', async () => {
       const mockSubscription = createMockSubscription({status: 'active'});
 

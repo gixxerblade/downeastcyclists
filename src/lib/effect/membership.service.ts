@@ -2,6 +2,7 @@ import type {Schema as S} from 'effect';
 import {Context, Effect, Layer, pipe} from 'effect';
 import type Stripe from 'stripe';
 
+import {normalizeEmail} from '../email';
 import {hasActiveMembershipAccess} from '../membership-access';
 import {
   getBenefitsForPriceId,
@@ -154,7 +155,8 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
-        const customerEmail = session.customer_email || session.customer_details?.email;
+        const checkoutEmail = session.customer_email || session.customer_details?.email;
+        const customerEmail = checkoutEmail ? normalizeEmail(checkoutEmail) : undefined;
         const userId = session.metadata?.userId;
         const processingFee = session.metadata?.processingFee;
 

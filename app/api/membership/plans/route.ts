@@ -29,9 +29,9 @@ export async function GET() {
   const program = pipe(
     Effect.flatMap(MembershipService, (membershipService) => membershipService.getPlans()),
 
-    Effect.catchTag('StripeError', (error) =>
+    Effect.catchTag('StripeError', () =>
       Effect.succeed({
-        error: error.message,
+        error: 'Unable to load membership plans',
         _tag: 'error' as const,
         status: 500,
       }),

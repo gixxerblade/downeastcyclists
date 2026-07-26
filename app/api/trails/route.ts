@@ -34,12 +34,6 @@ export async function GET() {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching trails:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch trails data',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      {status: 500},
-    );
+    return NextResponse.json({error: 'Failed to fetch trails data'}, {status: 500});
   }
 }

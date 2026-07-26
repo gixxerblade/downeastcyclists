@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.repos/effect
 /.pnp
 .pnp.js
 .yarn/install-state.gz

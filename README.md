@@ -115,6 +115,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
    pnpm install
    ```
 
+   The install prepare step clones the Effect source into the ignored `.repos/effect` directory
+   when it is missing, then prepares the Effect TypeScript tooling.
+
 3. Create a `.env.local` file with the required environment variables (see below)
 4. Run the development server:
 
@@ -180,6 +183,24 @@ Trail status is stored separately in Google Firestore and managed through the ad
 
 Pushes to the connected GitHub repository trigger automatic builds and deploys. Netlify applies pending committed Drizzle migrations before production builds, and GitHub CI runs `pnpm db:migrations:check` to catch schema changes that forgot to commit a matching migration file.
 
+### Security controls
+
+- Renewal emails contain signed, expiring links. The member ID is never accepted directly from a
+  renewal URL or checkout request; member identity comes from a verified session or renewal token.
+  Legacy unsigned renewal links remain usable by entering the account email, which is normalized
+  and matched case-insensitively.
+- Checkout rate limits are stored atomically in PostgreSQL so limits are shared by every serverless
+  instance. Deploy the committed `rate_limit_buckets` migration before the updated application.
+- Contentful rich text is rendered as escaped React nodes. Links and embedded assets pass explicit
+  protocol and host allowlists.
+- Trail photos are decoded as JPEG, PNG, or WebP, constrained by size and pixel count, and re-encoded
+  as metadata-free WebP before private R2 storage. Claimed MIME types and extensions are not trusted.
+- Run `pnpm audit --prod` when changing dependencies. Production transitive overrides in
+  `pnpm-workspace.yaml` pin patched releases where an upstream package still resolves a vulnerable
+  version. Dependency upgrades must also satisfy the repository's minimum-release-age policy; do
+  not bypass that policy when regenerating `pnpm-lock.yaml`. The repository pins its pnpm release
+  through `packageManager`; `.npmrc` makes older pnpm launchers honor that version.
+
 ### Environment Variables
 
 The following environment variables need to be set in Netlify:
@@ -204,6 +225,14 @@ The following environment variables need to be set in Netlify:
 **Database:**
 
 - `NETLIFY_DATABASE_URL`: PostgreSQL connection string (auto-provided on Netlify with Neon integration)
+
+**Security:**
+
+- `RENEWAL_LINK_SECRET`: Independent random secret of at least 32 characters used to sign renewal
+  links. Generate a new value for each environment.
+- `RENEWAL_LINK_TTL_DAYS`: Optional renewal-link lifetime from 1 to 365 days. Defaults to 120.
+- `RATE_LIMIT_SECRET`: Independent random secret of at least 32 characters used to protect stored
+  rate-limit identifiers.
 
 **Stripe:**
 

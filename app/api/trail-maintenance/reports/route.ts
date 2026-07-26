@@ -1,8 +1,14 @@
 import {NextRequest, NextResponse} from 'next/server';
 
-import {TRAIL_MAINTENANCE_PHOTO_LIMIT} from '@/src/lib/trail-maintenance/constants';
+import {
+  TRAIL_MAINTENANCE_PHOTO_LIMIT,
+  TRAIL_MAINTENANCE_PHOTO_MAX_BYTES,
+} from '@/src/lib/trail-maintenance/constants';
 import {sendTrailMaintenanceNotification} from '@/src/lib/trail-maintenance/notifications';
-import {storeTrailMaintenancePhotos} from '@/src/lib/trail-maintenance/r2';
+import {
+  storeTrailMaintenancePhotos,
+  TrailPhotoValidationError,
+} from '@/src/lib/trail-maintenance/r2';
 import {
   createTrailMaintenanceReport,
   getTrailMaintenanceReportDetail,
@@ -25,13 +31,27 @@ function formValue(formData: FormData, key: string): string | undefined {
 function getPhotoFiles(formData: FormData): File[] {
   return formData
     .getAll('photos')
-    .filter((value): value is File => value instanceof File && value.size > 0)
-    .slice(0, TRAIL_MAINTENANCE_PHOTO_LIMIT);
+    .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const contentLength = Number(request.headers.get('content-length'));
+    const maximumRequestBytes =
+      TRAIL_MAINTENANCE_PHOTO_LIMIT * TRAIL_MAINTENANCE_PHOTO_MAX_BYTES + 1024 * 1024;
+    if (Number.isFinite(contentLength) && contentLength > maximumRequestBytes) {
+      return NextResponse.json({error: 'Upload is too large'}, {status: 413});
+    }
+
     const formData = await request.formData();
+    const photoFiles = getPhotoFiles(formData);
+    if (photoFiles.length > TRAIL_MAINTENANCE_PHOTO_LIMIT) {
+      return NextResponse.json(
+        {error: `Upload up to ${TRAIL_MAINTENANCE_PHOTO_LIMIT} photos`},
+        {status: 400},
+      );
+    }
+
     const parsed = publicTrailMaintenanceReportSchema.safeParse({
       issueType: formValue(formData, 'issueType'),
       issueTypeOther: formValue(formData, 'issueTypeOther'),
@@ -69,7 +89,7 @@ export async function POST(request: NextRequest) {
     const publicId = crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
     const photos = await storeTrailMaintenancePhotos({
       publicId,
-      files: getPhotoFiles(formData),
+      files: photoFiles,
     });
 
     const created = await createTrailMaintenanceReport({
@@ -94,8 +114,10 @@ export async function POST(request: NextRequest) {
       {status: 201},
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to submit report';
     console.error('[TrailMaintenance] Failed to submit report:', error);
-    return NextResponse.json({error: message}, {status: 500});
+    if (error instanceof TrailPhotoValidationError) {
+      return NextResponse.json({error: error.message}, {status: 400});
+    }
+    return NextResponse.json({error: 'Failed to submit report'}, {status: 500});
   }
 }

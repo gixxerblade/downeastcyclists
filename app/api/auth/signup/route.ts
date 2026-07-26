@@ -53,17 +53,17 @@ export async function POST(request: NextRequest) {
         return {success: true, userId: decodedToken.uid};
       }),
 
-      Effect.catchTag('AuthError', (error) =>
+      Effect.catchTag('AuthError', () =>
         Effect.succeed({
-          error: error.message,
+          error: 'Invalid or expired credentials',
           _tag: 'error' as const,
           status: 401,
         }),
       ),
 
-      Effect.catchTag('DatabaseError', (error) =>
+      Effect.catchTag('DatabaseError', () =>
         Effect.succeed({
-          error: error.message,
+          error: 'Unable to create user',
           _tag: 'error' as const,
           status: 500,
         }),

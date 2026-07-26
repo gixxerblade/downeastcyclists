@@ -1,7 +1,8 @@
-import {eq} from 'drizzle-orm';
+import {eq, sql} from 'drizzle-orm';
 import {Context, Effect, Layer} from 'effect';
 
 import {users} from '@/src/db/schema/tables';
+import {normalizeEmail} from '@/src/lib/email';
 
 import {
   type ActionLogParams,
@@ -263,10 +264,11 @@ const make = Effect.sync(() => {
     getUserByEmail: (email) =>
       Effect.tryPromise({
         try: async () => {
+          const normalizedEmail = normalizeEmail(email);
           const row = await db
             .select()
             .from(users)
-            .where(eq(users.email, email))
+            .where(sql`lower(${users.email}) = ${normalizedEmail}`)
             .limit(1)
             .then((rows) => rows[0] ?? null);
 
@@ -310,7 +312,7 @@ const make = Effect.sync(() => {
             .insert(users)
             .values({
               firebaseUid: userId,
-              email: data.email,
+              email: normalizeEmail(data.email),
               name: data.name ?? null,
               phone: data.phone ?? null,
               addressStreet: data.address?.street ?? null,
@@ -341,7 +343,7 @@ const make = Effect.sync(() => {
             updatedAt: new Date(),
           };
 
-          if (data.email !== undefined) updates.email = data.email;
+          if (data.email !== undefined) updates.email = normalizeEmail(data.email);
           if (data.name !== undefined) updates.name = data.name ?? null;
           if (data.phone !== undefined) updates.phone = data.phone ?? null;
           if (data.stripeCustomerId !== undefined)
@@ -373,7 +375,7 @@ const make = Effect.sync(() => {
             // Merge behavior: upsert with ON CONFLICT, only overwriting provided fields
             const values: Record<string, unknown> = {
               firebaseUid: userId,
-              email: data.email ?? '',
+              email: normalizeEmail(data.email ?? ''),
               updatedAt: new Date(),
             };
 
@@ -415,7 +417,7 @@ const make = Effect.sync(() => {
             await db.delete(users).where(eq(users.firebaseUid, userId));
             await db.insert(users).values({
               firebaseUid: userId,
-              email: data.email ?? '',
+              email: normalizeEmail(data.email ?? ''),
               name: data.name ?? null,
               phone: data.phone ?? null,
               addressStreet: data.address?.street ?? null,
@@ -440,6 +442,8 @@ const make = Effect.sync(() => {
     upsertUserByStripeCustomer: (stripeCustomerId, email, defaultData) =>
       Effect.tryPromise({
         try: async () => {
+          const normalizedEmail = normalizeEmail(email);
+
           // First try to find by Stripe customer ID
           let row = await db
             .select()
@@ -450,22 +454,22 @@ const make = Effect.sync(() => {
 
           if (row) {
             // Update email if changed
-            if (email && row.email !== email) {
+            if (normalizedEmail && row.email !== normalizedEmail) {
               await db
                 .update(users)
-                .set({email, updatedAt: new Date()})
+                .set({email: normalizedEmail, updatedAt: new Date()})
                 .where(eq(users.id, row.id));
-              row = {...row, email};
+              row = {...row, email: normalizedEmail};
             }
             return rowToUserDocument(row);
           }
 
           // Try by email
-          if (email) {
+          if (normalizedEmail) {
             row = await db
               .select()
               .from(users)
-              .where(eq(users.email, email))
+              .where(sql`lower(${users.email}) = ${normalizedEmail}`)
               .limit(1)
               .then((rows) => rows[0] ?? null);
 
@@ -485,7 +489,7 @@ const make = Effect.sync(() => {
             .insert(users)
             .values({
               firebaseUid: stripeCustomerId,
-              email: email || '',
+              email: normalizedEmail,
               name: defaultData.name ?? null,
               phone: defaultData.phone ?? null,
               addressStreet: defaultData.address?.street ?? null,

@@ -7,6 +7,7 @@ import {redirect} from 'next/navigation';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
 import type {MemberDashboardResponse} from '@/src/lib/effect/schemas';
+import {verifyRenewalToken} from '@/src/lib/renewal-token';
 
 function dashboardErrorFromExit(exit: Exit.Exit<MemberDashboardResponse, unknown>) {
   if (!Exit.isFailure(exit)) {
@@ -23,8 +24,8 @@ function dashboardErrorFromExit(exit: Exit.Exit<MemberDashboardResponse, unknown
     if (failure._tag === 'NotFoundError' && 'resource' in failure) {
       return {error: `${failure.resource} not found`};
     }
-    if (failure._tag === 'DatabaseError' && 'message' in failure) {
-      return {error: failure.message as string};
+    if (failure._tag === 'DatabaseError') {
+      return {error: 'Unable to load member information'};
     }
   }
 
@@ -65,8 +66,33 @@ export async function getMemberDashboard(): Promise<MemberDashboardResponse | {e
 }
 
 export async function getRenewalDashboard(
-  userId: string,
+  renewalToken?: string,
 ): Promise<MemberDashboardResponse | {error: string}> {
+  let userId: string;
+  if (renewalToken) {
+    const verification = verifyRenewalToken(renewalToken);
+    if (!verification.ok) {
+      return {error: 'This renewal link is invalid or has expired'};
+    }
+    userId = verification.payload.sub;
+  } else {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+    if (!sessionCookie) {
+      return {error: 'Please sign in to renew your membership'};
+    }
+
+    const sessionProgram = Effect.gen(function* () {
+      const portal = yield* PortalService;
+      return yield* portal.verifySession(sessionCookie);
+    });
+    const sessionExit = await Effect.runPromiseExit(sessionProgram.pipe(Effect.provide(LiveLayer)));
+    if (Exit.isFailure(sessionExit)) {
+      return {error: 'Please sign in to renew your membership'};
+    }
+    userId = sessionExit.value.uid;
+  }
+
   const program = Effect.gen(function* () {
     const portal = yield* PortalService;
     return yield* portal.getMemberDashboard(userId);

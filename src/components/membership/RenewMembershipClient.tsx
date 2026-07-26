@@ -18,7 +18,7 @@ import {useEffect, useState} from 'react';
 import {PlanCard, type MembershipPlan} from './PlanCard';
 
 interface RenewMembershipClientProps {
-  userId?: string;
+  renewalToken?: string;
   email?: string;
   name: string | null;
   canceled: boolean;
@@ -31,7 +31,7 @@ interface CheckoutResponse {
 }
 
 export function RenewMembershipClient({
-  userId,
+  renewalToken,
   email,
   name,
   canceled,
@@ -64,19 +64,18 @@ export function RenewMembershipClient({
 
       const emailForCheckout = (email || checkoutEmail).trim();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      const renewalParams = new URLSearchParams(userId ? {userId} : {});
-      const renewalQuery = renewalParams.toString();
+      const encodedRenewalToken = renewalToken ? encodeURIComponent(renewalToken) : undefined;
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           priceId: selectedPriceId,
-          userId,
+          renewalToken,
           email: emailForCheckout,
           successUrl: publicRenewal
-            ? `${siteUrl}/renew/complete?${userId ? `userId=${encodeURIComponent(userId)}&` : ''}session_id={CHECKOUT_SESSION_ID}`
+            ? `${siteUrl}/renew/complete?${encodedRenewalToken ? `token=${encodedRenewalToken}&` : ''}session_id={CHECKOUT_SESSION_ID}`
             : `${siteUrl}/member?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${siteUrl}/renew?${renewalQuery ? `${renewalQuery}&` : ''}canceled=true`,
+          cancelUrl: `${siteUrl}/renew?${encodedRenewalToken ? `token=${encodedRenewalToken}&` : ''}canceled=true`,
           coverFees,
           planPrice: selectedPlanPrice,
         }),
