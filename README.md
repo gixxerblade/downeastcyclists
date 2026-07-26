@@ -115,8 +115,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
    pnpm install
    ```
 
-   The install prepare step clones the Effect source into the ignored `.repos/effect` directory
-   when it is missing, then prepares the Effect TypeScript tooling.
+   On local installs, the prepare step clones the Effect source into the ignored `.repos/effect`
+   directory when it is missing, then prepares the Effect TypeScript tooling. CI skips the
+   research-only source checkout.
 
 3. Create a `.env.local` file with the required environment variables (see below)
 4. Run the development server:
