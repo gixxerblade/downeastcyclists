@@ -1,5 +1,6 @@
 'use client';
 
+import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
 import MapIcon from '@mui/icons-material/Map';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -167,6 +168,33 @@ export function TrailMaintenanceManagement() {
     onSuccess: (draft) => setCountyDraft(draft),
   });
 
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/admin/trail-maintenance/reports/export');
+      if (!response.ok) {
+        const data: unknown = await response.json().catch(() => null);
+        const message =
+          data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : 'Failed to export trail maintenance reports';
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition');
+      const filename =
+        disposition?.match(/filename="([^"]+)"/)?.[1] ?? 'trail-maintenance-reports.csv';
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+
   const selected = detailQuery.data;
   const mapUrl = selected ? mapsEmbedUrl(selected) : null;
 
@@ -183,26 +211,38 @@ export function TrailMaintenanceManagement() {
               emails.
             </Typography>
           </Box>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => reportsQuery.refetch()}
-            disabled={reportsQuery.isFetching}
-          >
-            Refresh
-          </Button>
+          <Box sx={{display: 'flex', gap: 1, flexWrap: 'wrap'}}>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending || reportsQuery.isLoading}
+            >
+              {exportMutation.isPending ? 'Exporting…' : 'Export CSV'}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => reportsQuery.refetch()}
+              disabled={reportsQuery.isFetching}
+            >
+              Refresh
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
       {(reportsQuery.error ||
         detailQuery.error ||
         updateMutation.error ||
-        countyEmailMutation.error) && (
+        countyEmailMutation.error ||
+        exportMutation.error) && (
         <Alert severity="error">
           {reportsQuery.error?.message ||
             detailQuery.error?.message ||
             updateMutation.error?.message ||
-            countyEmailMutation.error?.message}
+            countyEmailMutation.error?.message ||
+            exportMutation.error?.message}
         </Alert>
       )}
 

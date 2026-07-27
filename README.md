@@ -66,7 +66,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Member management (view, edit, import, export)
   - Payment and subscription management via Stripe
   - Trail status editing
-  - Trail maintenance report triage, priority/status updates, internal notes, embedded maps, and county escalation email drafts
+  - Trail maintenance report triage, complete CSV exports, priority/status updates, internal notes, embedded maps, and county escalation email drafts
   - Organizer access management for current members
   - QR code membership verification
   - Membership statistics and reporting

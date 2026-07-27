@@ -282,17 +282,40 @@ export async function getTrailMaintenanceReportRecipients(): Promise<string[]> {
 export async function listTrailMaintenanceReports(
   query: TrailMaintenanceListQuery,
 ): Promise<TrailMaintenanceListResult> {
+  const offset = (query.page - 1) * query.pageSize;
+  const where = trailMaintenanceReportWhere(query);
+
+  const [totalRows, reports] = await Promise.all([
+    db.select({count: count()}).from(trailMaintenanceReports).where(where),
+    selectTrailMaintenanceReportSummaries(query, {limit: query.pageSize, offset}),
+  ]);
+
+  return {
+    total: totalRows[0]?.count ?? 0,
+    reports,
+  };
+}
+
+export function listTrailMaintenanceReportsForExport(): Promise<TrailMaintenanceReportSummary[]> {
+  return selectTrailMaintenanceReportSummaries({});
+}
+
+type TrailMaintenanceFilters = Pick<TrailMaintenanceListQuery, 'status' | 'priority' | 'issueType'>;
+
+function trailMaintenanceReportWhere(query: TrailMaintenanceFilters) {
   const conditions = [
     query.status ? eq(trailMaintenanceReports.status, query.status) : undefined,
     query.priority ? eq(trailMaintenanceReports.priority, query.priority) : undefined,
     query.issueType ? eq(trailMaintenanceReports.issueType, query.issueType) : undefined,
   ].filter((condition) => condition !== undefined);
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  const offset = (query.page - 1) * query.pageSize;
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
 
-  const totalRows = await db.select({count: count()}).from(trailMaintenanceReports).where(where);
-
-  const rows = await db
+async function selectTrailMaintenanceReportSummaries(
+  query: TrailMaintenanceFilters,
+  pagination?: {readonly limit: number; readonly offset: number},
+): Promise<TrailMaintenanceReportSummary[]> {
+  const databaseQuery = db
     .select({
       report: trailMaintenanceReports,
       systemName: trailSystems.name,
@@ -306,33 +329,32 @@ export async function listTrailMaintenanceReports(
       trailMaintenancePhotos,
       eq(trailMaintenanceReports.id, trailMaintenancePhotos.reportId),
     )
-    .where(where)
+    .where(trailMaintenanceReportWhere(query))
     .groupBy(trailMaintenanceReports.id, trailSystems.name, trailSegments.name)
-    .orderBy(desc(trailMaintenanceReports.createdAt))
-    .limit(query.pageSize)
-    .offset(offset);
+    .orderBy(desc(trailMaintenanceReports.createdAt));
 
-  return {
-    total: totalRows[0]?.count ?? 0,
-    reports: rows.map((row) => ({
-      id: row.report.id,
-      publicId: row.report.publicId,
-      issueType: row.report.issueType,
-      issueTypeLabel: issueTypeLabel(row.report.issueType, row.report.issueTypeOther),
-      status: row.report.status,
-      statusLabel: trailIssueStatusLabels[row.report.status],
-      priority: row.report.priority,
-      priorityLabel: trailIssuePriorityLabels[row.report.priority],
-      trailSystemName: row.systemName,
-      trailSegmentName: row.segmentName,
-      observedAt: row.report.observedAt.toISOString(),
-      createdAt: row.report.createdAt.toISOString(),
-      photoCount: row.photoCount,
-      latitude: row.report.latitude,
-      longitude: row.report.longitude,
-      locationNotes: row.report.locationNotes,
-    })),
-  };
+  const rows = pagination
+    ? await databaseQuery.limit(pagination.limit).offset(pagination.offset)
+    : await databaseQuery;
+
+  return rows.map((row) => ({
+    id: row.report.id,
+    publicId: row.report.publicId,
+    issueType: row.report.issueType,
+    issueTypeLabel: issueTypeLabel(row.report.issueType, row.report.issueTypeOther),
+    status: row.report.status,
+    statusLabel: trailIssueStatusLabels[row.report.status],
+    priority: row.report.priority,
+    priorityLabel: trailIssuePriorityLabels[row.report.priority],
+    trailSystemName: row.systemName,
+    trailSegmentName: row.segmentName,
+    observedAt: row.report.observedAt.toISOString(),
+    createdAt: row.report.createdAt.toISOString(),
+    photoCount: row.photoCount,
+    latitude: row.report.latitude,
+    longitude: row.report.longitude,
+    locationNotes: row.report.locationNotes,
+  }));
 }
 
 export async function getTrailMaintenanceReportDetail(
