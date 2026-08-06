@@ -1,7 +1,7 @@
 export const TRAIL_SYSTEM_BIG_BRANCH = 'big-branch-bike-park';
 
 export const TRAIL_MAINTENANCE_PHOTO_LIMIT = 3;
-export const TRAIL_MAINTENANCE_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+export const TRAIL_MAINTENANCE_PHOTO_MAX_BYTES = 20 * 1024 * 1024;
 export const TRAIL_MAINTENANCE_UPLOAD_TTL_SECONDS = 15 * 60;
 export const TRAIL_MAINTENANCE_TURNSTILE_ACTION = 'trail_report';
 

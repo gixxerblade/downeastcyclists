@@ -259,7 +259,7 @@ export function PublicTrailIssueReportForm() {
       }
       for (const photo of photos) {
         if (photo.size > TRAIL_MAINTENANCE_PHOTO_MAX_BYTES) {
-          throw new Error('Photos must be no larger than 10 MB');
+          throw new Error('Photos must be no larger than 20 MB');
         }
         if (!trailMaintenancePhotoContentTypes.includes(photo.type)) {
           throw new Error('Photos must be JPEG, PNG, or WebP images');
@@ -478,7 +478,7 @@ export function PublicTrailIssueReportForm() {
             <Typography sx={{fontWeight: 800}}>Photo of the issue</Typography>
             <Typography variant="body2" color="text.secondary">
               Upload one clear photo if you can. Add more only if it helps locate or explain the
-              issue. JPEG, PNG, and WebP photos up to 10 MB each are supported.
+              issue. JPEG, PNG, and WebP photos up to 20 MB each are supported.
             </Typography>
             {Array.from({length: photoInputs}).map((_, index) => (
               <Button

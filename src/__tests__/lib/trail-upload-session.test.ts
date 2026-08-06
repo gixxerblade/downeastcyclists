@@ -62,7 +62,12 @@ describe('trail photo upload sessions', () => {
     ).toBe(false);
     expect(
       trailPhotoUploadRequestSchema.safeParse({
-        files: [{...PHOTO, byteSize: 10 * 1024 * 1024 + 1}],
+        files: [{...PHOTO, byteSize: 11_176_013}],
+      }).success,
+    ).toBe(true);
+    expect(
+      trailPhotoUploadRequestSchema.safeParse({
+        files: [{...PHOTO, byteSize: 20 * 1024 * 1024 + 1}],
       }).success,
     ).toBe(false);
   });

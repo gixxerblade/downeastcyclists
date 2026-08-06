@@ -273,7 +273,7 @@ async function cleanupObjects(config: R2Config, objectKeys: readonly string[]): 
 
 export async function normalizeTrailPhoto(file: File): Promise<NormalizedTrailPhoto> {
   if (file.size <= 0 || file.size > TRAIL_MAINTENANCE_PHOTO_MAX_BYTES) {
-    throw new TrailPhotoValidationError('Photos must be no larger than 10 MB');
+    throw new TrailPhotoValidationError('Photos must be no larger than 20 MB');
   }
 
   const input = Buffer.from(await file.arrayBuffer());

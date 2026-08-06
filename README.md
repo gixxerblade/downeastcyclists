@@ -41,7 +41,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 ### Trail Maintenance
 
 - **Report Trail Issue** (`/report-trail-issue`): Public form for riders to report Big Branch trail maintenance issues
-  - Supports issue type selection, observed date/time, trail segment, location notes, browser geolocation, optional reporter contact, and up to three photos
+  - Supports issue type selection, observed date/time, trail segment, location notes, browser geolocation, optional reporter contact, and up to three 20 MB photos
   - Uses Cloudflare Turnstile when configured
   - Uploads photos directly from the browser to short-lived private R2 staging objects, then validates and normalizes them server-side when the report is finalized
   - Redirects submitters to a public confirmation/status page (`/report-trail-issue/[publicId]`)
