@@ -19,7 +19,7 @@ export const trailPhotoUploadDescriptorSchema = z.object({
     message: 'Photos must be JPEG, PNG, or WebP images',
   }),
   byteSize: z.number().int().positive().max(TRAIL_MAINTENANCE_PHOTO_MAX_BYTES, {
-    message: 'Photos must be no larger than 10 MB',
+    message: 'Photos must be no larger than 20 MB',
   }),
 });
 
