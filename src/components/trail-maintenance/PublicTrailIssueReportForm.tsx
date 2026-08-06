@@ -20,15 +20,106 @@ import {
 import Grid from '@mui/material/Grid2';
 import {useRouter, useSearchParams} from 'next/navigation';
 import Script from 'next/script';
-import {FormEvent, useEffect, useMemo, useState} from 'react';
+import {FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 import {
   TRAIL_MAINTENANCE_PHOTO_LIMIT,
+  TRAIL_MAINTENANCE_PHOTO_MAX_BYTES,
+  TRAIL_MAINTENANCE_TURNSTILE_ACTION,
   TRAIL_SYSTEM_BIG_BRANCH,
+  trailMaintenancePhotoContentTypes,
   trailIssueTypeLabels,
   trailIssueTypes,
 } from '@/src/lib/trail-maintenance/constants';
 import type {TrailMaintenanceOption} from '@/src/lib/trail-maintenance/repository';
+
+type TurnstileWidgetId = string;
+type TurnstileApi = {
+  render: (
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      action: string;
+      callback: (token: string) => void;
+      'expired-callback': () => void;
+      'error-callback': () => void;
+    },
+  ) => TurnstileWidgetId;
+  reset: (widgetId: TurnstileWidgetId) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+interface TrailPhotoUploadTarget {
+  readonly uploadUrl: string;
+  readonly contentType: string;
+  readonly sortOrder: number;
+}
+
+interface TrailPhotoUploadSessionResponse {
+  readonly uploadToken: string;
+  readonly uploads: readonly TrailPhotoUploadTarget[];
+}
+
+interface TrailReportResponse {
+  readonly publicId: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function errorMessage(value: unknown, fallback: string): string {
+  return isRecord(value) && typeof value.error === 'string' ? value.error : fallback;
+}
+
+async function readResponseBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function decodeUploadSession(value: unknown): TrailPhotoUploadSessionResponse | null {
+  if (!isRecord(value) || typeof value.uploadToken !== 'string' || !Array.isArray(value.uploads)) {
+    return null;
+  }
+
+  const uploads: TrailPhotoUploadTarget[] = [];
+  for (const upload of value.uploads) {
+    if (
+      !isRecord(upload) ||
+      typeof upload.uploadUrl !== 'string' ||
+      typeof upload.contentType !== 'string' ||
+      typeof upload.sortOrder !== 'number'
+    ) {
+      return null;
+    }
+    uploads.push({
+      uploadUrl: upload.uploadUrl,
+      contentType: upload.contentType,
+      sortOrder: upload.sortOrder,
+    });
+  }
+
+  return {uploadToken: value.uploadToken, uploads};
+}
+
+function decodeTrailReport(value: unknown): TrailReportResponse | null {
+  return isRecord(value) && typeof value.publicId === 'string' ? {publicId: value.publicId} : null;
+}
+
+function formString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === 'string' ? value : '';
+}
 
 function localDateTimeValue(date: Date): string {
   const offsetMs = date.getTimezoneOffset() * 60_000;
@@ -38,6 +129,8 @@ function localDateTimeValue(date: Date): string {
 export function PublicTrailIssueReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const turnstileContainer = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<TurnstileWidgetId | null>(null);
   const [options, setOptions] = useState<TrailMaintenanceOption[]>([]);
   const [trailSystemSlug, setTrailSystemSlug] = useState(
     searchParams?.get('system') || TRAIL_SYSTEM_BIG_BRANCH,
@@ -54,12 +147,39 @@ export function PublicTrailIssueReportForm() {
     {type: 'success' | 'error'; message: string} | undefined
   >();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const selectedSystem = useMemo(
     () => options.find((option) => option.slug === trailSystemSlug),
     [options, trailSystemSlug],
   );
   const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY;
+
+  const renderTurnstile = useCallback(() => {
+    if (
+      !siteKey ||
+      !turnstileContainer.current ||
+      turnstileWidgetId.current !== null ||
+      !window.turnstile
+    ) {
+      return;
+    }
+
+    turnstileWidgetId.current = window.turnstile.render(turnstileContainer.current, {
+      sitekey: siteKey,
+      action: TRAIL_MAINTENANCE_TURNSTILE_ACTION,
+      callback: setTurnstileToken,
+      'expired-callback': () => setTurnstileToken(''),
+      'error-callback': () => setTurnstileToken(''),
+    });
+  }, [siteKey]);
+
+  const resetTurnstile = useCallback(() => {
+    if (turnstileWidgetId.current !== null && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current);
+    }
+    setTurnstileToken('');
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,8 +240,7 @@ export function PublicTrailIssueReportForm() {
     formData.set('longitude', longitude);
     formData.set('locationAccuracyMeters', accuracy);
 
-    const turnstileToken = formData.get('cf-turnstile-response');
-    if (siteKey && (typeof turnstileToken !== 'string' || turnstileToken.length === 0)) {
+    if (siteKey && turnstileToken.length === 0) {
       setSubmitStatus({
         type: 'error',
         message:
@@ -132,21 +251,97 @@ export function PublicTrailIssueReportForm() {
     }
 
     try {
-      const response = await fetch('/api/trail-maintenance/reports', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Report could not be submitted');
+      const photos = formData
+        .getAll('photos')
+        .filter((value): value is File => value instanceof File && value.size > 0);
+      if (photos.length > TRAIL_MAINTENANCE_PHOTO_LIMIT) {
+        throw new Error(`Upload up to ${TRAIL_MAINTENANCE_PHOTO_LIMIT} photos`);
       }
-      router.push(`/report-trail-issue/${encodeURIComponent(data.publicId)}`);
+      for (const photo of photos) {
+        if (photo.size > TRAIL_MAINTENANCE_PHOTO_MAX_BYTES) {
+          throw new Error('Photos must be no larger than 10 MB');
+        }
+        if (!trailMaintenancePhotoContentTypes.includes(photo.type)) {
+          throw new Error('Photos must be JPEG, PNG, or WebP images');
+        }
+      }
+
+      const uploadSessionResponse = await fetch('/api/trail-maintenance/reports/uploads', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          turnstileToken: turnstileToken || undefined,
+          files: photos.map((photo) => ({
+            originalFilename: photo.name,
+            contentType: photo.type,
+            byteSize: photo.size,
+          })),
+        }),
+      });
+      const uploadSessionBody = await readResponseBody(uploadSessionResponse);
+      if (!uploadSessionResponse.ok) {
+        throw new Error(errorMessage(uploadSessionBody, 'Photo uploads could not be prepared'));
+      }
+      const uploadSession = decodeUploadSession(uploadSessionBody);
+      if (!uploadSession || uploadSession.uploads.length !== photos.length) {
+        throw new Error('Photo upload service returned an invalid response');
+      }
+
+      await Promise.all(
+        uploadSession.uploads.map(async (upload, index) => {
+          const photo = photos[index];
+          if (!photo || upload.sortOrder !== index || upload.contentType !== photo.type) {
+            throw new Error('Photo upload mapping is invalid');
+          }
+          const uploadResponse = await fetch(upload.uploadUrl, {
+            method: 'PUT',
+            headers: {'Content-Type': upload.contentType},
+            body: photo,
+          });
+          if (!uploadResponse.ok) {
+            throw new Error(`Photo ${index + 1} could not be uploaded`);
+          }
+        }),
+      );
+
+      const reportResponse = await fetch('/api/trail-maintenance/reports', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          issueType,
+          issueTypeOther: formString(formData, 'issueTypeOther'),
+          observedAt: formString(formData, 'observedAt'),
+          trailSystemSlug,
+          trailSegmentSlug,
+          locationSource,
+          locationNotes: formString(formData, 'locationNotes'),
+          latitude,
+          longitude,
+          locationAccuracyMeters: accuracy,
+          description: formString(formData, 'description'),
+          reporterName: formString(formData, 'reporterName'),
+          reporterContact: formString(formData, 'reporterContact'),
+          uploadToken: uploadSession.uploadToken,
+        }),
+      });
+      const reportBody = await readResponseBody(reportResponse);
+      if (!reportResponse.ok) {
+        throw new Error(errorMessage(reportBody, 'Report could not be submitted'));
+      }
+      const report = decodeTrailReport(reportBody);
+      if (!report) {
+        throw new Error('Report service returned an invalid response');
+      }
+      router.push(`/report-trail-issue/${encodeURIComponent(report.publicId)}`);
     } catch (error) {
       setSubmitStatus({
         type: 'error',
         message: error instanceof Error ? error.message : 'Report could not be submitted',
       });
     } finally {
+      if (siteKey) {
+        resetTurnstile();
+      }
       setIsSubmitting(false);
     }
   };
@@ -154,7 +349,11 @@ export function PublicTrailIssueReportForm() {
   return (
     <Container maxWidth="md" sx={{py: {xs: 4, md: 7}}}>
       {siteKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onReady={renderTurnstile}
+        />
       )}
 
       <Paper className="dec-card" sx={{p: {xs: 2.5, md: 4}}}>
@@ -279,7 +478,7 @@ export function PublicTrailIssueReportForm() {
             <Typography sx={{fontWeight: 800}}>Photo of the issue</Typography>
             <Typography variant="body2" color="text.secondary">
               Upload one clear photo if you can. Add more only if it helps locate or explain the
-              issue.
+              issue. JPEG, PNG, and WebP photos up to 10 MB each are supported.
             </Typography>
             {Array.from({length: photoInputs}).map((_, index) => (
               <Button
@@ -290,7 +489,7 @@ export function PublicTrailIssueReportForm() {
                 sx={{justifySelf: 'start'}}
               >
                 {index === 0 ? 'Choose photo' : `Choose photo ${index + 1}`}
-                <input hidden name="photos" type="file" accept="image/*" />
+                <input hidden name="photos" type="file" accept="image/jpeg,image/png,image/webp" />
               </Button>
             ))}
             {photoInputs < TRAIL_MAINTENANCE_PHOTO_LIMIT && (
@@ -321,13 +520,15 @@ export function PublicTrailIssueReportForm() {
             </Grid>
           </Grid>
 
-          {siteKey && <Box className="cf-turnstile" data-sitekey={siteKey} />}
+          {siteKey && <Box ref={turnstileContainer} />}
 
           <Button
             type="submit"
             variant="contained"
             size="large"
-            disabled={isSubmitting || !issueType || !trailSegmentSlug}
+            disabled={
+              isSubmitting || !issueType || !trailSegmentSlug || Boolean(siteKey && !turnstileToken)
+            }
             startIcon={isSubmitting ? <CircularProgress size={18} /> : undefined}
             sx={{justifySelf: 'start'}}
           >

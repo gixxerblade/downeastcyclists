@@ -43,6 +43,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Report Trail Issue** (`/report-trail-issue`): Public form for riders to report Big Branch trail maintenance issues
   - Supports issue type selection, observed date/time, trail segment, location notes, browser geolocation, optional reporter contact, and up to three photos
   - Uses Cloudflare Turnstile when configured
+  - Uploads photos directly from the browser to short-lived private R2 staging objects, then validates and normalizes them server-side when the report is finalized
   - Redirects submitters to a public confirmation/status page (`/report-trail-issue/[publicId]`)
 
 ### Contact
@@ -258,14 +259,43 @@ The following environment variables need to be set in Netlify:
 
 - `NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY`: Public Turnstile site key used by the trail issue report form.
 - `CLOUDFLARE_TURNSTILE_SECRET_KEY`: Server-side Turnstile verification secret.
-- `CLOUDFLARE_TURNSTILE_ALLOWED_HOSTNAMES`: Optional comma-separated list of hostnames accepted during Turnstile verification.
+- `CLOUDFLARE_TURNSTILE_ALLOWED_HOSTNAMES`: Comma-separated list of hostnames accepted during Turnstile verification; required in production.
 - `TRAIL_MAINTENANCE_SKIP_TURNSTILE`: Set to `true` outside production to bypass Turnstile during local testing.
+- `TRAIL_MAINTENANCE_UPLOAD_SECRET`: Independent random secret of at least 32 characters used to sign the short-lived photo upload session created after Turnstile verification.
 - `R2_ACCOUNT_ID`: Cloudflare R2 account ID for trail issue photo storage.
 - `R2_ACCESS_KEY_ID`: R2 access key ID.
 - `R2_SECRET_ACCESS_KEY`: R2 secret access key.
 - `R2_BUCKET_NAME`: R2 bucket name for uploaded report photos.
 - `QR_SIGNING_SECRET`: Secret used when signing trail report rate-limit identifiers and QR/prefill tokens.
 - `ONSLOW_PARKS_EMAIL`: Recipient used when drafting Onslow County Parks and Recreation escalation emails.
+
+The private R2 bucket must allow browser `PUT` requests from each deployed site origin. Configure
+the bucket CORS policy in Cloudflare with the production and local origins used by this project:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://downeastcyclists.com",
+      "https://downeast.netlify.app",
+      "http://localhost:3000",
+      "http://localhost:8888"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Add an explicit origin to the R2 CORS policy and its hostname to
+`CLOUDFLARE_TURNSTILE_ALLOWED_HOSTNAMES` for any deploy preview used to exercise photo uploads.
+Presigned upload URLs are valid for 15 minutes, accept only the declared content type, and target a
+private staging key. The report endpoint verifies the stored byte count and content type, decodes
+and converts each image to WebP, writes the final objects, and removes the staging objects. Also add
+an R2 object lifecycle rule that expires objects under `trail-maintenance-staging/` after one day so
+abandoned or partially completed uploads are removed automatically.
 
 **Meetup event ingestion:**
 
