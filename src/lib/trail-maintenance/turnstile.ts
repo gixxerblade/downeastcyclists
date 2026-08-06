@@ -1,14 +1,18 @@
+import {z} from 'zod';
+
+import {TRAIL_MAINTENANCE_TURNSTILE_ACTION} from './constants';
+
 export interface TurnstileValidationResult {
   readonly ok: boolean;
   readonly reason?: string;
 }
 
-interface TurnstileSiteverifyResponse {
-  readonly success?: boolean;
-  readonly hostname?: string;
-  readonly action?: string;
-  readonly 'error-codes'?: string[];
-}
+const turnstileSiteverifyResponseSchema = z.object({
+  success: z.boolean().optional(),
+  hostname: z.string().optional(),
+  action: z.string().optional(),
+  'error-codes': z.array(z.string()).optional(),
+});
 
 function getAllowedHostnames(): ReadonlySet<string> {
   return new Set(
@@ -43,6 +47,11 @@ export async function verifyTrailMaintenanceTurnstile({
       : {ok: true, reason: 'Turnstile skipped outside production'};
   }
 
+  const allowedHostnames = getAllowedHostnames();
+  if (isProduction && allowedHostnames.size === 0) {
+    return {ok: false, reason: 'Turnstile hostname validation is not configured'};
+  }
+
   if (!token || token.length > 2048) {
     return {
       ok: false,
@@ -60,7 +69,7 @@ export async function verifyTrailMaintenanceTurnstile({
     body.set('remoteip', remoteIp);
   }
 
-  let result: TurnstileSiteverifyResponse;
+  let result: z.infer<typeof turnstileSiteverifyResponseSchema>;
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
@@ -72,7 +81,11 @@ export async function verifyTrailMaintenanceTurnstile({
     if (!response.ok) {
       return {ok: false, reason: `Turnstile verification failed with ${response.status}`};
     }
-    result = (await response.json()) as TurnstileSiteverifyResponse;
+    const decoded = turnstileSiteverifyResponseSchema.safeParse(await response.json());
+    if (!decoded.success) {
+      return {ok: false, reason: 'Turnstile returned an invalid response'};
+    }
+    result = decoded.data;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Turnstile verification failed';
     return {ok: false, reason: message};
@@ -85,7 +98,10 @@ export async function verifyTrailMaintenanceTurnstile({
     };
   }
 
-  const allowedHostnames = getAllowedHostnames();
+  if (result.action !== TRAIL_MAINTENANCE_TURNSTILE_ACTION) {
+    return {ok: false, reason: 'Turnstile action is not allowed'};
+  }
+
   if (allowedHostnames.size > 0 && (!result.hostname || !allowedHostnames.has(result.hostname))) {
     return {ok: false, reason: 'Turnstile hostname is not allowed'};
   }

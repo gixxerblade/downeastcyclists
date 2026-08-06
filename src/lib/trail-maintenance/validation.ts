@@ -22,62 +22,72 @@ const numberFromOptionalString = z.preprocess((value) => {
   return trimmed.length > 0 ? Number(trimmed) : undefined;
 }, z.number().finite().optional());
 
-export const publicTrailMaintenanceReportSchema = z
-  .object({
-    issueType: z.enum(trailIssueTypes),
-    issueTypeOther: trimmedOptional,
-    observedAt: z
-      .string()
-      .trim()
-      .min(1, 'Observed date and time is required')
-      .transform((value) => new Date(value))
-      .pipe(z.date()),
-    trailSystemSlug: z.string().trim().min(1, 'Trail system is required'),
-    trailSegmentSlug: z.string().trim().min(1, 'Trail is required'),
-    locationSource: z.enum(trailLocationSources).default('manual'),
-    locationNotes: trimmedOptional,
-    latitude: numberFromOptionalString,
-    longitude: numberFromOptionalString,
-    locationAccuracyMeters: numberFromOptionalString,
-    description: trimmedOptional,
-    reporterName: trimmedOptional,
-    reporterContact: trimmedOptional,
-    turnstileToken: trimmedOptional,
-  })
-  .superRefine((value, context) => {
-    const hasCoordinates = value.latitude !== undefined && value.longitude !== undefined;
-    if (!hasCoordinates && !value.locationNotes) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['locationNotes'],
-        message: 'Add location notes or use current location',
-      });
-    }
+const publicTrailMaintenanceReportFieldsSchema = z.object({
+  issueType: z.enum(trailIssueTypes),
+  issueTypeOther: trimmedOptional,
+  observedAt: z
+    .string()
+    .trim()
+    .min(1, 'Observed date and time is required')
+    .transform((value) => new Date(value))
+    .pipe(z.date()),
+  trailSystemSlug: z.string().trim().min(1, 'Trail system is required'),
+  trailSegmentSlug: z.string().trim().min(1, 'Trail is required'),
+  locationSource: z.enum(trailLocationSources).default('manual'),
+  locationNotes: trimmedOptional,
+  latitude: numberFromOptionalString,
+  longitude: numberFromOptionalString,
+  locationAccuracyMeters: numberFromOptionalString,
+  description: trimmedOptional,
+  reporterName: trimmedOptional,
+  reporterContact: trimmedOptional,
+});
 
-    if (value.issueType === 'other' && !value.issueTypeOther) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['issueTypeOther'],
-        message: 'Describe the issue type',
-      });
-    }
+function validatePublicReport(
+  value: z.infer<typeof publicTrailMaintenanceReportFieldsSchema>,
+  context: z.RefinementCtx,
+): void {
+  const hasCoordinates = value.latitude !== undefined && value.longitude !== undefined;
+  if (!hasCoordinates && !value.locationNotes) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['locationNotes'],
+      message: 'Add location notes or use current location',
+    });
+  }
 
-    if (value.latitude !== undefined && (value.latitude < -90 || value.latitude > 90)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['latitude'],
-        message: 'Latitude is out of range',
-      });
-    }
+  if (value.issueType === 'other' && !value.issueTypeOther) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issueTypeOther'],
+      message: 'Describe the issue type',
+    });
+  }
 
-    if (value.longitude !== undefined && (value.longitude < -180 || value.longitude > 180)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['longitude'],
-        message: 'Longitude is out of range',
-      });
-    }
-  });
+  if (value.latitude !== undefined && (value.latitude < -90 || value.latitude > 90)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['latitude'],
+      message: 'Latitude is out of range',
+    });
+  }
+
+  if (value.longitude !== undefined && (value.longitude < -180 || value.longitude > 180)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['longitude'],
+      message: 'Longitude is out of range',
+    });
+  }
+}
+
+export const publicTrailMaintenanceReportSchema = publicTrailMaintenanceReportFieldsSchema
+  .extend({turnstileToken: trimmedOptional})
+  .superRefine(validatePublicReport);
+
+export const publicTrailMaintenanceReportSubmissionSchema = publicTrailMaintenanceReportFieldsSchema
+  .extend({uploadToken: z.string().trim().min(1).max(4096)})
+  .superRefine(validatePublicReport);
 
 export const trailMaintenanceListQuerySchema = z.object({
   status: z.enum(trailIssueStatuses).optional(),
@@ -93,6 +103,8 @@ export const trailMaintenanceUpdateSchema = z.object({
   internalNote: z.string().trim().max(4000).optional(),
 });
 
-export type PublicTrailMaintenanceReportInput = z.infer<typeof publicTrailMaintenanceReportSchema>;
+export type PublicTrailMaintenanceReportInput = z.infer<
+  typeof publicTrailMaintenanceReportFieldsSchema
+>;
 export type TrailMaintenanceListQuery = z.infer<typeof trailMaintenanceListQuerySchema>;
 export type TrailMaintenanceUpdateInput = z.infer<typeof trailMaintenanceUpdateSchema>;

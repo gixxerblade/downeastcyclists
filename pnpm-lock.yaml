@@ -80,6 +80,9 @@ importers:
       '@tanstack/react-query':
         specifier: 5.66.11
         version: 5.66.11(react@19.2.4)
+      aws4fetch:
+        specifier: 1.0.20
+        version: 1.0.20
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -191,7 +194,7 @@ importers:
         version: 15.5.21(eslint@8.57.1)(typescript@5.8.2)
       netlify-cli:
         specifier: ^22.2.1
-        version: 22.4.0(@types/node@20.19.25)(picomatch@4.0.3)(rollup@4.55.1)
+        version: 22.4.0(@types/node@20.19.25)(aws4fetch@1.0.20)(picomatch@4.0.3)(rollup@4.55.1)
       oxfmt:
         specifier: ^0.24.0
         version: 0.24.0
@@ -3377,6 +3380,9 @@ packages:
 
   avvio@8.4.0:
     resolution: {integrity: sha512-CDSwaxINFy59iNwhYnkvALBwZiTydGkOecZyPkqBpABYR1KqGEsET0VOOYDwtleZSUIdeY36DC2bSZ24CO1igA==}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   axe-core@4.11.0:
     resolution: {integrity: sha512-ilYanEU8vxxBexpJd8cWM4ElSQq4QctCLKih0TSfjIfCQTeyH/6zVrmIJfLPrKTKJRbiG+cfnZbQIjAlJmF1jQ==}
@@ -11684,6 +11690,8 @@ snapshots:
       '@fastify/error': 3.4.1
       fastq: 1.19.1
 
+  aws4fetch@1.0.20: {}
+
   axe-core@4.11.0: {}
 
   axios@1.13.2:
@@ -14189,7 +14197,7 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
-  ipx@3.1.1(@netlify/blobs@10.0.7)(@types/node@20.19.25):
+  ipx@3.1.1(@netlify/blobs@10.0.7)(@types/node@20.19.25)(aws4fetch@1.0.20):
     dependencies:
       '@fastify/accept-negotiator': 2.0.1
       citty: 0.1.6
@@ -14205,7 +14213,7 @@ snapshots:
       sharp: 0.35.3(@types/node@20.19.25)
       svgo: 4.0.0
       ufo: 1.6.1
-      unstorage: 1.17.3(@netlify/blobs@10.0.7)
+      unstorage: 1.17.3(@netlify/blobs@10.0.7)(aws4fetch@1.0.20)
       xss: 1.0.15
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -15359,7 +15367,7 @@ snapshots:
 
   negotiator@0.6.3: {}
 
-  netlify-cli@22.4.0(@types/node@20.19.25)(picomatch@4.0.3)(rollup@4.55.1):
+  netlify-cli@22.4.0(@types/node@20.19.25)(aws4fetch@1.0.20)(picomatch@4.0.3)(rollup@4.55.1):
     dependencies:
       '@fastify/static': 7.0.4
       '@netlify/api': 14.0.3
@@ -15416,7 +15424,7 @@ snapshots:
       https-proxy-agent: 7.0.6(supports-color@10.2.2)
       inquirer: 8.2.6
       inquirer-autocomplete-prompt: 1.4.0(inquirer@8.2.6)
-      ipx: 3.1.1(@netlify/blobs@10.0.7)(@types/node@20.19.25)
+      ipx: 3.1.1(@netlify/blobs@10.0.7)(@types/node@20.19.25)(aws4fetch@1.0.20)
       is-docker: 3.0.0
       is-stream: 4.0.1
       is-wsl: 3.1.0
@@ -17455,7 +17463,7 @@ snapshots:
       '@unrs/resolver-binding-win32-ia32-msvc': 1.11.1
       '@unrs/resolver-binding-win32-x64-msvc': 1.11.1
 
-  unstorage@1.17.3(@netlify/blobs@10.0.7):
+  unstorage@1.17.3(@netlify/blobs@10.0.7)(aws4fetch@1.0.20):
     dependencies:
       anymatch: 3.1.3
       chokidar: 4.0.3
@@ -17467,6 +17475,7 @@ snapshots:
       ufo: 1.6.1
     optionalDependencies:
       '@netlify/blobs': 10.0.7
+      aws4fetch: 1.0.20
 
   untildify@4.0.0: {}
 
