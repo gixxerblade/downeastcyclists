@@ -24,6 +24,10 @@ import {useEffect, useState} from 'react';
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
 import {ActionLog} from '@/src/components/admin/ActionLog';
+import {
+  mobileAdminNavigationButtonSx,
+  mobileAdminNavigationSx,
+} from '@/src/components/admin/adminNavigationStyles';
 import {MembershipManagement} from '@/src/components/admin/MembershipManagement';
 import {OrganizerManagement} from '@/src/components/admin/OrganizerManagement';
 import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
@@ -389,21 +393,14 @@ export default function DashboardPage() {
           </Typography>
         </Box>
 
-        <Box
-          sx={{
-            display: {xs: 'flex', md: 'none'},
-            gap: 1,
-            overflowX: 'auto',
-            p: 2,
-            borderBottom: '1px solid var(--dec-border)',
-          }}
-        >
+        <Box component="nav" aria-label="Admin sections" sx={mobileAdminNavigationSx}>
           {sections.map((item) => (
             <Button
               key={item.id}
               variant={section === item.id ? 'contained' : 'outlined'}
               onClick={() => setSection(item.id)}
-              sx={{whiteSpace: 'nowrap'}}
+              aria-pressed={section === item.id}
+              sx={mobileAdminNavigationButtonSx}
             >
               {item.label}
             </Button>
