@@ -1,6 +1,6 @@
 import {Effect} from 'effect';
 
-import {getPlanNameForType} from '../membership-plans-config';
+import {getAnnualPriceForPlanType, getPlanNameForType} from '../membership-plans-config';
 import {
   getMembershipDaysUntilExpiration,
   isRenewalReminderDay,
@@ -9,9 +9,12 @@ import {
 import {
   buildRenewalEmailCampaignKey,
   getRenewalEmailSubject,
+  getUpcomingRenewalEmailSubject,
   RENEWAL_EMAIL_TYPE,
+  UPCOMING_RENEWAL_EMAIL_TYPE,
 } from '../renewal-email';
 import {buildRenewalUrl} from '../renewal-link';
+import {getSiteUrl} from '../site-url';
 
 import {DatabaseService} from './database.service';
 import {EmailService} from './email.service';
@@ -40,26 +43,51 @@ export const sendScheduledRenewalReminders = Effect.gen(function* () {
         return {...result, skipped: result.skipped + 1};
       }
 
+      if (member.membership.autoRenew && daysUntilExpiration !== 30) {
+        return {...result, skipped: result.skipped + 1};
+      }
+
       const expirationDate = parseMembershipDate(member.membership.endDate)?.toISOString();
+      if (!expirationDate) {
+        return {...result, skipped: result.skipped + 1};
+      }
+
+      const isUpcomingRenewal = member.membership.autoRenew;
       const campaignKey = buildRenewalEmailCampaignKey(member.user.id, member.membership);
-      const idempotencyKey = `renewal-reminder/${daysUntilExpiration}/${member.user.id}/${now.toISOString().slice(0, 10)}`;
-      const subject = getRenewalEmailSubject(daysUntilExpiration);
-      const sendResult = yield* email
-        .sendRenewalEmail({
-          to: member.user.email,
-          name: member.user.name,
-          renewalUrl: buildRenewalUrl(member.user.id),
-          expirationDate,
-          planName: getPlanNameForType(member.membership.planType),
-          daysUntilExpiration,
-          idempotencyKey,
-        })
-        .pipe(Effect.either);
+      const runDate = now.toISOString().slice(0, 10);
+      const idempotencyKey = isUpcomingRenewal
+        ? `upcoming-renewal/30/${member.user.id}/${runDate}`
+        : `renewal-reminder/${daysUntilExpiration}/${member.user.id}/${runDate}`;
+      const subject = isUpcomingRenewal
+        ? getUpcomingRenewalEmailSubject(expirationDate)
+        : getRenewalEmailSubject(daysUntilExpiration);
+      const emailType = isUpcomingRenewal ? UPCOMING_RENEWAL_EMAIL_TYPE : RENEWAL_EMAIL_TYPE;
+      const sendResult = yield* (
+        isUpcomingRenewal
+          ? email.sendUpcomingRenewalEmail({
+              to: member.user.email,
+              name: member.user.name,
+              manageMembershipUrl: new URL('/member', getSiteUrl()).toString(),
+              renewalDate: expirationDate,
+              planName: getPlanNameForType(member.membership.planType),
+              planPrice: getAnnualPriceForPlanType(member.membership.planType),
+              idempotencyKey,
+            })
+          : email.sendRenewalEmail({
+              to: member.user.email,
+              name: member.user.name,
+              renewalUrl: buildRenewalUrl(member.user.id),
+              expirationDate,
+              planName: getPlanNameForType(member.membership.planType),
+              daysUntilExpiration,
+              idempotencyKey,
+            })
+      ).pipe(Effect.either);
 
       if (sendResult._tag === 'Left') {
         yield* db.logEmailEvent(member.user.id, {
           membershipId: member.membership.id,
-          emailType: RENEWAL_EMAIL_TYPE,
+          emailType,
           deliveryType: 'automated',
           campaignKey,
           recipientEmail: member.user.email,
@@ -78,7 +106,7 @@ export const sendScheduledRenewalReminders = Effect.gen(function* () {
 
       yield* db.logEmailEvent(member.user.id, {
         membershipId: member.membership.id,
-        emailType: RENEWAL_EMAIL_TYPE,
+        emailType,
         deliveryType: 'automated',
         campaignKey,
         recipientEmail: member.user.email,
@@ -88,14 +116,20 @@ export const sendScheduledRenewalReminders = Effect.gen(function* () {
         sentBy: 'system',
       });
 
-      yield* db.logAuditEntry(member.user.id, 'AUTOMATED_RENEWAL_EMAIL_SENT', {
-        performedBy: 'system',
-        targetEmail: member.user.email,
-        deliveryType: 'automated',
-        campaignKey,
-        reminderDays: daysUntilExpiration,
-        timestamp: new Date().toISOString(),
-      });
+      yield* db.logAuditEntry(
+        member.user.id,
+        isUpcomingRenewal
+          ? 'AUTOMATED_UPCOMING_RENEWAL_EMAIL_SENT'
+          : 'AUTOMATED_RENEWAL_EMAIL_SENT',
+        {
+          performedBy: 'system',
+          targetEmail: member.user.email,
+          deliveryType: 'automated',
+          campaignKey,
+          reminderDays: daysUntilExpiration,
+          timestamp: new Date().toISOString(),
+        },
+      );
 
       return {...result, sent: result.sent + 1};
     }),

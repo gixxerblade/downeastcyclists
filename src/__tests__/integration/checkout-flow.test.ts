@@ -2,7 +2,7 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {DatabaseError} from '@/src/lib/effect/errors';
+import {DatabaseError, ValidationError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 
 import {
@@ -13,7 +13,7 @@ import {
   TestDatabaseLayer,
   TestCardLayer,
 } from '../layers/test-layers';
-import {createMockUserDocument} from '../mocks/database.mock';
+import {createMockMembershipDocument, createMockUserDocument} from '../mocks/database.mock';
 import {createMockCheckoutSession, createMockSubscription} from '../mocks/stripe.mock';
 
 describe('Checkout Flow Integration', () => {
@@ -58,6 +58,9 @@ describe('Checkout Flow Integration', () => {
       expect(result.sessionId).toBe('cs_success_123');
       expect(result.url).toBe('https://checkout.stripe.com/success');
       expect(databaseService.getUser).toHaveBeenCalledWith('user_123');
+      expect(stripeService.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({stripeCustomerId: 'cus_existing'}),
+      );
     });
 
     it('should process webhook and create membership', async () => {
@@ -104,6 +107,51 @@ describe('Checkout Flow Integration', () => {
       // Verify membership was created with correct subscription ID
       const setMembershipCall = (databaseService.setMembership as any).mock.calls[0];
       expect(setMembershipCall[1]).toBe('sub_new_123'); // membershipId = subscriptionId
+    });
+  });
+
+  describe('subscription duplication guard', () => {
+    it('returns a ValidationError before Stripe is called for an active auto-renewing member', async () => {
+      const stripeService = createTestStripeService({
+        createCheckoutSession: vi.fn(() => Effect.succeed(createMockCheckoutSession())),
+      });
+      const databaseService = createTestDatabaseService({
+        getUser: vi.fn(() => Effect.succeed(createMockUserDocument())),
+        getActiveMembership: vi.fn(() =>
+          Effect.succeed(
+            createMockMembershipDocument({
+              stripeSubscriptionId: 'sub_active',
+              status: 'active',
+              autoRenew: true,
+            }),
+          ),
+        ),
+      });
+      const testLayer = Layer.mergeAll(
+        TestStripeLayer(stripeService),
+        TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
+      );
+      const program = Effect.gen(function* () {
+        const service = yield* MembershipService;
+        return yield* service.createCheckoutSession({
+          priceId: 'price_individual_test',
+          userId: 'user_123',
+          successUrl: 'https://example.com/success',
+          cancelUrl: 'https://example.com/cancel',
+        });
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect(result.cause.error).toBeInstanceOf(ValidationError);
+        expect(result.cause.error.message).toContain('already renews automatically');
+      }
+      expect(stripeService.createCheckoutSession).not.toHaveBeenCalled();
     });
   });
 

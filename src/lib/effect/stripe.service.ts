@@ -145,7 +145,9 @@ const make = Effect.sync(() => {
             mode: 'subscription',
             payment_method_types: ['card'],
             line_items: [{price: params.priceId, quantity: 1}],
-            customer_email: params.email,
+            ...(params.stripeCustomerId
+              ? {customer: params.stripeCustomerId}
+              : {customer_email: params.email}),
             success_url: params.successUrl,
             cancel_url: params.cancelUrl,
             metadata: {

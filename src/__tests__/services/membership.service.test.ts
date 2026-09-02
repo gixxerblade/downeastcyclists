@@ -2,7 +2,7 @@ import {Effect, Exit, Layer} from 'effect';
 import type Stripe from 'stripe';
 import {describe, it, expect, vi} from 'vitest';
 
-import {StripeError, DatabaseError, NotFoundError} from '@/src/lib/effect/errors';
+import {StripeError, DatabaseError, NotFoundError, ValidationError} from '@/src/lib/effect/errors';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 
 import {
@@ -126,8 +126,88 @@ describe('MembershipService', () => {
         Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
       );
 
-      // The stripe service should have been called with the customer email
-      expect(stripeService.createCheckoutSession).toHaveBeenCalled();
+      expect(stripeService.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stripeCustomerId: 'cus_existing_123',
+          email: mockUser.email,
+        }),
+      );
+    });
+
+    it('should reject checkout for an active auto-renewing subscription', async () => {
+      const mockUser = createMockUserDocument({stripeCustomerId: 'cus_active'});
+      const activeMembership = createMockMembershipDocument({
+        stripeSubscriptionId: 'sub_active',
+        status: 'active',
+        autoRenew: true,
+      });
+      const stripeService = createTestStripeService({
+        createCheckoutSession: vi.fn(() => Effect.succeed(createMockCheckoutSession())),
+      });
+      const databaseService = createTestDatabaseService({
+        getUser: vi.fn(() => Effect.succeed(mockUser)),
+        getActiveMembership: vi.fn(() => Effect.succeed(activeMembership)),
+      });
+      const testLayer = Layer.mergeAll(
+        TestStripeLayer(stripeService),
+        TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
+      );
+      const program = Effect.gen(function* () {
+        const service = yield* MembershipService;
+        return yield* service.createCheckoutSession({
+          priceId: 'price_individual_test',
+          userId: 'user_123',
+          successUrl: 'https://example.com/success',
+          cancelUrl: 'https://example.com/cancel',
+        });
+      });
+
+      const result = await Effect.runPromiseExit(
+        Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
+      );
+
+      expect(Exit.isFailure(result)).toBe(true);
+      if (Exit.isFailure(result) && result.cause._tag === 'Fail') {
+        expect(result.cause.error).toBeInstanceOf(ValidationError);
+        expect(result.cause.error.message).toContain('already renews automatically');
+      }
+      expect(stripeService.createCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it('should allow a lapsed user to check out', async () => {
+      const mockUser = createMockUserDocument({stripeCustomerId: 'cus_lapsed'});
+      const mockSession = createMockCheckoutSession();
+      const stripeService = createTestStripeService({
+        createCheckoutSession: vi.fn(() => Effect.succeed(mockSession)),
+      });
+      const databaseService = createTestDatabaseService({
+        getUser: vi.fn(() => Effect.succeed(mockUser)),
+        getActiveMembership: vi.fn(() => Effect.succeed(null)),
+      });
+      const testLayer = Layer.mergeAll(
+        TestStripeLayer(stripeService),
+        TestDatabaseLayer(databaseService),
+        TestCardLayer(createTestCardService()),
+      );
+      const program = Effect.gen(function* () {
+        const service = yield* MembershipService;
+        return yield* service.createCheckoutSession({
+          priceId: 'price_individual_test',
+          userId: 'user_123',
+          successUrl: 'https://example.com/success',
+          cancelUrl: 'https://example.com/cancel',
+        });
+      });
+
+      const result = await Effect.runPromise(
+        Effect.provide(Effect.provide(program, MembershipServiceLive), testLayer),
+      );
+
+      expect(result.sessionId).toBe(mockSession.id);
+      expect(stripeService.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({stripeCustomerId: 'cus_lapsed'}),
+      );
     });
 
     it('should propagate StripeError from Stripe service', async () => {

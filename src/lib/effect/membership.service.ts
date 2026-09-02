@@ -100,23 +100,55 @@ const make = Effect.gen(function* () {
           Effect.log(`Creating checkout session for ${request.email || request.userId}`),
         ),
 
-        // Step 2: Look up existing user if userId provided
-        Effect.flatMap((req) =>
-          req.userId
-            ? pipe(
-                db.getUser(req.userId),
-                Effect.map((user) => ({
+        // Step 2: Look up the existing user and guard active auto-renewing subscriptions
+        Effect.flatMap((req) => {
+          if (!req.userId) {
+            return Effect.succeed({
+              ...req,
+              stripeCustomerId: undefined,
+              customerEmail: req.email,
+            });
+          }
+
+          const userId = req.userId;
+          return pipe(
+            db.getUser(userId),
+            Effect.flatMap((user) => {
+              if (!user) {
+                return Effect.succeed({
                   ...req,
-                  stripeCustomerId: user?.stripeCustomerId,
-                  customerEmail: user?.email || req.email,
-                })),
-              )
-            : Effect.succeed({
-                ...req,
-                stripeCustomerId: undefined,
-                customerEmail: req.email,
-              }),
-        ),
+                  stripeCustomerId: undefined,
+                  customerEmail: req.email,
+                });
+              }
+
+              return pipe(
+                db.getActiveMembership(userId),
+                Effect.flatMap((membership) => {
+                  if (
+                    membership?.autoRenew &&
+                    membership.stripeSubscriptionId &&
+                    (membership.status === 'active' || membership.status === 'trialing')
+                  ) {
+                    return Effect.fail(
+                      new ValidationError({
+                        field: 'membership',
+                        message:
+                          'Your membership already renews automatically. Use the manage-membership page to update or cancel it.',
+                      }),
+                    );
+                  }
+
+                  return Effect.succeed({
+                    ...req,
+                    stripeCustomerId: user.stripeCustomerId,
+                    customerEmail: user.email || req.email,
+                  });
+                }),
+              );
+            }),
+          );
+        }),
 
         // Step 3: Create Stripe checkout session
         Effect.flatMap((enrichedRequest) =>
@@ -124,6 +156,7 @@ const make = Effect.gen(function* () {
             priceId: enrichedRequest.priceId,
             userId: enrichedRequest.userId,
             email: enrichedRequest.customerEmail,
+            stripeCustomerId: enrichedRequest.stripeCustomerId,
             successUrl: enrichedRequest.successUrl,
             cancelUrl: enrichedRequest.cancelUrl,
             coverFees: enrichedRequest.coverFees,

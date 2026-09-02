@@ -90,6 +90,7 @@ export const CheckoutSessionRequest = S.Struct({
   priceId: S.String,
   userId: S.optional(S.String),
   email: S.optional(S.String),
+  stripeCustomerId: S.optional(S.String),
   successUrl: S.String,
   cancelUrl: S.String,
   coverFees: S.optional(S.Boolean),

@@ -43,6 +43,13 @@
       "when": 1785082085918,
       "tag": "0005_first_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788366081331,
+      "tag": "0006_upcoming_renewal_audit",
+      "breakpoints": true
     }
   ]
 }

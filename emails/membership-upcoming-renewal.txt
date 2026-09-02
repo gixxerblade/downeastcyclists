@@ -1,0 +1,12 @@
+Hi {{{MEMBER_NAME}}},
+
+Your {{{PLAN_NAME}}} renews automatically on {{{RENEWAL_DATE}}}.
+
+Your annual rate is {{{PLAN_PRICE}}}/yr. The card on file will be charged automatically.
+
+No action is needed.
+
+Manage your membership, update your card, or cancel:
+{{{MANAGE_MEMBERSHIP_URL}}}
+
+Down East Cyclists
