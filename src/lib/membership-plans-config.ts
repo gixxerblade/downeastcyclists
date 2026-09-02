@@ -52,9 +52,18 @@ export const PLAN_TYPE_NAMES: Record<string, string> = {
   family: 'Family Annual Membership',
 };
 
+export const PLAN_ANNUAL_PRICES = {
+  individual: 30,
+  family: 50,
+};
+
 /**
  * Get plan name for a plan type
  */
 export function getPlanNameForType(planType: string): string {
   return PLAN_TYPE_NAMES[planType] || 'Membership';
+}
+
+export function getAnnualPriceForPlanType(planType: keyof typeof PLAN_ANNUAL_PRICES): number {
+  return PLAN_ANNUAL_PRICES[planType];
 }

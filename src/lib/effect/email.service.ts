@@ -1,6 +1,8 @@
 import {Context, Effect, Layer} from 'effect';
 import {Resend} from 'resend';
 
+import {getUpcomingRenewalEmailSubject} from '../renewal-email';
+
 import {EmailError} from './errors';
 
 export interface EmailService {
@@ -17,6 +19,16 @@ export interface EmailService {
     expirationDate: string | undefined;
     planName: string | undefined;
     daysUntilExpiration?: 30 | 60 | 90;
+    idempotencyKey: string;
+  }) => Effect.Effect<void, EmailError>;
+
+  readonly sendUpcomingRenewalEmail: (params: {
+    to: string;
+    name: string | undefined;
+    manageMembershipUrl: string;
+    renewalDate: string;
+    planName: string;
+    planPrice: number;
     idempotencyKey: string;
   }) => Effect.Effect<void, EmailError>;
 
@@ -42,6 +54,7 @@ const make = Effect.gen(function* () {
   const resend = apiKey ? new Resend(apiKey) : null;
   const from = process.env.EMAIL_FROM ?? 'Down East Cyclists <noreply@downeastcyclists.com>';
   const renewalTemplateId = process.env.RESEND_RENEWAL_TEMPLATE_ID;
+  const upcomingRenewalTemplateId = process.env.RESEND_UPCOMING_RENEWAL_TEMPLATE_ID;
   const organizerTemplateId =
     process.env.RESEND_ORGANIZER_ACCESS_TEMPLATE_ID ?? 'organizer-access-granted';
 
@@ -196,6 +209,101 @@ const make = Effect.gen(function* () {
             return new EmailError({
               code: 'SEND_RENEWAL_FAILED',
               message: `Failed to send renewal email to ${to}: ${detail}`,
+              cause: error,
+            });
+          },
+        });
+      }),
+
+    sendUpcomingRenewalEmail: ({
+      to,
+      name,
+      manageMembershipUrl,
+      renewalDate,
+      planName,
+      planPrice,
+      idempotencyKey,
+    }) =>
+      Effect.gen(function* () {
+        if (!resend) {
+          yield* Effect.logWarning(
+            `Skipping upcoming renewal email to ${to}: RESEND_API_KEY not configured`,
+          );
+          return;
+        }
+
+        const displayName = name?.trim() || 'Member';
+        const formattedRenewalDate = new Date(renewalDate).toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'UTC',
+        });
+        const formattedPlanPrice = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(planPrice);
+        const subject = getUpcomingRenewalEmailSubject(renewalDate);
+        const text = [
+          `Hi ${displayName},`,
+          '',
+          `Your ${planName} renews automatically on ${formattedRenewalDate}.`,
+          `Your annual rate is ${formattedPlanPrice}/yr. The card on file will be charged automatically.`,
+          '',
+          'No action is needed.',
+          '',
+          'Manage your membership, update your card, or cancel:',
+          manageMembershipUrl,
+          '',
+          'Down East Cyclists',
+        ].join('\n');
+        const html = `
+          <p>Hi ${escapeHtml(displayName)},</p>
+          <p>Your ${escapeHtml(planName)} renews automatically on ${escapeHtml(formattedRenewalDate)}.</p>
+          <p>Your annual rate is ${escapeHtml(formattedPlanPrice)}/yr. The card on file will be charged automatically.</p>
+          <p><strong>No action is needed.</strong></p>
+          <p><a href="${escapeHtml(manageMembershipUrl)}">Manage membership</a></p>
+          <p>Down East Cyclists</p>
+        `.trim();
+
+        yield* Effect.tryPromise({
+          try: async () => {
+            const payload = upcomingRenewalTemplateId
+              ? {
+                  from,
+                  to,
+                  subject,
+                  template: {
+                    id: upcomingRenewalTemplateId,
+                    variables: {
+                      MEMBER_NAME: displayName,
+                      MANAGE_MEMBERSHIP_URL: manageMembershipUrl,
+                      RENEWAL_DATE: formattedRenewalDate,
+                      PLAN_NAME: planName,
+                      PLAN_PRICE: formattedPlanPrice,
+                    },
+                  },
+                }
+              : {
+                  from,
+                  to,
+                  subject,
+                  html,
+                  text,
+                };
+
+            const {error} = await resend.emails.send(payload, {idempotencyKey});
+            if (error) {
+              throw error;
+            }
+          },
+          catch: (error) => {
+            const detail = describeResendError(error);
+            console.error('[EmailService] Resend upcoming renewal error:', error);
+            return new EmailError({
+              code: 'SEND_UPCOMING_RENEWAL_FAILED',
+              message: `Failed to send upcoming renewal email to ${to}: ${detail}`,
               cause: error,
             });
           },

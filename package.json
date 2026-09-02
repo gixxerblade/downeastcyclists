@@ -13,6 +13,7 @@
     "format": "oxfmt",
     "resend:setup-organizer-template": "./scripts/setup-resend-organizer-template.sh",
     "resend:setup-renewal-template": "./scripts/setup-resend-renewal-template.sh",
+    "resend:setup-upcoming-renewal-template": "./scripts/setup-resend-upcoming-renewal-template.sh",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

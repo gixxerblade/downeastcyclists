@@ -34,6 +34,7 @@ export const auditActionEnum = pgEnum('audit_action', [
   'RENEWAL_EMAIL_SENT',
   'RENEWAL_EMAIL_RESENT',
   'AUTOMATED_RENEWAL_EMAIL_SENT',
+  'AUTOMATED_UPCOMING_RENEWAL_EMAIL_SENT',
   'RECONCILIATION',
 ]);
 

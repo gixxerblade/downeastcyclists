@@ -60,6 +60,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
 - **Reset Password** (`/reset-password`): Firebase password reset flow for members
+- Checkout reuses a member's linked Stripe customer and blocks a second subscription while an active auto-renewing subscription exists
 
 ### Admin
 
@@ -78,7 +79,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 ### Scheduled Jobs
 
-- **Membership renewal reminders** (`netlify/functions/membership-renewal-reminders.ts`): Daily Netlify scheduled function that sends 90-, 60-, and 30-day renewal reminders through Resend and records email/audit events
+- **Membership renewal reminders** (`netlify/functions/membership-renewal-reminders.ts`): Daily Netlify scheduled function that sends manual-renewal members 90-, 60-, and 30-day reminders and auto-renewing members one 30-day upcoming-renewal notice through Resend, with email/audit event logging
 - **Meetup event ingest** (`netlify/functions/meetup-events-ingest.ts`): Daily Netlify scheduled function that imports upcoming public events from the Down East Cyclists Meetup RSS feed. The same ingestion can be triggered through the protected internal endpoint at `/api/internal/meetup-ingest`.
 
 ## Technical Stack
@@ -89,7 +90,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Database**: PostgreSQL via Neon (serverless) with Drizzle ORM; Google Firestore for trail status
 - **Authentication**: Firebase Authentication
 - **Payments**: Stripe (subscriptions, checkout, customer portal, webhooks)
-- **Email**: Resend transactional email for welcome emails, renewal reminders, and organizer access notifications
+- **Email**: Resend transactional email for welcome emails, manual renewal reminders, upcoming automatic-renewal notices, and organizer access notifications
 - **Bot Protection**: hCaptcha for contact forms; Cloudflare Turnstile for trail issue reports
 - **Object Storage**: R2-compatible storage for trail maintenance report photos
 - **Error Handling**: Effect-TS for type-safe, composable operations
@@ -116,9 +117,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
    pnpm install
    ```
 
-   On local installs, the prepare step clones the Effect source into the ignored `.repos/effect`
-   directory when it is missing, then prepares the Effect TypeScript tooling. CI skips the
-   research-only source checkout.
+   On local installs, the prepare step initializes the Effect source submodule at `.repos/effect`
+   when it is missing, then prepares the Effect TypeScript tooling. CI skips the research-only
+   source checkout.
 
 3. Create a `.env.local` file with the required environment variables (see below)
 4. Run the development server:
@@ -144,6 +145,7 @@ pnpm test             # Run tests (watch mode)
 pnpm test:run         # Run tests once
 pnpm test:coverage    # Generate coverage report
 pnpm types:contentful # Regenerate Contentful TypeScript types
+pnpm resend:setup-upcoming-renewal-template # Create or update the auto-renew notice template
 pnpm db:generate      # Generate Drizzle migration files
 pnpm db:migrations:check # Ensure schema changes have committed migrations
 pnpm db:migrate       # Run pending database migrations
@@ -251,6 +253,7 @@ The following environment variables need to be set in Netlify:
 - `RESEND_API_KEY`: Resend API key used for transactional email.
 - `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.
 - `RESEND_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for renewal reminders.
+- `RESEND_UPCOMING_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for 30-day automatic-renewal notices.
 - `RESEND_ORGANIZER_ACCESS_TEMPLATE_ID`: Resend template alias or ID for organizer access
   notifications. Defaults to `organizer-access-granted`.
 - `SUPPORT_EMAIL`: Reply/support address shown in organizer access emails.

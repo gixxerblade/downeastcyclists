@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import {getAnnualPriceForPlanType} from '@/src/lib/membership-plans-config';
+
 export const dynamic = 'force-static';
 
 const benefits = [
@@ -39,12 +41,12 @@ const events = [
 const plans = [
   {
     name: 'Individual',
-    price: '$30',
+    price: `$${getAnnualPriceForPlanType('individual')}`,
     copy: 'One rider, full club membership.',
   },
   {
     name: 'Family',
-    price: '$50',
+    price: `$${getAnnualPriceForPlanType('family')}`,
     copy: 'One household membership for family riders.',
     popular: true,
   },
