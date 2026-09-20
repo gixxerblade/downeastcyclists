@@ -91,7 +91,7 @@ importers:
         version: 11.12.7
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.8.0)(@types/pg@8.16.0)
+        version: 0.45.2(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.8.0)(@types/pg@8.16.0)
       effect:
         specifier: ^3.22.0
         version: 3.22.0
@@ -153,6 +153,9 @@ importers:
       '@effect/tsgo':
         specifier: ^0.19.0
         version: 0.19.0
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
       '@netlify/plugin-nextjs':
         specifier: ^5.15.11
         version: 5.15.11
@@ -379,6 +382,9 @@ packages:
   '@effect/tsgo@0.19.0':
     resolution: {integrity: sha512-NDyG/RufHigI0bdvyggbr53J6c1GWcnNkm7rUwQbBDuRI1KRThFh2WtugMLL+i6wrRiMXJtgLHzh9lIMqy9gGA==}
     hasBin: true
+
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@emnapi/core@1.7.1':
     resolution: {integrity: sha512-o1uhUASyo921r2XtHYOHy7gdkGLge8ghBEQHMWmyJFoXlpU58kIrhhN3w26lpQb6dspetweapMn2CSNwQ8I4wg==}
@@ -8759,6 +8765,8 @@ snapshots:
       '@effect/tsgo-win32-arm64': 0.19.0
       '@effect/tsgo-win32-x64': 0.19.0
 
+  '@electric-sql/pglite@0.5.8': {}
+
   '@emnapi/core@1.7.1':
     dependencies:
       '@emnapi/wasi-threads': 1.1.0
@@ -12632,8 +12640,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.2(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.8.0)(@types/pg@8.16.0):
+  drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.8.0)(@types/pg@8.16.0):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.8
       '@neondatabase/serverless': 1.0.2
       '@opentelemetry/api': 1.8.0
       '@types/pg': 8.16.0

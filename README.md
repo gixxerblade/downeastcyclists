@@ -60,12 +60,13 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
 - **Reset Password** (`/reset-password`): Firebase password reset flow for members
+- Renewal checkout preserves the member's card number and links the card to the renewed membership.
 - Checkout reuses a member's linked Stripe customer and blocks a second subscription while an active auto-renewing subscription exists
 
 ### Admin
 
 - **Dashboard** (`/dashboard`): Full admin dashboard for club management (requires authentication)
-  - Member management (view, edit, import, export)
+  - Member management (view, edit, import, export): the list shows one current membership per person, with filters and pagination applied after selecting that membership; prior terms remain stored as history
   - Payment and subscription management via Stripe
   - Trail status editing
   - Trail maintenance report triage, complete CSV exports, priority/status updates, internal notes, embedded maps, and county escalation email drafts
@@ -184,6 +185,8 @@ Trail status is stored separately in Google Firestore and managed through the ad
 - **Build command**: `scripts/decrypt-credentials.sh && if [ "$CONTEXT" = "production" ]; then pnpm db:migrate; fi && pnpm build`
 - **Publish directory**: `.next`
 - **Functions directory**: `netlify/functions`
+
+Migration `0007_repair_renewed_card_links` repairs cards whose validity dates, plan, and status uniquely match a different membership for the same user. It preserves membership history and card details, and skips ambiguous matches. This includes the existing imported-member renewal case; no separate manual repair is needed after the migration runs.
 
 Pushes to the connected GitHub repository trigger automatic builds and deploys. Netlify applies pending committed Drizzle migrations before production builds, and GitHub CI runs `pnpm db:migrations:check` to catch schema changes that forgot to commit a matching migration file.
 

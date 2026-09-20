@@ -31,6 +31,8 @@ import {
 } from '@/src/lib/effect/webhook-idempotency.service';
 import type {RenewalEmailResult} from '@/src/types/admin';
 
+import {createMockMembershipCard} from '../mocks/database.mock';
+
 // Test service implementations with controllable behavior
 export const createTestStripeService = (
   overrides: Partial<StripeServiceType> = {},
@@ -179,9 +181,7 @@ export const createTestCardService = (
       updatedAt: new Date().toISOString(),
     }),
   ) as unknown as MembershipCardServiceType['createCard'],
-  updateCard: vi.fn(() =>
-    Effect.die('Not mocked'),
-  ) as unknown as MembershipCardServiceType['updateCard'],
+  updateCard: vi.fn(() => Effect.succeed(createMockMembershipCard())),
   getCard: vi.fn(() => Effect.succeed(null)),
   verifyMembership: vi.fn(() =>
     Effect.die('Not mocked'),

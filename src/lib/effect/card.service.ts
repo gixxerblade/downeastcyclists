@@ -77,7 +77,7 @@ const make = Effect.gen(function* () {
         };
 
         // Save to database
-        yield* db.setMembershipCard(userId, card);
+        yield* db.setMembershipCard(userId, card, membership.stripeSubscriptionId || membership.id);
 
         yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
@@ -125,7 +125,11 @@ const make = Effect.gen(function* () {
           };
 
           // Save to database
-          yield* db.setMembershipCard(userId, card);
+          yield* db.setMembershipCard(
+            userId,
+            card,
+            membership.stripeSubscriptionId || membership.id,
+          );
 
           yield* Effect.log(`Membership card created: ${membershipNumber} for user ${userId}`);
 
@@ -159,7 +163,11 @@ const make = Effect.gen(function* () {
           updatedAt: new Date().toISOString(),
         };
 
-        yield* db.setMembershipCard(userId, updatedCard);
+        yield* db.setMembershipCard(
+          userId,
+          updatedCard,
+          membership.stripeSubscriptionId || membership.id,
+        );
         yield* Effect.log(`Membership card updated for user ${userId}`);
 
         return {...updatedCard, id: 'current'} as MembershipCard;

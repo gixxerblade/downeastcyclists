@@ -243,11 +243,12 @@ const make = Effect.gen(function* () {
         // If no Firebase UID is provided (guest checkout), we:
         // 1. Check if a user exists with this email
         // 2. Fall back to using subscriptionId as the document ID
-        let userDocId = userId;
-        if (!userDocId) {
-          const existingUser = customerEmail ? yield* db.getUserByEmail(customerEmail) : null;
-          userDocId = existingUser?.id || subscriptionId;
-        }
+        const existingUser = userId
+          ? yield* db.getUser(userId)
+          : customerEmail
+            ? yield* db.getUserByEmail(customerEmail)
+            : null;
+        const userDocId = existingUser?.id || userId || subscriptionId;
 
         // Update user document with ISO date strings
         yield* db.setUser(userDocId, {
@@ -271,13 +272,13 @@ const make = Effect.gen(function* () {
           `Membership created: ${subscriptionId} for user ${userDocId}, plan: ${planType}`,
         );
 
-        // Create the membership card using data already in scope
-        yield* cardService.createCard({
+        // Renew the existing card (including its membership number), or create one.
+        yield* cardService.updateCard({
           userId: userDocId,
           user: {
             id: userDocId,
             email: customerEmail || '',
-            name: undefined,
+            name: existingUser?.name,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -293,7 +294,7 @@ const make = Effect.gen(function* () {
             updatedAt: new Date().toISOString(),
           },
         });
-        yield* Effect.log(`Membership card created for user ${userDocId}`);
+        yield* Effect.log(`Membership card saved for user ${userDocId}`);
       }),
 
     // Webhook: customer.subscription.updated
