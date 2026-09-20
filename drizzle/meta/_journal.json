@@ -50,6 +50,13 @@
       "when": 1788366081331,
       "tag": "0006_upcoming_renewal_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789913112856,
+      "tag": "0007_repair_renewed_card_links",
+      "breakpoints": true
     }
   ]
 }

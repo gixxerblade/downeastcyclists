@@ -1,4 +1,5 @@
-import {eq, sql} from 'drizzle-orm';
+import {and, eq, or, sql} from 'drizzle-orm';
+import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Effect} from 'effect';
 
 import {membershipCards, membershipCounters, memberships, users} from '@/src/db/schema/tables';
@@ -39,12 +40,13 @@ function rowToCardDocument(row: typeof membershipCards.$inferSelect): Membership
 // Card method implementations
 // ---------------------------------------------------------------------------
 
-export function createCardMethods() {
-  const db = getDb();
+export function createCardMethods(
+  db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
+) {
   return {
     getMembershipCard: (userId: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         return yield* Effect.tryPromise({
           try: async () => {
@@ -67,15 +69,36 @@ export function createCardMethods() {
         });
       }),
 
-    setMembershipCard: (userId: string, card: Omit<MembershipCard, 'id'>) =>
+    setMembershipCard: (userId: string, card: Omit<MembershipCard, 'id'>, membershipId: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {
             const now = new Date();
 
-            // Find the membership for this user to link the card
+            // Resolve the exact term supplied by the caller, never an arbitrary
+            // latest row. Scope both identifier forms to the card owner.
+            const membership = await db
+              .select({id: memberships.id})
+              .from(memberships)
+              .where(
+                and(
+                  eq(memberships.userId, userRow.id),
+                  or(
+                    eq(sql`${memberships.id}::text`, membershipId),
+                    eq(memberships.stripeSubscriptionId, membershipId),
+                  ),
+                ),
+              )
+              .limit(1)
+              .then((rows) => rows[0] ?? null);
+
+            if (!membership) {
+              throw new Error(`Membership ${membershipId} not found for user ${userRow.id}`);
+            }
+
+            // Preserve the existing card row while moving it to the renewed term.
             const existingCard = await db
               .select()
               .from(membershipCards)
@@ -88,6 +111,7 @@ export function createCardMethods() {
               await db
                 .update(membershipCards)
                 .set({
+                  membershipId: membership.id,
                   membershipNumber: card.membershipNumber,
                   memberName: card.memberName,
                   email: card.email,
@@ -101,21 +125,6 @@ export function createCardMethods() {
                 })
                 .where(eq(membershipCards.id, existingCard.id));
             } else {
-              // Look up the user's active membership for the FK
-              const membership = await db
-                .select({id: memberships.id})
-                .from(memberships)
-                .where(eq(memberships.userId, userRow.id))
-                .orderBy(sql`${memberships.startDate} DESC`)
-                .limit(1)
-                .then((rows) => rows[0] ?? null);
-
-              if (!membership) {
-                throw new Error(
-                  `No membership found for user ${userRow.id} — cannot create card without a membership`,
-                );
-              }
-
               await db.insert(membershipCards).values({
                 userId: userRow.id,
                 membershipId: membership.id,
@@ -144,7 +153,7 @@ export function createCardMethods() {
 
     updateMembershipCard: (userId: string, data: Partial<MembershipCard>) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {

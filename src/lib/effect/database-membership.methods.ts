@@ -1,4 +1,5 @@
 import {and, desc, eq, gte, ilike, inArray, lt, lte, or, sql} from 'drizzle-orm';
+import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Effect} from 'effect';
 
 import {emailLog, membershipCards, memberships, users} from '@/src/db/schema/tables';
@@ -107,12 +108,13 @@ function rowToCardDocument(row: typeof membershipCards.$inferSelect, now: Date =
 // Membership method implementations
 // ---------------------------------------------------------------------------
 
-export function createMembershipMethods() {
-  const db = getDb();
+export function createMembershipMethods(
+  db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
+) {
   return {
     getMembership: (userId: string, membershipId: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         return yield* Effect.tryPromise({
           try: async () => {
@@ -142,7 +144,7 @@ export function createMembershipMethods() {
 
     getActiveMembership: (userId: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         return yield* Effect.tryPromise({
           try: async () => {
@@ -173,7 +175,7 @@ export function createMembershipMethods() {
 
     setMembership: (userId: string, membershipId: string, data: Omit<MembershipDocument, 'id'>) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {
@@ -230,7 +232,7 @@ export function createMembershipMethods() {
 
     updateMembership: (userId: string, membershipId: string, data: Partial<MembershipDocument>) =>
       Effect.gen(function* () {
-        yield* resolveUserId(userId);
+        yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {
@@ -263,7 +265,7 @@ export function createMembershipMethods() {
 
     deleteMembership: (userId: string, membershipId: string) =>
       Effect.gen(function* () {
-        yield* resolveUserId(userId);
+        yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {
@@ -282,7 +284,33 @@ export function createMembershipMethods() {
       Effect.tryPromise({
         try: async () => {
           const now = new Date();
-          const conditions = [];
+          // Select one representative membership before filtering/pagination so an old
+          // term cannot make a renewed member appear in the expired list.
+          const currentMembershipIds = db
+            .selectDistinctOn([memberships.userId], {id: memberships.id})
+            .from(memberships)
+            .orderBy(
+              memberships.userId,
+              desc(
+                sql`(${inArray(memberships.status, currentDatabaseStatuses)} AND ${memberships.endDate} >= ${now.toISOString()})`,
+              ),
+              desc(memberships.endDate),
+              desc(memberships.createdAt),
+              desc(memberships.id),
+            );
+          const currentCardIds = db
+            .selectDistinctOn([membershipCards.membershipId], {id: membershipCards.id})
+            .from(membershipCards)
+            .orderBy(
+              membershipCards.membershipId,
+              desc(membershipCards.updatedAt),
+              desc(membershipCards.id),
+            );
+          const cardJoin = and(
+            eq(membershipCards.membershipId, memberships.id),
+            inArray(membershipCards.id, currentCardIds),
+          );
+          const conditions = [inArray(memberships.id, currentMembershipIds)];
 
           if (params.status) {
             if (params.status === 'expired') {
@@ -331,7 +359,7 @@ export function createMembershipMethods() {
             .select({count: sql<number>`count(*)::int`})
             .from(memberships)
             .innerJoin(users, eq(memberships.userId, users.id))
-            .leftJoin(membershipCards, eq(membershipCards.membershipId, memberships.id))
+            .leftJoin(membershipCards, cardJoin)
             .where(where);
 
           const total = countResult[0]?.count ?? 0;
@@ -345,9 +373,9 @@ export function createMembershipMethods() {
             })
             .from(memberships)
             .innerJoin(users, eq(memberships.userId, users.id))
-            .leftJoin(membershipCards, eq(membershipCards.membershipId, memberships.id))
+            .leftJoin(membershipCards, cardJoin)
             .where(where)
-            .orderBy(desc(memberships.endDate))
+            .orderBy(desc(memberships.endDate), memberships.userId)
             .limit(pageSize)
             .offset(offset);
 

@@ -1027,7 +1027,7 @@ describe('DatabaseService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* DatabaseService;
-        return yield* service.setMembershipCard('user_123', cardWithoutId);
+        return yield* service.setMembershipCard('user_123', cardWithoutId, 'sub_test_123');
       });
 
       const result = await Effect.runPromise(
@@ -1035,7 +1035,11 @@ describe('DatabaseService', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockService.setMembershipCard).toHaveBeenCalledWith('user_123', cardWithoutId);
+      expect(mockService.setMembershipCard).toHaveBeenCalledWith(
+        'user_123',
+        cardWithoutId,
+        'sub_test_123',
+      );
     });
 
     it('should fail with DatabaseError on set failure', async () => {
@@ -1055,7 +1059,7 @@ describe('DatabaseService', () => {
 
       const program = Effect.gen(function* () {
         const service = yield* DatabaseService;
-        return yield* service.setMembershipCard('user_123', cardWithoutId);
+        return yield* service.setMembershipCard('user_123', cardWithoutId, 'sub_test_123');
       });
 
       const result = await Effect.runPromiseExit(

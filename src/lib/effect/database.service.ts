@@ -1,4 +1,5 @@
 import {eq, sql} from 'drizzle-orm';
+import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Context, Effect, Layer} from 'effect';
 
 import {users} from '@/src/db/schema/tables';
@@ -71,11 +72,12 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
  */
 export const resolveUserId = (
   firebaseUid: string,
+  db?: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')>,
 ): Effect.Effect<typeof users.$inferSelect, DatabaseError> =>
   Effect.tryPromise({
     try: async () => {
-      const db = getDb();
-      const row = await db
+      const connection = db ?? getDb();
+      const row = await connection
         .select()
         .from(users)
         .where(eq(users.firebaseUid, firebaseUid))
@@ -173,6 +175,7 @@ export interface DatabaseService {
   readonly setMembershipCard: (
     userId: string,
     card: Omit<MembershipCard, 'id'>,
+    membershipId: string,
   ) => Effect.Effect<void, DatabaseError>;
 
   readonly updateMembershipCard: (
