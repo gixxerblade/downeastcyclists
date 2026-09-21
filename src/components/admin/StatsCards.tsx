@@ -54,7 +54,7 @@ export function StatsCards({stats, loading}: StatsCardsProps) {
       >
         <CardContent>
           <Typography variant="body2" sx={{color: '#B8B8BD'}}>
-            Annual Revenue
+            Estimated Annual Dues
           </Typography>
           {loading ? (
             <Skeleton width={90} height={46} sx={{bgcolor: 'rgba(255,255,255,.16)'}} />
@@ -65,6 +65,9 @@ export function StatsCards({stats, loading}: StatsCardsProps) {
               {stats?.yearlyRevenue != null ? `$${stats.yearlyRevenue.toLocaleString()}` : ''}
             </Typography>
           )}
+          <Typography variant="caption" sx={{color: '#B8B8BD'}}>
+            Active plans at standard rates; not payments received.
+          </Typography>
         </CardContent>
       </Card>
     </Box>

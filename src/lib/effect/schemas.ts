@@ -255,6 +255,13 @@ export const MembershipCounter = S.Struct({
 });
 export type MembershipCounter = S.Schema.Type<typeof MembershipCounter>;
 
+export const MembershipActivityMonth = S.Struct({
+  month: S.String,
+  newMembers: S.Number,
+  renewals: S.Number,
+});
+export type MembershipActivityMonth = S.Schema.Type<typeof MembershipActivityMonth>;
+
 // Admin stats schema
 export const MembershipStats = S.Struct({
   totalMembers: S.Number,
@@ -267,11 +274,13 @@ export const MembershipStats = S.Struct({
   yearlyRevenue: S.Number,
   expiringSoonMembers: S.optional(S.Number),
   newMembersThisMonth: S.optional(S.Number),
+  renewalsThisMonth: S.optional(S.Number),
   membershipGrowth: S.optional(
     S.Array(
       S.Struct({
         month: S.String,
         count: S.Number,
+        renewals: S.Number,
       }),
     ),
   ),

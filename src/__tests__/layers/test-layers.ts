@@ -98,6 +98,7 @@ export const createTestDatabaseService = (
   updateMembershipCard: vi.fn(() => Effect.void),
   getMembershipByNumber: vi.fn(() => Effect.succeed(null)),
   getAllMemberships: vi.fn(() => Effect.succeed({members: [], total: 0})),
+  getMembershipActivity: vi.fn(() => Effect.succeed([])),
   getStats: vi.fn(() => Effect.succeed(null)),
   updateStats: vi.fn(() => Effect.void),
   logAuditEntry: vi.fn(() => Effect.void),

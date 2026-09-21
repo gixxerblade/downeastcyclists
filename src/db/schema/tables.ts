@@ -79,6 +79,27 @@ export const memberships = pgTable(
   ],
 );
 
+// Durable term history: current subscription dates can change on renewal.
+export const membershipPeriods = pgTable(
+  'membership_periods',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    membershipId: uuid('membership_id')
+      .notNull()
+      .references(() => memberships.id, {onDelete: 'cascade'}),
+    startDate: timestamp('start_date', {withTimezone: true}).notNull(),
+    endDate: timestamp('end_date', {withTimezone: true}).notNull(),
+    recordedAt: timestamp('recorded_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('membership_periods_membership_start_idx').on(table.membershipId, table.startDate),
+    index('membership_periods_user_start_idx').on(table.userId, table.startDate),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // 3. Membership Cards
 // ---------------------------------------------------------------------------

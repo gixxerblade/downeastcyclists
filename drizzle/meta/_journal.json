@@ -57,6 +57,13 @@
       "when": 1789913112856,
       "tag": "0007_repair_renewed_card_links",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789996026624,
+      "tag": "0008_membership_period_history",
+      "breakpoints": true
     }
   ]
 }
