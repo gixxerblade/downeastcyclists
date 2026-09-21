@@ -21,6 +21,7 @@ import type {
   MemberSearchParams,
   MembershipCard,
   MembershipStats,
+  MembershipActivityMonth,
   MemberWithMembership,
   MembershipDocument,
   UserDocument,
@@ -190,6 +191,10 @@ export interface DatabaseService {
   readonly getNextMembershipNumber: (year: number) => Effect.Effect<string, DatabaseError>;
 
   // Stats & dashboard
+  readonly getMembershipActivity: (
+    from: Date,
+    through: Date,
+  ) => Effect.Effect<ReadonlyArray<MembershipActivityMonth>, DatabaseError>;
   readonly getStats: () => Effect.Effect<MembershipStats | null, DatabaseError>;
 
   readonly updateStats: (stats: Partial<MembershipStats>) => Effect.Effect<void, DatabaseError>;

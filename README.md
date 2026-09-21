@@ -72,7 +72,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Trail maintenance report triage, complete CSV exports, priority/status updates, internal notes, embedded maps, and county escalation email drafts
   - Organizer access management for current members
   - QR code membership verification
-  - Membership statistics and reporting
+  - Membership statistics and reporting cover all pages of the member list, with date-aware active/expired counts. Failed statistics reads return an error rather than zero totals. Estimated annual dues use the standard $30 individual / $50 family rates for current memberships with active status. Complimentary, legacy, trialing, past-due, canceled, and expired memberships are excluded. This is not collected revenue and does not include fees, discounts, refunds, or taxes.
+  - The six-month chart separates new members (each person's first recorded membership period) from renewals (later recorded periods, including returning members), grouped by UTC start month. It does not count renewal emails or payments as new members.
+  - Migration `0008_membership_period_history` backfills observed membership periods and installs a database trigger to retain future terms when automatic renewals update subscription dates. Replayed updates are deduplicated; end-date extensions and overlapping date corrections do not create renewals. Incomplete/failed checkouts are excluded. Historical periods already overwritten before this migration cannot be recovered, so the chart explicitly identifies this limitation. Apply migrations before deploying the updated app.
   - Expiring member reports and manual renewal email sends
   - Payment reconciliation and refunds
   - Audit trails for member, payment, renewal email, reconciliation, import, and role changes

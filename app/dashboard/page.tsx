@@ -10,6 +10,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -21,7 +22,16 @@ import {
 } from '@mui/material';
 import {useRouter} from 'next/navigation';
 import {useEffect, useState} from 'react';
-import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 import {ActionLog} from '@/src/components/admin/ActionLog';
 import {
@@ -59,7 +69,12 @@ interface DashboardStats {
   yearlyRevenue?: number;
   expiringSoonMembers?: number;
   newMembersThisMonth?: number;
-  membershipGrowth?: ReadonlyArray<{readonly month: string; readonly count: number}>;
+  renewalsThisMonth?: number;
+  membershipGrowth?: ReadonlyArray<{
+    readonly month: string;
+    readonly count: number;
+    readonly renewals: number;
+  }>;
 }
 
 const allSections: Array<{
@@ -128,11 +143,13 @@ function StatCard({
   value,
   accent,
   dark = false,
+  description,
 }: {
   label: string;
   value: string | number;
   accent?: string;
   dark?: boolean;
+  description?: string;
 }) {
   return (
     <Card
@@ -156,6 +173,11 @@ function StatCard({
         >
           {value ?? ''}
         </Typography>
+        {description && (
+          <Typography variant="caption" sx={{color: dark ? '#B8B8BD' : 'var(--dec-muted-2)'}}>
+            {description}
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );
@@ -169,6 +191,8 @@ export default function DashboardPage() {
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [statsError, setStatsError] = useState(false);
+  const [statsLoaded, setStatsLoaded] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeMembers: 0,
@@ -214,7 +238,8 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       try {
         const response = await fetch('/api/admin/stats');
-        if (response.ok) {
+        if (!response.ok) throw new Error('Membership statistics unavailable');
+        {
           const data = await response.json();
           setDashboardStats((prev) => ({
             ...prev,
@@ -227,11 +252,15 @@ export default function DashboardPage() {
             yearlyRevenue: data.yearlyRevenue,
             expiringSoonMembers: data.expiringSoonMembers,
             newMembersThisMonth: data.newMembersThisMonth,
+            renewalsThisMonth: data.renewalsThisMonth,
             membershipGrowth: data.membershipGrowth,
           }));
+          setStatsLoaded(true);
+          setStatsError(false);
         }
       } catch (error) {
         console.error('Failed to fetch stats:', error);
+        setStatsError(true);
       }
     };
 
@@ -410,15 +439,27 @@ export default function DashboardPage() {
         <Box sx={{p: {xs: 2, md: 4}}}>
           {section === 'overview' && (
             <Box sx={{display: 'grid', gap: 3}}>
+              {statsError && (
+                <Alert severity="error">
+                  Membership statistics could not be loaded. Reload the page to try again.
+                </Alert>
+              )}
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: {xs: '1fr 1fr', lg: 'repeat(5, minmax(0, 1fr))'},
+                  gridTemplateColumns: {xs: '1fr 1fr', lg: 'repeat(6, minmax(0, 1fr))'},
                   gap: 2,
                 }}
               >
-                <StatCard label="Total members" value={dashboardStats.totalMembers} />
-                <StatCard label="Active" value={dashboardStats.activeMembers} accent="#1F8A5B" />
+                <StatCard
+                  label="Total members"
+                  value={statsLoaded ? dashboardStats.totalMembers : ''}
+                />
+                <StatCard
+                  label="Active"
+                  value={statsLoaded ? dashboardStats.activeMembers : ''}
+                  accent="#1F8A5B"
+                />
                 <StatCard
                   label="Expiring (30d)"
                   value={dashboardStats.expiringSoonMembers ?? ''}
@@ -426,7 +467,12 @@ export default function DashboardPage() {
                 />
                 <StatCard label="New this month" value={dashboardStats.newMembersThisMonth ?? ''} />
                 <StatCard
-                  label="Annual revenue"
+                  label="Renewals this month"
+                  value={dashboardStats.renewalsThisMonth ?? ''}
+                />
+                <StatCard
+                  label="Estimated annual dues"
+                  description="Active plans at standard rates; not payments received."
                   value={
                     dashboardStats.yearlyRevenue != null
                       ? `$${dashboardStats.yearlyRevenue.toLocaleString()}`
@@ -442,7 +488,12 @@ export default function DashboardPage() {
               >
                 <Paper className="dec-card" sx={{p: 3}}>
                   <Typography variant="h4" component="h2" sx={{mb: 3}}>
-                    Membership growth
+                    New members and renewals
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
+                    New members are counted at their first recorded membership period. Renewals are
+                    later periods, including returning members. Earlier renewal history may be
+                    incomplete. Months use UTC.
                   </Typography>
                   {dashboardStats.membershipGrowth?.length ? (
                     <Box sx={{height: 280}}>
@@ -451,6 +502,7 @@ export default function DashboardPage() {
                           data={dashboardStats.membershipGrowth.map((item) => ({
                             month: item.month,
                             members: item.count,
+                            renewals: item.renewals,
                           }))}
                           margin={{top: 10, right: 8, left: -18, bottom: 0}}
                         >
@@ -478,7 +530,19 @@ export default function DashboardPage() {
                             }}
                             labelStyle={{fontWeight: 800}}
                           />
-                          <Bar dataKey="members" fill="#F20E02" radius={[8, 8, 0, 0]} />
+                          <Legend />
+                          <Bar
+                            name="New members"
+                            dataKey="members"
+                            fill="#F20E02"
+                            radius={[8, 8, 0, 0]}
+                          />
+                          <Bar
+                            name="Renewals"
+                            dataKey="renewals"
+                            fill="#1F8A5B"
+                            radius={[8, 8, 0, 0]}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </Box>

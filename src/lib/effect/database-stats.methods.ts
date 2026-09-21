@@ -1,4 +1,5 @@
-import {eq} from 'drizzle-orm';
+import {eq, sql} from 'drizzle-orm';
+import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Effect} from 'effect';
 
 import {
@@ -6,6 +7,7 @@ import {
   membershipCards,
   memberships,
   membershipStats,
+  membershipPeriods,
   users,
 } from '@/src/db/schema/tables';
 
@@ -44,9 +46,57 @@ function rowToUserDocument(row: typeof users.$inferSelect): UserDocument {
 // Stats & admin method implementations
 // ---------------------------------------------------------------------------
 
-export function createStatsMethods() {
-  const db = getDb();
+export function createStatsMethods(
+  db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
+) {
   return {
+    getMembershipActivity: (from: Date, through: Date) =>
+      Effect.tryPromise({
+        try: async () => {
+          // Classify over the complete history before limiting the reporting window.
+          // Duplicate records for the same person and start date count only once.
+          const periods = db.$with('distinct_periods').as(
+            db
+              .selectDistinct({
+                userId: membershipPeriods.userId,
+                startDate: membershipPeriods.startDate,
+              })
+              .from(membershipPeriods),
+          );
+          const ranked = db.$with('ranked_periods').as(
+            db
+              .with(periods)
+              .select({
+                startDate: periods.startDate,
+                ordinal:
+                  sql<number>`row_number() over (partition by ${periods.userId} order by ${periods.startDate})`.as(
+                    'ordinal',
+                  ),
+              })
+              .from(periods),
+          );
+          const month = sql<string>`to_char(${ranked.startDate} AT TIME ZONE 'UTC', 'YYYY-MM')`;
+          return db
+            .with(ranked)
+            .select({
+              month,
+              newMembers: sql<number>`count(*) filter (where ${ranked.ordinal} = 1)::int`,
+              renewals: sql<number>`count(*) filter (where ${ranked.ordinal} > 1)::int`,
+            })
+            .from(ranked)
+            .where(
+              sql`${ranked.startDate} >= ${from.toISOString()}::timestamptz AND ${ranked.startDate} <= ${through.toISOString()}::timestamptz`,
+            )
+            .groupBy(month)
+            .orderBy(month);
+        },
+        catch: (error) =>
+          new DatabaseError({
+            code: 'GET_MEMBERSHIP_ACTIVITY_FAILED',
+            message: 'Failed to get membership activity',
+            cause: error,
+          }),
+      }),
     getStats: () =>
       Effect.tryPromise({
         try: async () => {
