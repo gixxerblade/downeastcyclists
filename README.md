@@ -133,6 +133,16 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+### Agent contribution guidance
+
+[AGENTS.md](./AGENTS.md) defines worktree conventions, the required quality checks,
+and architecture invariants. The checked-in
+[domain-boundaries skill](./.agents/skills/domain-boundaries/SKILL.md) explains how
+to apply domain ownership, reuse existing rules, and separate business decisions
+from presentation and transport in this Next.js and Effect codebase. Keep
+behavior-preserving refactors separately verifiable from behavior changes.
+These instructions guide review; they do not add automated architecture enforcement.
+
 ### Available Scripts
 
 ```bash
