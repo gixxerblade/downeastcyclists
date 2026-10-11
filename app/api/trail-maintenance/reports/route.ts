@@ -1,4 +1,4 @@
-import {NextRequest, NextResponse} from 'next/server';
+import {after, NextRequest, NextResponse} from 'next/server';
 
 import {sendTrailMaintenanceNotification} from '@/src/lib/trail-maintenance/notifications';
 import {
@@ -7,6 +7,7 @@ import {
 } from '@/src/lib/trail-maintenance/r2';
 import {
   createTrailMaintenanceReport,
+  findTrailMaintenanceSubmission,
   getTrailMaintenanceReportDetail,
   getTrailMaintenanceReportRecipients,
 } from '@/src/lib/trail-maintenance/repository';
@@ -39,6 +40,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const existing = await findTrailMaintenanceSubmission(uploadSession.payload.publicId);
+    if (existing)
+      return NextResponse.json({
+        publicId: existing.publicId,
+        reportUrl: `/report-trail-issue/${existing.publicId}`,
+      });
+
     const {uploadToken: _uploadToken, ...input} = parsed.data;
     const photos = await storeTrailMaintenancePhotosFromUploads({
       publicId: uploadSession.payload.publicId,
@@ -53,11 +61,18 @@ export async function POST(request: NextRequest) {
       remoteIp,
     });
 
-    const report = await getTrailMaintenanceReportDetail(created.id);
-    if (report) {
-      const recipients = await getTrailMaintenanceReportRecipients();
-      await sendTrailMaintenanceNotification({report, recipients});
-    }
+    if (created.created)
+      after(async () => {
+        try {
+          const report = await getTrailMaintenanceReportDetail(created.id);
+          if (report) {
+            const recipients = await getTrailMaintenanceReportRecipients();
+            await sendTrailMaintenanceNotification({report, recipients});
+          }
+        } catch (error) {
+          console.error('[TrailMaintenance] Report saved but notification failed:', error);
+        }
+      });
 
     return NextResponse.json(
       {

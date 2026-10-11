@@ -25,6 +25,7 @@ export const trailPhotoUploadDescriptorSchema = z.object({
 
 export const trailPhotoUploadRequestSchema = z.object({
   turnstileToken: z.string().trim().max(2048).optional(),
+  uploadToken: z.string().max(4096).optional(),
   files: z.array(trailPhotoUploadDescriptorSchema).max(TRAIL_MAINTENANCE_PHOTO_LIMIT, {
     message: `Upload up to ${TRAIL_MAINTENANCE_PHOTO_LIMIT} photos`,
   }),
@@ -112,6 +113,7 @@ export function createTrailPhotoUploadSession(
 export function verifyTrailPhotoUploadSession(
   token: string,
   now: Date = new Date(),
+  purpose: 'upload' | 'renewal' | 'receipt' = 'upload',
 ): TrailPhotoUploadSessionVerification {
   const [encodedPayload, encodedSignature, extraSegment] = token.split('.');
   if (!encodedPayload || !encodedSignature || extraSegment !== undefined) {
@@ -141,9 +143,29 @@ export function verifyTrailPhotoUploadSession(
   }
 
   const nowSeconds = Math.floor(now.getTime() / 1000);
-  if (decoded.data.exp <= nowSeconds || decoded.data.iat > nowSeconds + 60) {
+  if (
+    (purpose !== 'receipt' &&
+      (purpose === 'renewal' ? decoded.data.iat + 7 * 24 * 60 * 60 : decoded.data.exp) <=
+        nowSeconds) ||
+    decoded.data.iat > nowSeconds + 60
+  ) {
     return {ok: false};
   }
 
   return {ok: true, payload: decoded.data};
+}
+
+// Renewal keeps the original authorization deadline and identity; it cannot extend indefinitely.
+export function renewTrailPhotoUploadSession(token: string, now = new Date()) {
+  const verified = verifyTrailPhotoUploadSession(token, now, 'renewal');
+  if (!verified.ok) return null;
+  const payload = {
+    ...verified.payload,
+    exp: Math.min(
+      Math.floor(now.getTime() / 1000) + TRAIL_MAINTENANCE_UPLOAD_TTL_SECONDS,
+      verified.payload.iat + 7 * 24 * 60 * 60,
+    ),
+  };
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return {payload, token: `${encoded}.${signatureFor(encoded).toString('base64url')}`};
 }

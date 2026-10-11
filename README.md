@@ -44,7 +44,11 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Supports issue type selection, observed date/time, trail segment, location notes, browser geolocation, optional reporter contact, and up to three 20 MB photos
   - Uses Cloudflare Turnstile when configured
   - Uploads photos directly from the browser to short-lived private R2 staging objects, then validates and normalizes them server-side when the report is finalized
-  - Redirects submitters to a public confirmation/status page (`/report-trail-issue/[publicId]`)
+  - Saves reports and photo files on the phone using TanStack DB IndexedDB collections before opening `/report-trail-issue/pending/[id]`; this local status page distinguishes queued, submitting, bot-check-required, failed, and submitted reports
+  - Retries transient failures with backoff while any DEC page is running, on reconnect/focus, and when reopening DEC. Mobile browsers can suspend uploads after locking the phone or closing the site; local data is subject to browser deletion/eviction. This does not provide offline startup caching or guaranteed closed-tab uploads
+  - Renewals preserve an authorized upload identity for up to seven days from the original bot check; an expired or missing bot check requires the rider to complete it on the pending report page
+  - Organizers receive a report only after its images have uploaded and passed server validation. Report, photo metadata, and creation event commit atomically; signed receipt checks and the unique public ID prevent retry duplicates
+  - Submitted reports link to `/report-trail-issue/[publicId]`; local photo bytes and upload authorization are removed after receipt confirmation. Organizer email runs after the response and does not block confirmation; notification failures are logged, without a durable email retry queue
 
 ### Contact
 
