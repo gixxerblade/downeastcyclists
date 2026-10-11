@@ -185,7 +185,7 @@ export async function createTrailMaintenanceReport({
   readonly publicId?: string;
   readonly userAgent: string | null;
   readonly remoteIp: string | null;
-}): Promise<{readonly id: string; readonly publicId: string}> {
+}): Promise<{readonly id: string; readonly publicId: string; readonly created: boolean}> {
   const [system] = await db
     .select()
     .from(trailSystems)
@@ -209,9 +209,11 @@ export async function createTrailMaintenanceReport({
     throw new Error('Trail not found');
   }
 
-  const [report] = await db
+  const id = randomUUID();
+  const reportInsert = db
     .insert(trailMaintenanceReports)
     .values({
+      id,
       publicId,
       trailSystemId: system.id,
       trailSegmentId: segment.id,
@@ -233,30 +235,39 @@ export async function createTrailMaintenanceReport({
     })
     .returning();
 
-  if (photos.length > 0) {
-    await db.insert(trailMaintenancePhotos).values(
-      photos.map((photo) => ({
-        reportId: report.id,
-        bucketName: photo.bucketName,
-        objectKey: photo.objectKey,
-        originalFilename: photo.originalFilename,
-        contentType: photo.contentType,
-        byteSize: photo.byteSize,
-        sortOrder: photo.sortOrder,
-        createdAt: new Date(),
-      })),
-    );
-  }
-
-  await db.insert(trailMaintenanceEvents).values({
-    reportId: report.id,
+  const eventInsert = db.insert(trailMaintenanceEvents).values({
+    reportId: id,
     eventType: 'created',
     actorLabel: 'Public reporter',
     details: {photoCount: photos.length},
     createdAt: new Date(),
   });
-
-  return {id: report.id, publicId};
+  try {
+    // Neon HTTP batches are transactional: report, photos, and creation event commit together.
+    if (photos.length > 0) {
+      const photoInsert = db.insert(trailMaintenancePhotos).values(
+        photos.map((photo) => ({
+          reportId: id,
+          bucketName: photo.bucketName,
+          objectKey: photo.objectKey,
+          originalFilename: photo.originalFilename,
+          contentType: photo.contentType,
+          byteSize: photo.byteSize,
+          sortOrder: photo.sortOrder,
+          createdAt: new Date(),
+        })),
+      );
+      await db.batch([reportInsert, photoInsert, eventInsert]);
+    } else {
+      await db.batch([reportInsert, eventInsert]);
+    }
+    return {id, publicId, created: true};
+  } catch (error) {
+    // The unique public ID also handles simultaneous retries after a lost response.
+    const existing = await findTrailMaintenanceSubmission(publicId);
+    if (existing) return {...existing, created: false};
+    throw error;
+  }
 }
 
 export async function getTrailMaintenanceReportRecipients(): Promise<string[]> {
@@ -615,4 +626,13 @@ export async function markCountyEmailGenerated({
     actorLabel: actorLabel(actor),
     createdAt: new Date(),
   });
+}
+
+export async function findTrailMaintenanceSubmission(publicId: string) {
+  const [report] = await db
+    .select({id: trailMaintenanceReports.id, publicId: trailMaintenanceReports.publicId})
+    .from(trailMaintenanceReports)
+    .where(eq(trailMaintenanceReports.publicId, publicId))
+    .limit(1);
+  return report ?? null;
 }

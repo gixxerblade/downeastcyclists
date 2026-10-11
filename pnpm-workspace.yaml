@@ -31,3 +31,7 @@ allowBuilds:
   sharp: true
   unix-dgram: true
   unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - '@tanstack/db@0.13.0'
+  - '@tanstack/react-db@0.5.8'

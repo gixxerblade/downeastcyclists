@@ -10,6 +10,7 @@ import {AuthProvider} from '@/src/components/auth/AuthProvider';
 import FooterWrapper from '@/src/components/FooterWrapper';
 import Navbar from '@/src/components/navbar';
 import ThemeRegistry from '@/src/components/ThemeRegistry/ThemeRegistry';
+import {TrailOutboxRunner} from '@/src/components/trail-maintenance/TrailOutboxRunner';
 import QueryProvider from '@/src/providers/QueryProvider';
 
 export const viewport: Viewport = {
@@ -49,6 +50,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         <ThemeRegistry>
           <QueryProvider>
             <AuthProvider>
+              <TrailOutboxRunner />
               <Navbar />
               <div className="content-wrapper">{children}</div>
               <FooterWrapper />
