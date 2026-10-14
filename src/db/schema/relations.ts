@@ -12,6 +12,8 @@ import {
   trailSegments,
   trailSystems,
   users,
+  waiverSignatures,
+  waiverTemplates,
 } from './tables';
 
 export const usersRelations = relations(users, ({many}) => ({
@@ -19,6 +21,7 @@ export const usersRelations = relations(users, ({many}) => ({
   membershipCards: many(membershipCards),
   auditLogs: many(auditLog),
   emailLogs: many(emailLog),
+  waiverSignatures: many(waiverSignatures),
   assignedTrailMaintenanceReports: many(trailMaintenanceReports, {
     relationName: 'assignedTrailMaintenanceReports',
   }),
@@ -129,6 +132,21 @@ export const trailMaintenanceEventsRelations = relations(trailMaintenanceEvents,
   }),
   actor: one(users, {
     fields: [trailMaintenanceEvents.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export const waiverTemplatesRelations = relations(waiverTemplates, ({many}) => ({
+  signatures: many(waiverSignatures),
+}));
+
+export const waiverSignaturesRelations = relations(waiverSignatures, ({one}) => ({
+  template: one(waiverTemplates, {
+    fields: [waiverSignatures.waiverTemplateId],
+    references: [waiverTemplates.id],
+  }),
+  user: one(users, {
+    fields: [waiverSignatures.userId],
     references: [users.id],
   }),
 }));

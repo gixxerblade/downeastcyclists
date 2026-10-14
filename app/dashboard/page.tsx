@@ -2,6 +2,7 @@
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DirectionsBikeIcon from '@mui/icons-material/DirectionsBike';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
@@ -42,6 +43,7 @@ import {MembershipManagement} from '@/src/components/admin/MembershipManagement'
 import {OrganizerManagement} from '@/src/components/admin/OrganizerManagement';
 import {ReconciliationTool} from '@/src/components/admin/ReconciliationTool';
 import {TrailMaintenanceManagement} from '@/src/components/admin/TrailMaintenanceManagement';
+import {WaiverManagement} from '@/src/components/admin/WaiverManagement';
 import {useAuth} from '@/src/components/auth/AuthProvider';
 import TrailStatus from '@/src/components/TrailStatus';
 import TrailStatusEditor from '@/src/components/TrailStatusEditor';
@@ -53,6 +55,7 @@ type AdminSection =
   | 'action-log'
   | 'trails'
   | 'trail-maintenance'
+  | 'waivers'
   | 'reconciliation'
   | 'organizers';
 
@@ -91,6 +94,11 @@ const allSections: Array<{
     id: 'trail-maintenance',
     label: 'Maintenance',
     icon: <ReportProblemIcon fontSize="small" />,
+  },
+  {
+    id: 'waivers',
+    label: 'Waivers',
+    icon: <FactCheckIcon fontSize="small" />,
   },
   {
     id: 'reconciliation',
@@ -614,6 +622,8 @@ export default function DashboardPage() {
           )}
 
           {section === 'trail-maintenance' && <TrailMaintenanceManagement />}
+
+          {section === 'waivers' && <WaiverManagement role={staffRole} />}
 
           {section === 'reconciliation' && staffRole === 'admin' && <ReconciliationTool />}
 

@@ -16,6 +16,7 @@ import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {useEffect, useState} from 'react';
 
+import {MemberWaiverGate} from '@/src/components/waivers/MemberWaiverGate';
 import {getDigitalCard} from '@/src/lib/effect/client-card';
 import type {CardError, NotFoundError, SessionError} from '@/src/lib/effect/errors';
 import type {
@@ -131,190 +132,199 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
   }
 
   return (
-    <Box className="dec-page" sx={{minHeight: '100vh'}}>
-      <Container maxWidth="lg" sx={{py: {xs: 5, md: 8}}}>
-        {/* Success message after checkout */}
-        {sessionId && membership && (
-          <Alert severity="success" sx={{mb: 3}}>
-            Welcome! Your membership has been activated successfully.
-          </Alert>
-        )}
-
-        {/* Warning if polling timed out */}
-        {sessionId && !membership && pollAttempts >= 10 && (
-          <Alert severity="warning" sx={{mb: 3}}>
-            Your payment is being processed. If your membership doesn&apos;t appear shortly, please
-            refresh the page or contact support.
-          </Alert>
-        )}
-
-        <Box
-          sx={{
-            mb: 5,
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 3,
-            flexDirection: {xs: 'column', md: 'row'},
-          }}
-        >
-          <Box>
-            <Typography
-              variant="overline"
-              sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}
-            >
-              MEMBER PORTAL
-            </Typography>
-            <Typography variant="h1" sx={{fontSize: {xs: 54, md: 86}, lineHeight: 0.9}}>
-              Welcome back
-            </Typography>
-            <Typography color="text.secondary" sx={{mt: 2, fontSize: 18}}>
-              {user.name || user.email}
-            </Typography>
-          </Box>
-          {membership && (
-            <Chip
-              label={membership.status.replace('_', ' ')}
-              color={
-                membership.status === 'expired'
-                  ? 'error'
-                  : membership.status === 'active'
-                    ? 'success'
-                    : 'warning'
-              }
-              sx={{
-                alignSelf: {xs: 'flex-start', md: 'center'},
-                fontWeight: 800,
-                borderRadius: 999,
-                px: 1,
-              }}
-            />
+    <MemberWaiverGate
+      memberName={user.name || ''}
+      requireHousehold={membership?.planType === 'family'}
+    >
+      <Box className="dec-page" sx={{minHeight: '100vh'}}>
+        <Container maxWidth="lg" sx={{py: {xs: 5, md: 8}}}>
+          {/* Success message after checkout */}
+          {sessionId && membership && (
+            <Alert severity="success" sx={{mb: 3}}>
+              Welcome! Your membership has been activated successfully.
+            </Alert>
           )}
-        </Box>
 
-        {currentMembership ? (
+          {/* Warning if polling timed out */}
+          {sessionId && !membership && pollAttempts >= 10 && (
+            <Alert severity="warning" sx={{mb: 3}}>
+              Your payment is being processed. If your membership doesn&apos;t appear shortly,
+              please refresh the page or contact support.
+            </Alert>
+          )}
+
           <Box
             sx={{
-              display: 'grid',
-              gridTemplateColumns: {xs: '1fr', lg: '.9fr 1.1fr'},
+              mb: 5,
+              display: 'flex',
+              justifyContent: 'space-between',
               gap: 3,
-              alignItems: 'start',
+              flexDirection: {xs: 'column', md: 'row'},
             }}
           >
-            <Box sx={{display: 'grid', gap: 3}}>
-              <Paper className="dec-card" sx={{p: 3}}>
-                <Typography variant="h4" component="h2" sx={{mb: 2}}>
-                  Account details
-                </Typography>
-                <Box sx={{display: 'grid', gap: 1.5}}>
-                  <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
-                    <Typography color="text.secondary">Name</Typography>
-                    <Typography fontWeight={700}>{user.name || 'Not set'}</Typography>
-                  </Box>
-                  <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
-                    <Typography color="text.secondary">Email</Typography>
-                    <Typography fontWeight={700}>{user.email}</Typography>
-                  </Box>
-                  <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
-                    <Typography color="text.secondary">Plan</Typography>
-                    <Typography fontWeight={700}>{currentMembership.planName}</Typography>
-                  </Box>
-                  <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
-                    <Typography color="text.secondary">Renews</Typography>
-                    <Typography fontWeight={700}>
-                      {new Date(currentMembership.endDate).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{mt: 3, display: 'flex', flexWrap: 'wrap', gap: 1.5}}>
-                  {canManageSubscription && (
-                    <PortalButton
-                      returnUrl={`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/member`}
-                    />
-                  )}
-                  <Button variant="outlined" disabled>
-                    Edit profile
-                  </Button>
-                </Box>
-              </Paper>
+            <Box>
+              <Typography
+                variant="overline"
+                sx={{color: '#F20E02', fontWeight: 800, letterSpacing: '.1em'}}
+              >
+                MEMBER PORTAL
+              </Typography>
+              <Typography variant="h1" sx={{fontSize: {xs: 54, md: 86}, lineHeight: 0.9}}>
+                Welcome back
+              </Typography>
+              <Typography color="text.secondary" sx={{mt: 2, fontSize: 18}}>
+                {user.name || user.email}
+              </Typography>
+            </Box>
+            {membership && (
+              <Chip
+                label={membership.status.replace('_', ' ')}
+                color={
+                  membership.status === 'expired'
+                    ? 'error'
+                    : membership.status === 'active'
+                      ? 'success'
+                      : 'warning'
+                }
+                sx={{
+                  alignSelf: {xs: 'flex-start', md: 'center'},
+                  fontWeight: 800,
+                  borderRadius: 999,
+                  px: 1,
+                }}
+              />
+            )}
+          </Box>
 
-              <MembershipCard membership={currentMembership} />
-              <MembershipCard membership={currentMembership} />
+          {currentMembership ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {xs: '1fr', lg: '.9fr 1.1fr'},
+                gap: 3,
+                alignItems: 'start',
+              }}
+            >
+              <Box sx={{display: 'grid', gap: 3}}>
+                <Paper className="dec-card" sx={{p: 3}}>
+                  <Typography variant="h4" component="h2" sx={{mb: 2}}>
+                    Account details
+                  </Typography>
+                  <Box sx={{display: 'grid', gap: 1.5}}>
+                    <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
+                      <Typography color="text.secondary">Name</Typography>
+                      <Typography fontWeight={700}>{user.name || 'Not set'}</Typography>
+                    </Box>
+                    <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
+                      <Typography color="text.secondary">Email</Typography>
+                      <Typography fontWeight={700}>{user.email}</Typography>
+                    </Box>
+                    <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
+                      <Typography color="text.secondary">Plan</Typography>
+                      <Typography fontWeight={700}>{currentMembership.planName}</Typography>
+                    </Box>
+                    <Box sx={{display: 'flex', justifyContent: 'space-between', gap: 2}}>
+                      <Typography color="text.secondary">Renews</Typography>
+                      <Typography fontWeight={700}>
+                        {new Date(currentMembership.endDate).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{mt: 3, display: 'flex', flexWrap: 'wrap', gap: 1.5}}>
+                    {canManageSubscription && (
+                      <PortalButton
+                        returnUrl={`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/member`}
+                      />
+                    )}
+                    <Button variant="outlined" disabled>
+                      Edit profile
+                    </Button>
+                  </Box>
+                </Paper>
 
-              <Paper className="dec-card" sx={{p: 3}}>
-                <Typography variant="h4" component="h2" sx={{mb: 2}}>
-                  Quick actions
-                </Typography>
-                <Box
-                  sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', sm: '1fr 1fr'}, gap: 1.5}}
-                >
-                  <Button
-                    component={Link}
-                    href="https://www.meetup.com/down-east-cyclists/events/calendar/"
-                    target="_blank"
-                    variant="outlined"
+                <MembershipCard membership={currentMembership} />
+                <MembershipCard membership={currentMembership} />
+
+                <Paper className="dec-card" sx={{p: 3}}>
+                  <Typography variant="h4" component="h2" sx={{mb: 2}}>
+                    Quick actions
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {xs: '1fr', sm: '1fr 1fr'},
+                      gap: 1.5,
+                    }}
                   >
-                    Rides ↗
-                  </Button>
-                  <Button component={Link} href="/trails/b3" variant="outlined">
-                    Trails
-                  </Button>
-                  <Button component={Link} href="/blog" variant="outlined">
-                    News
-                  </Button>
-                  <Button component={Link} href="/contact" variant="outlined">
-                    Help
-                  </Button>
-                </Box>
+                    <Button
+                      component={Link}
+                      href="https://www.meetup.com/down-east-cyclists/events/calendar/"
+                      target="_blank"
+                      variant="outlined"
+                    >
+                      Rides ↗
+                    </Button>
+                    <Button component={Link} href="/trails/b3" variant="outlined">
+                      Trails
+                    </Button>
+                    <Button component={Link} href="/blog" variant="outlined">
+                      News
+                    </Button>
+                    <Button component={Link} href="/contact" variant="outlined">
+                      Help
+                    </Button>
+                  </Box>
+                </Paper>
+              </Box>
+
+              <Paper className="dec-card" sx={{p: {xs: 2, md: 4}}}>
+                <Typography variant="h4" component="h2" sx={{mb: 1}}>
+                  Digital membership card
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
+                  Show this QR code to verify your membership at events and partner locations.
+                </Typography>
+                {cardQuery.isLoading ? (
+                  <DigitalCard card={{} as MembershipCardSchema} loading />
+                ) : cardQuery.data?.hasCard && cardQuery.data.card ? (
+                  <DigitalCard card={cardQuery.data.card} />
+                ) : cardQuery.error ? (
+                  <Paper sx={{p: 3, textAlign: 'center'}}>
+                    <Typography color="error">{cardQuery.error.message}</Typography>
+                    <Button variant="text" onClick={() => cardQuery.refetch()} sx={{mt: 1}}>
+                      Try Again
+                    </Button>
+                  </Paper>
+                ) : (
+                  <Paper sx={{p: 3, textAlign: 'center'}}>
+                    <Typography color="text.secondary">
+                      Your digital membership card is being generated. This usually takes a few
+                      moments after checkout.
+                    </Typography>
+                    <Button variant="text" onClick={() => cardQuery.refetch()} sx={{mt: 1}}>
+                      Check Again
+                    </Button>
+                  </Paper>
+                )}
               </Paper>
             </Box>
-
-            <Paper className="dec-card" sx={{p: {xs: 2, md: 4}}}>
-              <Typography variant="h4" component="h2" sx={{mb: 1}}>
-                Digital membership card
+          ) : (
+            <Paper sx={{p: 3, textAlign: 'center'}}>
+              <Typography variant="h6" gutterBottom>
+                {membership?.status === 'expired' ? 'Membership Expired' : 'No Active Membership'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{mb: 3}}>
-                Show this QR code to verify your membership at events and partner locations.
+              <Typography color="text.secondary" sx={{mb: 2}}>
+                {membership?.status === 'expired'
+                  ? 'Renew your membership to restore your digital card and member benefits.'
+                  : 'You don&apos;t have an active membership yet.'}
               </Typography>
-              {cardQuery.isLoading ? (
-                <DigitalCard card={{} as MembershipCardSchema} loading />
-              ) : cardQuery.data?.hasCard && cardQuery.data.card ? (
-                <DigitalCard card={cardQuery.data.card} />
-              ) : cardQuery.error ? (
-                <Paper sx={{p: 3, textAlign: 'center'}}>
-                  <Typography color="error">{cardQuery.error.message}</Typography>
-                  <Button variant="text" onClick={() => cardQuery.refetch()} sx={{mt: 1}}>
-                    Try Again
-                  </Button>
-                </Paper>
-              ) : (
-                <Paper sx={{p: 3, textAlign: 'center'}}>
-                  <Typography color="text.secondary">
-                    Your digital membership card is being generated. This usually takes a few
-                    moments after checkout.
-                  </Typography>
-                  <Button variant="text" onClick={() => cardQuery.refetch()} sx={{mt: 1}}>
-                    Check Again
-                  </Button>
-                </Paper>
-              )}
+              <Button component={Link} href="/renew" variant="contained" color="primary">
+                {membership?.status === 'expired' ? 'Renew Membership' : 'Complete Membership'}
+              </Button>
             </Paper>
-          </Box>
-        ) : (
-          <Paper sx={{p: 3, textAlign: 'center'}}>
-            <Typography variant="h6" gutterBottom>
-              {membership?.status === 'expired' ? 'Membership Expired' : 'No Active Membership'}
-            </Typography>
-            <Typography color="text.secondary" sx={{mb: 2}}>
-              {membership?.status === 'expired'
-                ? 'Renew your membership to restore your digital card and member benefits.'
-                : 'You don&apos;t have an active membership yet.'}
-            </Typography>
-            <Button component={Link} href="/renew" variant="contained" color="primary">
-              Renew Membership
-            </Button>
-          </Paper>
-        )}
-      </Container>
-    </Box>
+          )}
+        </Container>
+      </Box>
+    </MemberWaiverGate>
   );
 }

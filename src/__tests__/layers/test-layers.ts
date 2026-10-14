@@ -148,6 +148,7 @@ export const createTestEmailService = (
   sendRenewalEmail: vi.fn(() => Effect.void),
   sendUpcomingRenewalEmail: vi.fn(() => Effect.void),
   sendOrganizerAccessGrantedEmail: vi.fn(() => Effect.void),
+  sendWaiverSignatureRequestEmail: vi.fn(() => Effect.void),
   ...overrides,
 });
 

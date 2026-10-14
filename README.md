@@ -58,8 +58,8 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 ### Membership & Payments
 
-- **Join** (`/join`): Membership signup flow with Stripe checkout (individual and family plans)
-- **Member Portal** (`/member`): Authenticated member dashboard with digital membership card and QR code
+- **Join** (`/join`): Membership signup flow with a required digital liability waiver before Stripe checkout (individual and family plans)
+- **Member Portal** (`/member`): Authenticated member dashboard with digital membership card, QR code, required-waiver gate, and print-ready signed records
 - **Renew** (`/renew`): Frictionless membership renewal flow that can be linked directly from renewal emails
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
@@ -82,6 +82,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Expiring member reports and manual renewal email sends
   - Payment reconciliation and refunds
   - Audit trails for member, payment, renewal email, reconciliation, import, and role changes
+  - Versioned liability waiver templates, signed/pending completion tracking, one-time unsigned-member email campaigns, and instant access to signed records
 - **Login** (`/login`): Authentication page for admin access
 
 ### Scheduled Jobs
@@ -151,6 +152,8 @@ These instructions guide review; they do not add automated architecture enforcem
 
 ```bash
 pnpm dev              # Start development server
+pnpm dev:waivers      # Start isolated local waiver sandbox (no real credentials)
+pnpm test:waivers:e2e # Browser acceptance tests against a fresh running sandbox
 pnpm build            # Production build
 pnpm start            # Start production server
 pnpm tsc              # TypeScript type-checking
@@ -170,6 +173,52 @@ pnpm db:push          # Push schema directly to database
 pnpm db:studio        # Launch Drizzle Studio UI
 ```
 
+### Isolated waiver rehearsal
+
+Use Node.js 22+ and a worktree **without `.env` files or decrypted Firebase credentials**. The sandbox refuses
+to start if those files are present, and does not inherit provider secrets from your shell.
+It uses the official Firebase Auth emulator (`demo-dec-waivers`), a local PGlite PostgreSQL
+database with the real migrations, a captured email inbox, and a clearly labeled payment
+simulator. No Docker, running PostgreSQL server, or cloud credentials are needed.
+
+```bash
+pnpm dev:waivers
+```
+
+- Website: <http://127.0.0.1:3000/login>; new-member flow: <http://127.0.0.1:3000/join>.
+- Test desk, account list, and captured messages: <http://127.0.0.1:4311>.
+- Accounts: `admin@example.test`, `individual@example.test`, `family@example.test`,
+  `returning@example.test`, and `outsider@example.test`. All use `WaiverTest123!`.
+- Every restart starts fresh unsigned accounts. Logs and databases from earlier runs remain
+  under ignored `.local/waiver-tests/run-*` directories. Ctrl+C stops the sandbox services.
+- Only loopback addresses are accepted; local provider overrides fail in production. Never
+  deploy these test environment settings or use real member information in the sandbox.
+
+For automated browser checks, start a **fresh** sandbox, then in another terminal run:
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:waivers:e2e
+```
+
+The browser suite exercises the real application and database, including household signing,
+revision history, print records, record privacy, invitation deduplication, and interrupted
+signup. Reports and failure traces are in ignored `playwright-report` and `test-results`.
+Restart again afterward to give a human tester clean unsigned accounts. Stop the development
+server before running a production build because both use `.next`.
+
+Manual rehearsal order: sign as an existing individual; sign as a family with an adult and a
+child; print the saved copy; edit the family and verify the original copy is unchanged; use
+the administrator's **Waivers → Email unsigned members once** action and inspect the local
+inbox; follow a captured invitation in a signed-out browser; abandon a new-member form and
+return; then sign a new-member waiver and cancel or complete simulated checkout.
+
+This does **not** verify real email delivery or Stripe's hosted checkout. Before the one-time
+production invitation, separately rehearse those integrations with approved test recipients
+and Stripe test mode. Current product gaps remain: signed-copy receipt emails are not sent;
+staff invitations lead to the dashboard without a personal signing route; unsigned form
+drafts do not survive a reload. A saved signature does survive checkout cancellation.
+
 ### Content Management
 
 Content is managed through Contentful. To regenerate the content types:
@@ -183,6 +232,35 @@ This command generates TypeScript types based on your Contentful content models.
 ### Database
 
 The primary database is PostgreSQL via Neon (serverless), managed with Drizzle ORM. Schema definitions live in `src/db/schema/` and migrations are in `drizzle/`.
+
+Liability waiver templates are immutable after publication. The default uses the treasurer's
+insurer-approved DOCX wording with transcription errors corrected and the membership application
+removed. Migration 0013 replaces only the original system seed with version 2; custom templates
+and existing signed records remain intact.
+
+Waiver migrations `0009`–`0013` follow the published membership migrations `0006`–`0008`.
+The migration regression test upgrades a populated pre-waiver database, checks that member
+and renewal history survives, and verifies that repeated deployments do not repeat the seed.
+
+For family memberships, an adult head of household or initial member signs once for everyone
+listed. The signer is included automatically; every additional family member needs a full name
+and birth date. No separate adult invitations or child signatures are collected. The join flow
+selects family signing for family plans, and family checkout requires a household waiver.
+Existing family members complete the same form in the member portal.
+
+Each signature stores the exact terms, acknowledgment, household/electronic signing statement,
+complete roster, contact details, authenticated account identity, timestamp, browser evidence,
+and a SHA-256 content digest. Dates must be real and not in the future, the signer must be at
+least 18, and duplicate name/birth-date entries are rejected. Abandoning the form leaves it
+unsigned. A saved signature remains complete even if checkout is abandoned; members can log
+in to continue. Identical submission retries return the existing record.
+
+Members can use **Update family details** to add, remove, or correct roster entries and sign
+again. Each change creates an immutable revision; concurrent stale changes are rejected.
+The portal and admin completion view use the latest revision, and the member can open earlier
+copies. Signed records include a name/birth-date table and the household signer's signature,
+and can be printed or saved as PDF in the browser. Access requires the owning account or
+staff with waiver-read permission. Roster changes never rewrite an earlier signed copy.
 
 ```bash
 pnpm db:generate         # Generate migration from schema changes
@@ -256,6 +334,8 @@ The following environment variables need to be set in Netlify:
 - `RENEWAL_LINK_TTL_DAYS`: Optional renewal-link lifetime from 1 to 365 days. Defaults to 120.
 - `RATE_LIMIT_SECRET`: Independent random secret of at least 32 characters used to protect stored
   rate-limit identifiers.
+- `WAIVER_SIGNATURE_SECRET`: Independent random secret of at least 32 characters used to HMAC
+  signer IP addresses before they are stored with waiver evidence.
 
 **Stripe:**
 

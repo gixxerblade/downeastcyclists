@@ -15,6 +15,11 @@ export const privacy = [
           <ul>
             <li>Name</li>
             <li>Email address</li>
+            <li>Phone number and mailing address</li>
+            <li>
+              Liability waiver signatures, signature timestamps, and the names and birth dates of
+              the signer and any family members listed on a household waiver
+            </li>
           </ul>
         </div>
       </>
@@ -119,14 +124,16 @@ export const privacy = [
     body: () => (
       <>
         <div className="content">
-          <p>Our Service does not address anyone under the age of 18 (“Children”).</p>
+          <p>
+            An adult head of household or initial member may complete the club’s family waiver and
+            list family members, including children under the age of 18.
+          </p>
           <br />
           <p>
-            We do not knowingly collect personally identifiable information from children under 18.
-            If you are a parent or guardian and you are aware that your child has provided us with
-            Personal Information, please contact us. If we discover that a child under 18 has
-            provided us with Personal Information, we will delete such information from our servers
-            immediately.
+            We collect a minor participant’s name and birth date as part of the household’s signed
+            family list. The adult signs once for the listed family members; children do not need
+            accounts or separate electronic signatures. Contact us if information about a minor was
+            submitted without appropriate authority.
           </p>
         </div>
       </>

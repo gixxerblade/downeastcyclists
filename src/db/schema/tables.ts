@@ -24,6 +24,9 @@ import {
   trailIssueStatusEnum,
   trailIssueTypeEnum,
   trailLocationSourceEnum,
+  waiverScopeEnum,
+  waiverSignerRoleEnum,
+  waiverStatusEnum,
   webhookStatusEnum,
 } from './enums';
 
@@ -449,5 +452,83 @@ export const rateLimitBuckets = pgTable(
   (table) => [
     uniqueIndex('rate_limit_buckets_scope_identifier_idx').on(table.scope, table.identifierHash),
     index('rate_limit_buckets_expires_at_idx').on(table.expiresAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// 13. Liability waivers
+// ---------------------------------------------------------------------------
+
+export const waiverTemplates = pgTable(
+  'waiver_templates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    title: varchar('title', {length: 255}).notNull(),
+    description: text('description'),
+    scope: waiverScopeEnum('scope').notNull().default('membership'),
+    status: waiverStatusEnum('status').notNull().default('draft'),
+    version: integer('version').notNull().default(1),
+    content: text('content').notNull(),
+    acknowledgment: text('acknowledgment').notNull(),
+    isRequired: boolean('is_required').notNull().default(true),
+    effectiveFrom: timestamp('effective_from', {withTimezone: true}),
+    expiresAt: timestamp('expires_at', {withTimezone: true}),
+    createdBy: varchar('created_by', {length: 128}).notNull(),
+    createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('waiver_templates_title_version_idx').on(table.title, table.version),
+    index('waiver_templates_status_scope_idx').on(table.status, table.scope),
+    index('waiver_templates_effective_idx').on(table.effectiveFrom, table.expiresAt),
+  ],
+);
+
+export const waiverSignatures = pgTable(
+  'waiver_signatures',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    waiverTemplateId: uuid('waiver_template_id')
+      .notNull()
+      .references(() => waiverTemplates.id, {onDelete: 'restrict'}),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'restrict'}),
+    signerRole: waiverSignerRoleEnum('signer_role').notNull(),
+    revision: integer('revision').notNull().default(1),
+    participants: jsonb('participants')
+      .$type<Array<{name: string; birthDate: string}>>()
+      .notNull()
+      .default([]),
+    participantName: varchar('participant_name', {length: 255}).notNull(),
+    participantBirthDate: varchar('participant_birth_date', {length: 10}),
+    guardianName: varchar('guardian_name', {length: 255}),
+    signerName: varchar('signer_name', {length: 255}).notNull(),
+    signerEmail: varchar('signer_email', {length: 255}).notNull(),
+    phone: varchar('phone', {length: 50}).notNull(),
+    addressStreet: varchar('address_street', {length: 255}).notNull(),
+    addressCity: varchar('address_city', {length: 100}).notNull(),
+    addressState: varchar('address_state', {length: 50}).notNull(),
+    addressZip: varchar('address_zip', {length: 20}).notNull(),
+    templateTitle: varchar('template_title', {length: 255}).notNull(),
+    templateVersion: integer('template_version').notNull(),
+    termsSnapshot: text('terms_snapshot').notNull(),
+    acknowledgmentSnapshot: text('acknowledgment_snapshot').notNull(),
+    participantSignatureText: varchar('participant_signature_text', {length: 255}).notNull(),
+    signatureText: varchar('signature_text', {length: 255}).notNull(),
+    consentText: text('consent_text').notNull(),
+    documentDigest: varchar('document_digest', {length: 64}).notNull(),
+    ipAddressHash: varchar('ip_address_hash', {length: 64}),
+    userAgent: text('user_agent'),
+    signedAt: timestamp('signed_at', {withTimezone: true}).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('waiver_signatures_user_template_revision_idx').on(
+      table.userId,
+      table.waiverTemplateId,
+      table.revision,
+    ),
+    index('waiver_signatures_template_signed_idx').on(table.waiverTemplateId, table.signedAt),
+    index('waiver_signatures_user_signed_idx').on(table.userId, table.signedAt),
   ],
 );

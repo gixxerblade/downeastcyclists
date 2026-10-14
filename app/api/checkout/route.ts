@@ -10,6 +10,7 @@ import {CheckoutApiRequest} from '@/src/lib/effect/schemas';
 import {getFirebaseAdmin} from '@/src/lib/firebase-admin';
 import {consumeRateLimit} from '@/src/lib/rate-limit';
 import {verifyRenewalToken} from '@/src/lib/renewal-token';
+import {hasSignedRequiredMembershipWaiver} from '@/src/lib/waivers/service';
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
@@ -91,6 +92,22 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const checkoutUserId = renewalUserId ?? sessionUserId;
+      const requireHousehold =
+        !!process.env.STRIPE_PRICE_FAMILY &&
+        validatedRequest.priceId === process.env.STRIPE_PRICE_FAMILY;
+      if (
+        !checkoutUserId ||
+        !(yield* hasSignedRequiredMembershipWaiver(checkoutUserId, requireHousehold))
+      ) {
+        return yield* new ValidationError({
+          field: 'waiver',
+          message: requireHousehold
+            ? 'Complete the family waiver in your member portal before checkout'
+            : 'Sign the required liability waiver in your member portal before checkout',
+        });
+      }
+
       const membershipService = yield* MembershipService;
       return yield* membershipService.createCheckoutSession({
         priceId: validatedRequest.priceId,
@@ -99,7 +116,7 @@ export async function POST(request: NextRequest) {
         cancelUrl: validatedRequest.cancelUrl,
         coverFees: validatedRequest.coverFees,
         planPrice: validatedRequest.planPrice,
-        userId: renewalUserId ?? sessionUserId,
+        userId: checkoutUserId,
       });
     }),
 

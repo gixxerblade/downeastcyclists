@@ -41,6 +41,14 @@ export interface EmailService {
     supportEmail: string;
     idempotencyKey: string;
   }) => Effect.Effect<void, EmailError>;
+
+  readonly sendWaiverSignatureRequestEmail: (params: {
+    to: string;
+    name: string | undefined;
+    waiverTitle: string;
+    signUrl: string;
+    idempotencyKey: string;
+  }) => Effect.Effect<void, EmailError>;
 }
 
 export const EmailService = Context.GenericTag<EmailService>('EmailService');
@@ -432,6 +440,55 @@ const make = Effect.gen(function* () {
             }),
           ),
         );
+      }),
+
+    sendWaiverSignatureRequestEmail: ({to, name, waiverTitle, signUrl, idempotencyKey}) =>
+      Effect.gen(function* () {
+        if (!resend) {
+          yield* Effect.logWarning(
+            `Skipping waiver signature request to ${to}: RESEND_API_KEY not configured`,
+          );
+          return;
+        }
+
+        const displayName = name?.trim() || 'Member';
+        const subject = 'Action required: sign your Down East Cyclists liability waiver';
+        const text = [
+          `Hi ${displayName},`,
+          '',
+          `Down East Cyclists now keeps ${waiverTitle} signatures securely in the member portal.`,
+          'Please sign in and complete the waiver before your next club ride or event.',
+          '',
+          signUrl,
+          '',
+          'After signing, you can print or save a copy for your records.',
+          '',
+          'Down East Cyclists',
+        ].join('\n');
+        const html = `
+          <p>Hi ${escapeHtml(displayName)},</p>
+          <p>Down East Cyclists now keeps ${escapeHtml(waiverTitle)} signatures securely in the member portal.</p>
+          <p>Please sign in and complete the waiver before your next club ride or event.</p>
+          <p><a href="${escapeHtml(signUrl)}">Sign the liability waiver</a></p>
+          <p>After signing, you can print or save a copy for your records.</p>
+          <p>Down East Cyclists</p>
+        `.trim();
+
+        yield* Effect.tryPromise({
+          try: async () => {
+            const {error} = await resend.emails.send(
+              {from, to, subject, html, text},
+              {idempotencyKey},
+            );
+            if (error) throw error;
+          },
+          catch: (error) =>
+            new EmailError({
+              code: 'SEND_WAIVER_REQUEST_FAILED',
+              message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+              cause: error,
+            }),
+        });
       }),
   });
 });

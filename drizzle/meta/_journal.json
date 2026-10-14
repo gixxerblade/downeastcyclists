@@ -64,6 +64,41 @@
       "when": 1789996026624,
       "tag": "0008_membership_period_history",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791993600000,
+      "tag": "0009_romantic_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791993600001,
+      "tag": "0010_cooing_sally_floyd",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791993600002,
+      "tag": "0011_mute_ronan",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791993600003,
+      "tag": "0012_brown_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791993600004,
+      "tag": "0013_approved_household_waiver",
+      "breakpoints": true
     }
   ]
 }

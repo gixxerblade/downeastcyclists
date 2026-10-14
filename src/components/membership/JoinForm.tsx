@@ -20,6 +20,11 @@ import {Effect} from 'effect';
 import Link from 'next/link';
 import {useEffect, useState} from 'react';
 
+import {
+  makeWaiverSignatureDraft,
+  parseWaiverDraft,
+  WaiverSignatureFields,
+} from '@/src/components/waivers/WaiverSignatureFields';
 import {joinAndCheckout, type JoinRequest} from '@/src/lib/effect/client-join';
 import type {AuthError} from '@/src/lib/effect/errors';
 import {JoinFormData} from '@/src/lib/effect/schemas';
@@ -39,6 +44,7 @@ export function JoinForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [coverFees, setCoverFees] = useState(false);
+  const [waiverDraft, setWaiverDraft] = useState(() => makeWaiverSignatureDraft());
 
   // Check if passwords match (for real-time feedback)
   const passwordsMatch = password === confirmPassword;
@@ -59,6 +65,22 @@ export function JoinForm() {
     },
   });
 
+  const waiverQuery = useQuery<{
+    id: string;
+    title: string;
+    version: number;
+    content: string;
+    acknowledgment: string;
+  }>({
+    queryKey: ['required-membership-waiver'],
+    queryFn: async () => {
+      const response = await fetch('/api/waivers/required');
+      if (!response.ok) throw new Error('The membership waiver is temporarily unavailable');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Join mutation
   const joinMutation = useMutation<{checkoutUrl: string}, AuthError, JoinRequest>({
     mutationFn: (request) => Effect.runPromise(joinAndCheckout(request)),
@@ -76,6 +98,13 @@ export function JoinForm() {
     const plan = plansQuery.data?.find((p) => p.id === planId);
     if (plan) {
       setSelectedPlanPrice(plan.price);
+      const household = plan.name.toLowerCase().includes('family');
+      setWaiverDraft((draft) => ({
+        ...draft,
+        signerRole: household ? 'household' : 'adult',
+        familyMembers: household ? draft.familyMembers : [],
+        consent: false,
+      }));
     }
 
     setValidationError(null);
@@ -128,6 +157,17 @@ export function JoinForm() {
       return;
     }
 
+    if (!waiverQuery.data) {
+      setValidationError('The required membership waiver is not available. Please try again.');
+      return;
+    }
+
+    const waiver = parseWaiverDraft(waiverDraft);
+    if (waiver.error !== undefined) {
+      setValidationError(waiver.error);
+      return;
+    }
+
     // Submit join request
     joinMutation.mutate({
       email,
@@ -138,6 +178,10 @@ export function JoinForm() {
       cancelUrl: `${siteUrl}/join?canceled=true`,
       coverFees,
       planPrice: selectedPlanPrice,
+      waiver: {
+        templateId: waiverQuery.data.id,
+        signature: waiver.input,
+      },
     });
   };
 
@@ -219,7 +263,17 @@ export function JoinForm() {
                 label="Full Name (Optional)"
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const nextName = e.target.value;
+                  setName(nextName);
+                  if (!waiverDraft.signerName || waiverDraft.signerName === name) {
+                    setWaiverDraft((current) => ({
+                      ...current,
+                      signerName: nextName,
+                      consent: false,
+                    }));
+                  }
+                }}
                 disabled={joinMutation.isPending}
               />
             </Grid>
@@ -317,6 +371,30 @@ export function JoinForm() {
               />
             </Box>
           )}
+
+          <Box sx={{mt: 4, pt: 4, borderTop: '1px solid var(--dec-border)'}}>
+            {waiverQuery.isLoading ? (
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                <CircularProgress size={22} />
+                <Typography>Loading the required liability waiver…</Typography>
+              </Box>
+            ) : waiverQuery.error || !waiverQuery.data ? (
+              <Alert severity="error">
+                The membership waiver is temporarily unavailable. Please try again.
+              </Alert>
+            ) : (
+              <WaiverSignatureFields
+                title={waiverQuery.data.title}
+                version={waiverQuery.data.version}
+                content={waiverQuery.data.content}
+                acknowledgment={waiverQuery.data.acknowledgment}
+                requireHousehold={selectedPlan?.name.toLowerCase().includes('family')}
+                value={waiverDraft}
+                onChange={setWaiverDraft}
+                disabled={joinMutation.isPending}
+              />
+            )}
+          </Box>
         </Box>
 
         <Box className="dec-card" sx={{p: {xs: 3, md: 4}, position: {md: 'sticky'}, top: 96}}>
@@ -354,7 +432,9 @@ export function JoinForm() {
             variant="contained"
             size="large"
             fullWidth
-            disabled={joinMutation.isPending || !selectedPlanId}
+            disabled={
+              joinMutation.isPending || !selectedPlanId || !waiverQuery.data || !waiverDraft.consent
+            }
             sx={{bgcolor: '#F20E02', '&:hover': {bgcolor: '#b30a01'}}}
           >
             {joinMutation.isPending ? (

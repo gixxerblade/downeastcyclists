@@ -1,6 +1,14 @@
 // Import the functions you need from the SDKs you need
 import {initializeApp} from 'firebase/app';
-import {getAuth, signInWithEmailAndPassword, signOut, User} from 'firebase/auth';
+import {
+  connectAuthEmulator,
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  User,
+} from 'firebase/auth';
+
+import {authEmulatorProject, localTestEndpoint} from '@/src/lib/local-testing';
 
 const firebaseApiKey =
   process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY';
@@ -20,6 +28,14 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const emulatorUrl = localTestEndpoint(
+  process.env.NEXT_PUBLIC_AUTH_EMULATOR_URL,
+  process.env.NODE_ENV,
+);
+if (emulatorUrl && !auth.emulatorConfig) {
+  authEmulatorProject(firebaseConfig.projectId);
+  connectAuthEmulator(auth, emulatorUrl.toString());
+}
 
 // Allowed email address
 const ALLOWED_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_EMAIL || 'info@downeastcyclists.com';
