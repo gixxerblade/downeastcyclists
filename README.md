@@ -207,6 +207,12 @@ signup. Reports and failure traces are in ignored `playwright-report` and `test-
 Restart again afterward to give a human tester clean unsigned accounts. Stop the development
 server before running a production build because both use `.next`.
 
+The full browser rehearsal is **manual-only** in GitHub Actions, not part of routine push or
+pull-request CI. Once `.github/workflows/waiver-rehearsal.yml` is merged into `master`, open
+**Actions → Waiver browser rehearsal → Run workflow** and select the branch to test. Run it
+when changing waiver/signup behavior or preparing a release. Fast waiver validation,
+authorization, and migration tests remain in the normal `pnpm test:run` CI suite.
+
 Manual rehearsal order: sign as an existing individual; sign as a family with an adult and a
 child; print the saved copy; edit the family and verify the original copy is unchanged; use
 the administrator's **Waivers → Email unsigned members once** action and inspect the local
