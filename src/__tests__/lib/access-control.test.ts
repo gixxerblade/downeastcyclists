@@ -13,6 +13,7 @@ describe('dashboard capabilities', () => {
     expect(hasDashboardCapability('organizer', 'members:password-reset')).toBe(true);
     expect(hasDashboardCapability('organizer', 'stats:refresh')).toBe(true);
     expect(hasDashboardCapability('organizer', 'trails:update')).toBe(true);
+    expect(hasDashboardCapability('organizer', 'waivers:read')).toBe(true);
   });
 
   it('denies organizers admin-only capabilities', () => {
@@ -22,6 +23,7 @@ describe('dashboard capabilities', () => {
     expect(hasDashboardCapability('organizer', 'members:import')).toBe(false);
     expect(hasDashboardCapability('organizer', 'reconciliation:run')).toBe(false);
     expect(hasDashboardCapability('organizer', 'organizers:manage')).toBe(false);
+    expect(hasDashboardCapability('organizer', 'waivers:manage')).toBe(false);
   });
 
   it('gives members no dashboard capabilities', () => {
@@ -33,6 +35,7 @@ describe('dashboard capabilities', () => {
     expect(hasDashboardCapability('admin', 'members:write')).toBe(true);
     expect(hasDashboardCapability('admin', 'reconciliation:run')).toBe(true);
     expect(hasDashboardCapability('admin', 'organizers:manage')).toBe(true);
+    expect(hasDashboardCapability('admin', 'waivers:manage')).toBe(true);
   });
 
   it('requires a paid or trialing membership with a current end date', () => {

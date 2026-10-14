@@ -86,6 +86,7 @@ export const createTestDatabaseService = (
   updateUser: vi.fn(() => Effect.void),
   getMembership: vi.fn(() => Effect.succeed(null)),
   getActiveMembership: vi.fn(() => Effect.succeed(null)),
+  getCurrentMemberContacts: vi.fn(() => Effect.succeed([])),
   setMembership: vi.fn(() => Effect.void),
   updateMembership: vi.fn(() => Effect.void),
   upsertUserByStripeCustomer: vi.fn(() =>
@@ -148,6 +149,8 @@ export const createTestEmailService = (
   sendRenewalEmail: vi.fn(() => Effect.void),
   sendUpcomingRenewalEmail: vi.fn(() => Effect.void),
   sendOrganizerAccessGrantedEmail: vi.fn(() => Effect.void),
+  sendWaiverSignatureRequestEmail: vi.fn(() => Effect.void),
+  ensureWaiverEmailConfigured: vi.fn(() => Effect.void),
   ...overrides,
 });
 

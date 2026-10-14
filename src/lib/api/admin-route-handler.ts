@@ -23,7 +23,8 @@ type AdminErrorTag =
   | 'EmailError'
   | 'StripeSubscriptionActiveError'
   | 'ImportError'
-  | 'ValidationError';
+  | 'ValidationError'
+  | 'WaiverConfigurationError';
 
 /**
  * Error result with status code
@@ -38,6 +39,8 @@ type ErrorResult = {
  * Common error handlers for admin routes
  */
 const errorHandlers = {
+  WaiverConfigurationError: (error: {message: string}) =>
+    Effect.succeed({error: error.message, _tag: 'error' as const, status: 503}),
   UnauthorizedError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 403}),
   SessionError: () =>
@@ -66,8 +69,12 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
   ValidationError: (error: {message: string}) =>
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
-  EmailError: () =>
-    Effect.succeed({error: 'Email request failed', _tag: 'error' as const, status: 500}),
+  EmailError: (error: {message: string; code?: string}) =>
+    Effect.succeed({
+      error: error.code === 'WAIVER_EMAIL_NOT_CONFIGURED' ? error.message : 'Email request failed',
+      _tag: 'error' as const,
+      status: error.code === 'WAIVER_EMAIL_NOT_CONFIGURED' ? 503 : 500,
+    }),
 };
 
 /**

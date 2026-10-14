@@ -86,3 +86,13 @@ export const trailIssueEventTypeEnum = pgEnum('trail_issue_event_type', [
   'resolved',
   'reopened',
 ]);
+
+export const waiverScopeEnum = pgEnum('waiver_scope', ['membership', 'ride', 'event']);
+
+export const waiverStatusEnum = pgEnum('waiver_status', ['draft', 'published', 'retired']);
+
+export const waiverSignerRoleEnum = pgEnum('waiver_signer_role', [
+  'adult',
+  'guardian',
+  'household',
+]);

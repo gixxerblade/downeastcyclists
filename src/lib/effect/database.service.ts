@@ -143,6 +143,16 @@ export interface DatabaseService {
     userId: string,
   ) => Effect.Effect<MembershipDocument | null, DatabaseError>;
 
+  readonly getCurrentMemberContacts: () => Effect.Effect<
+    Array<{
+      userId: string;
+      name: string | null;
+      email: string;
+      planType: 'individual' | 'family';
+    }>,
+    DatabaseError
+  >;
+
   readonly setMembership: (
     userId: string,
     membershipId: string,

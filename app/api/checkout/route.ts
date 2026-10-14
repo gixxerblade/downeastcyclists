@@ -10,6 +10,7 @@ import {CheckoutApiRequest} from '@/src/lib/effect/schemas';
 import {getFirebaseAdmin} from '@/src/lib/firebase-admin';
 import {consumeRateLimit} from '@/src/lib/rate-limit';
 import {verifyRenewalToken} from '@/src/lib/renewal-token';
+import {requireCheckoutWaivers} from '@/src/lib/waivers/service';
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
@@ -91,6 +92,9 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const checkoutUserId = renewalUserId ?? sessionUserId;
+      yield* requireCheckoutWaivers(checkoutUserId, validatedRequest.priceId);
+
       const membershipService = yield* MembershipService;
       return yield* membershipService.createCheckoutSession({
         priceId: validatedRequest.priceId,
@@ -99,7 +103,7 @@ export async function POST(request: NextRequest) {
         cancelUrl: validatedRequest.cancelUrl,
         coverFees: validatedRequest.coverFees,
         planPrice: validatedRequest.planPrice,
-        userId: renewalUserId ?? sessionUserId,
+        userId: checkoutUserId,
       });
     }),
 
@@ -108,6 +112,7 @@ export async function POST(request: NextRequest) {
       Effect.succeed({
         error: error.message,
         field: error.field,
+        actionUrl: error.actionUrl,
         _tag: 'error' as const,
         status: 400,
       }),
@@ -137,7 +142,13 @@ export async function POST(request: NextRequest) {
 
   // Return appropriate response
   if ('_tag' in result && result._tag === 'error') {
-    return NextResponse.json({error: result.error}, {status: result.status});
+    return NextResponse.json(
+      {
+        error: result.error,
+        ...('field' in result ? {field: result.field, actionUrl: result.actionUrl} : {}),
+      },
+      {status: result.status},
+    );
   }
 
   return NextResponse.json(result);

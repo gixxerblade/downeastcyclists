@@ -58,8 +58,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 ### Membership & Payments
 
-- **Join** (`/join`): Membership signup flow with Stripe checkout (individual and family plans)
-- **Member Portal** (`/member`): Authenticated member dashboard with digital membership card and QR code
+- **Join** (`/join`): Membership signup flow with every currently required membership waiver before Stripe checkout (individual and family plans)
+- **Member Portal** (`/member`): Authenticated member dashboard with digital membership card, QR code, required-waiver gate, and print-ready signed records
+- **Waivers** (`/waivers`): Authenticated signing and signed-record history for members, former members, and organizers, independent of membership checkout
 - **Renew** (`/renew`): Frictionless membership renewal flow that can be linked directly from renewal emails
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
@@ -82,6 +83,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
   - Expiring member reports and manual renewal email sends
   - Payment reconciliation and refunds
   - Audit trails for member, payment, renewal email, reconciliation, import, and role changes
+  - Versioned liability waiver templates, signed/pending completion tracking, one-time unsigned-member email campaigns, and instant access to signed records
 - **Login** (`/login`): Authentication page for admin access
 
 ### Scheduled Jobs
@@ -184,6 +186,80 @@ This command generates TypeScript types based on your Contentful content models.
 
 The primary database is PostgreSQL via Neon (serverless), managed with Drizzle ORM. Schema definitions live in `src/db/schema/` and migrations are in `drizzle/`.
 
+Liability waiver templates are immutable after publication. The default uses the treasurer's
+insurer-approved DOCX wording with transcription errors corrected and the membership application
+removed. Migration 0013 replaces only the original system seed with version 2; custom templates
+and existing signed records remain intact.
+
+Waiver migrations `0009`–`0013` follow the published membership migrations `0006`–`0008`.
+The migration regression test upgrades a populated pre-waiver database, checks that member
+and renewal history survives, and verifies that repeated deployments do not repeat the seed.
+
+For family memberships, an adult head of household or initial member signs once for everyone
+listed. The signer is included automatically; every additional family member needs a full name
+and birth date. No separate adult invitations or child signatures are collected. The join flow
+selects family signing for family plans, and family checkout requires a household waiver.
+Existing family members complete the same form in the member portal.
+Family classification uses the configured price ID at signup/checkout and the stored plan
+type for existing memberships, including imported and complimentary memberships; it does
+not depend on a plan's display name. The server independently enforces household signing.
+
+Existing-member invitation emails are **admin-triggered**, not sent automatically on
+deployment or publication. In the dashboard's waiver section, select the current form and
+choose **Email unsigned members once**. The campaign includes current active, trialing,
+past-due, legacy, and complimentary memberships; expired memberships are excluded.
+Missing email/signing configuration stops the campaign before any send is recorded.
+Successful provider submissions are skipped on reruns; failed submissions remain retryable.
+"Sent" means Resend accepted the request, not proof of delivery to the recipient's inbox.
+Draft, future, expired, retired, and superseded forms cannot start an invitation campaign.
+
+Invitation links open `/waivers?templateId=…`. Signed-out recipients log in first, and both
+password and email-link login preserve the signing destination. Organizers are members and
+must sign their own individual or household waivers; organizer access does not exempt them.
+The primary administrator is a non-person administrative account, not a member or signer.
+It goes directly to the dashboard, does not receive a member profile during login recovery,
+and is excluded from waiver completion counts and invitations. Personal signing APIs reject
+it, and its personal signup, renewal, and signing pages redirect to the dashboard. Admin can
+still manage waivers, access members' signed records, and assign organizer roles.
+Normal member and organizer login also checks for missing required waivers.
+Interrupted signup repairs a missing member profile before establishing the session, then
+routes unsigned members through signing and back to checkout. Renewal includes a signing
+link and a **Sign or view my waivers** link, including for expired members.
+
+For versions sharing a title and scope, the newest published version that has reached its
+effective date supersedes earlier versions. Scheduling a future replacement does not close
+the current version early, and canceling that future version leaves the current one open.
+Retiring or expiring an effective replacement does not revive superseded wording. Different
+required membership forms are all shown during signup and all checked again before payment.
+
+Each signature stores the exact terms, acknowledgment, household/electronic signing statement,
+complete roster, contact details, authenticated account identity, timestamp, browser evidence,
+and a SHA-256 content digest. Dates must be real and not in the future, the signer must be at
+least 18, and duplicate name/birth-date entries are rejected. Abandoning the form leaves it
+unsigned. A saved signature remains complete even if checkout is abandoned; members can log
+in to continue. Identical submission retries return the existing record.
+
+Members can use **Update family details** to add, remove, or correct roster entries and sign
+again. Each change creates an immutable revision; concurrent stale changes are rejected.
+The portal and admin completion view use the latest revision, and the member can open earlier
+copies. Signed records include a name/birth-date table and the household signer's signature,
+and can be printed or saved as PDF in the browser. Access requires the owning account or
+staff with waiver-read permission. Roster changes never rewrite an earlier signed copy.
+Retired, expired, and superseded signed copies remain accessible, including all earlier
+revisions. Admin history includes former members, but they do not affect the current-member
+completion counts or invitation audience. Private browser caches are keyed by account,
+cleared on account changes, and checked against the authenticated response identity.
+
+Domain ownership and lifecycle rules are documented beside the implementation in
+[`src/lib/waivers/README.md`](src/lib/waivers/README.md).
+
+Waiver validation, authorization, revision, and migration tests run in the normal
+`pnpm test:run` CI suite. Before the one-time production invitation, separately rehearse
+actual email delivery and Stripe's hosted checkout with approved test recipients and Stripe
+test mode. Current product gaps remain: signed-copy receipt emails are not sent; unsigned
+form drafts do not survive a reload; membership-card scans do not enforce waiver completion.
+A saved signature survives checkout cancellation. No production emails are sent by the tests.
+
 ```bash
 pnpm db:generate         # Generate migration from schema changes
 pnpm db:migrations:check # Ensure schema changes have committed migrations
@@ -256,6 +332,15 @@ The following environment variables need to be set in Netlify:
 - `RENEWAL_LINK_TTL_DAYS`: Optional renewal-link lifetime from 1 to 365 days. Defaults to 120.
 - `RATE_LIMIT_SECRET`: Independent random secret of at least 32 characters used to protect stored
   rate-limit identifiers.
+- `WAIVER_SIGNATURE_SECRET`: Independent random secret of at least 32 characters used to HMAC
+  signer IP addresses before they are stored with waiver evidence. Required before signup
+  waiver loading, signing, or invitation sending; missing, short, and `replace-with-…`
+  placeholder values fail explicitly. This is not an X.509 certificate and does not
+  cryptographically sign the PDF. Generate a separate value per environment with
+  `openssl rand -hex 32`, put it in local `.env.local` and the deployment's runtime secrets
+  as appropriate, and never commit the value. The blank entry is documented in `.env.example`.
+  Keep the key securely backed up if historical IP-hash comparisons are needed; rotating it
+  does not change stored waivers or their content digests.
 
 **Stripe:**
 
@@ -266,8 +351,9 @@ The following environment variables need to be set in Netlify:
 
 **Email and admin access:**
 
-- `ADMIN_EMAIL`: The single administrator account email. Organizer access is granted to member
-  accounts from the administrator dashboard.
+- `ADMIN_EMAIL`: The single non-person administrator account email, reserved for administration
+  rather than membership or waiver signing. Organizer access is granted to personal member
+  accounts from this account's dashboard.
 - `ADMIN_EMAIL_WHITELIST`: Optional comma-separated list of additional admin/report notification recipients.
 - `RESEND_API_KEY`: Resend API key used for transactional email.
 - `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.

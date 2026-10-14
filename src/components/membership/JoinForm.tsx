@@ -20,6 +20,12 @@ import {Effect} from 'effect';
 import Link from 'next/link';
 import {useEffect, useState} from 'react';
 
+import {
+  makeWaiverSignatureDraft,
+  parseWaiverDraft,
+  WaiverSignatureFields,
+  type WaiverSignatureDraft,
+} from '@/src/components/waivers/WaiverSignatureFields';
 import {joinAndCheckout, type JoinRequest} from '@/src/lib/effect/client-join';
 import type {AuthError} from '@/src/lib/effect/errors';
 import {JoinFormData} from '@/src/lib/effect/schemas';
@@ -39,6 +45,7 @@ export function JoinForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [coverFees, setCoverFees] = useState(false);
+  const [waiverDrafts, setWaiverDrafts] = useState<Record<string, WaiverSignatureDraft>>({});
 
   // Check if passwords match (for real-time feedback)
   const passwordsMatch = password === confirmPassword;
@@ -59,6 +66,24 @@ export function JoinForm() {
     },
   });
 
+  const waiverQuery = useQuery<
+    Array<{
+      id: string;
+      title: string;
+      version: number;
+      content: string;
+      acknowledgment: string;
+    }>
+  >({
+    queryKey: ['required-membership-waivers'],
+    queryFn: async () => {
+      const response = await fetch('/api/waivers/required');
+      if (!response.ok) throw new Error('The membership waiver is temporarily unavailable');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Join mutation
   const joinMutation = useMutation<{checkoutUrl: string}, AuthError, JoinRequest>({
     mutationFn: (request) => Effect.runPromise(joinAndCheckout(request)),
@@ -76,6 +101,20 @@ export function JoinForm() {
     const plan = plansQuery.data?.find((p) => p.id === planId);
     if (plan) {
       setSelectedPlanPrice(plan.price);
+      const household = plan.planType === 'family';
+      setWaiverDrafts((drafts) =>
+        Object.fromEntries(
+          Object.entries(drafts).map(([id, draft]) => [
+            id,
+            {
+              ...draft,
+              signerRole: household ? 'household' : 'adult',
+              familyMembers: household ? draft.familyMembers : [],
+              consent: false,
+            },
+          ]),
+        ),
+      );
     }
 
     setValidationError(null);
@@ -84,8 +123,7 @@ export function JoinForm() {
   useEffect(() => {
     if (!plansQuery.data?.length || selectedPlanId) return;
     const familyPlan =
-      plansQuery.data.find((plan) => plan.name.toLowerCase().includes('family')) ||
-      plansQuery.data[0];
+      plansQuery.data.find((plan) => plan.planType === 'family') || plansQuery.data[0];
     handlePlanSelect(familyPlan.id, familyPlan.stripePriceId);
   }, [plansQuery.data, selectedPlanId]);
 
@@ -128,6 +166,21 @@ export function JoinForm() {
       return;
     }
 
+    if (!waiverQuery.data?.length) {
+      setValidationError('The required membership waiver is not available. Please try again.');
+      return;
+    }
+
+    const waivers: JoinRequest['waivers'] = [];
+    for (const template of waiverQuery.data) {
+      const waiver = parseWaiverDraft(draftFor(template.id));
+      if (waiver.error !== undefined) {
+        setValidationError(`${template.title}: ${waiver.error}`);
+        return;
+      }
+      waivers.push({templateId: template.id, signature: waiver.input});
+    }
+
     // Submit join request
     joinMutation.mutate({
       email,
@@ -135,9 +188,10 @@ export function JoinForm() {
       name: name || undefined,
       priceId: selectedPriceId,
       successUrl: `${siteUrl}/member?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${siteUrl}/join?canceled=true`,
+      cancelUrl: `${siteUrl}/renew?canceled=true`,
       coverFees,
       planPrice: selectedPlanPrice,
+      waivers,
     });
   };
 
@@ -145,6 +199,8 @@ export function JoinForm() {
   const errorMessage = validationError || (joinMutation.error?.message ?? null);
   const isEmailInUse = joinMutation.error?.code === 'EMAIL_IN_USE';
   const selectedPlan = plansQuery.data?.find((plan) => plan.id === selectedPlanId) || null;
+  const draftFor = (id: string) =>
+    waiverDrafts[id] ?? makeWaiverSignatureDraft(name, selectedPlan?.planType === 'family');
   const summaryPrice = selectedPlan?.price || selectedPlanPrice || 0;
 
   return (
@@ -219,7 +275,20 @@ export function JoinForm() {
                 label="Full Name (Optional)"
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const nextName = e.target.value;
+                  setName(nextName);
+                  setWaiverDrafts((drafts) =>
+                    Object.fromEntries(
+                      Object.entries(drafts).map(([id, draft]) => [
+                        id,
+                        !draft.signerName || draft.signerName === name
+                          ? {...draft, signerName: nextName, consent: false}
+                          : draft,
+                      ]),
+                    ),
+                  );
+                }}
                 disabled={joinMutation.isPending}
               />
             </Grid>
@@ -317,6 +386,36 @@ export function JoinForm() {
               />
             </Box>
           )}
+
+          <Box sx={{mt: 4, pt: 4, borderTop: '1px solid var(--dec-border)'}}>
+            {waiverQuery.isLoading ? (
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                <CircularProgress size={22} />
+                <Typography>Loading the required liability waiver…</Typography>
+              </Box>
+            ) : waiverQuery.error || !waiverQuery.data?.length ? (
+              <Alert severity="error">
+                The membership waiver is temporarily unavailable. Please try again.
+              </Alert>
+            ) : (
+              waiverQuery.data.map((template) => (
+                <Box key={template.id} sx={{mb: 4}}>
+                  <WaiverSignatureFields
+                    title={template.title}
+                    version={template.version}
+                    content={template.content}
+                    acknowledgment={template.acknowledgment}
+                    requireHousehold={selectedPlan?.planType === 'family'}
+                    value={draftFor(template.id)}
+                    onChange={(draft) =>
+                      setWaiverDrafts((current) => ({...current, [template.id]: draft}))
+                    }
+                    disabled={joinMutation.isPending}
+                  />
+                </Box>
+              ))
+            )}
+          </Box>
         </Box>
 
         <Box className="dec-card" sx={{p: {xs: 3, md: 4}, position: {md: 'sticky'}, top: 96}}>
@@ -354,7 +453,12 @@ export function JoinForm() {
             variant="contained"
             size="large"
             fullWidth
-            disabled={joinMutation.isPending || !selectedPlanId}
+            disabled={
+              joinMutation.isPending ||
+              !selectedPlanId ||
+              !waiverQuery.data?.length ||
+              !waiverQuery.data.every((template) => draftFor(template.id).consent)
+            }
             sx={{bgcolor: '#F20E02', '&:hover': {bgcolor: '#b30a01'}}}
           >
             {joinMutation.isPending ? (

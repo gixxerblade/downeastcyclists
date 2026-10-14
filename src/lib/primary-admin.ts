@@ -1,3 +1,4 @@
+// This identity is reserved for administration, not a person's membership.
 export function getPrimaryAdminEmail(): string {
   return (
     process.env.ADMIN_EMAIL ||

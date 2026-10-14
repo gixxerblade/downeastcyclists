@@ -1,0 +1,34 @@
+-- Publish the corrected, waiver-only text supplied by the treasurer.
+-- Only replace the original system seed; preserve custom templates and all signed snapshots.
+WITH replacement AS (
+  INSERT INTO "waiver_templates" (
+    "title", "description", "scope", "status", "version", "content",
+    "acknowledgment", "is_required", "effective_from", "created_by"
+  )
+  SELECT "title", 'Required club waiver. One household signer lists all family members.',
+    "scope", 'published', 2, $waiver$RELEASE AND WAIVER OF LIABILITY, ASSUMPTION OF RISK, INDEMNITY, AND PARENTAL CONSENT AGREEMENT ("Agreement") for LEAGUE OF AMERICAN WHEELMAN D/B/A LEAGUE OF AMERICAN BICYCLISTS ("LAB")
+
+IN CONSIDERATION of being permitted to participate in any way in Down East Cyclists ("Club") sponsored Bicycling Activities ("Activity") I, for myself, my personal representatives, assigns, heirs, and next of kin:
+
+1. ACKNOWLEDGE, agree, and represent that I understand the nature of Bicycling Activities and that I am qualified, in good health, and in proper physical condition to participate in such Activity. I further acknowledge that the Activity will be conducted over public roads and facilities open to the public during the Activity and upon which the hazards of traveling are to be expected. I further agree and warrant that if, at any time, I believe conditions to be unsafe, I will immediately discontinue further participation in the Activity.
+
+2. FULLY UNDERSTAND that (a) BICYCLING ACTIVITIES INVOLVE RISKS AND DANGERS OF SERIOUS BODILY INJURY, INCLUDING PERMANENT DISABILITY, PARALYSIS AND DEATH ("Risks"); (b) these Risks and dangers may be caused by my own actions or inactions, the actions or inactions of others participating in the Activity, the conditions in which the Activity takes place, or THE NEGLIGENCE OF THE "RELEASEES" NAMED BELOW; (c) there may be OTHER RISKS AND SOCIAL AND ECONOMIC LOSSES either not known to me or not readily foreseeable at this time; and I FULLY ACCEPT AND ASSUME ALL SUCH RISKS AND ALL RESPONSIBILITY FOR LOSSES, COSTS, AND DAMAGES I may incur as a result of my participation in the Activity.
+
+3. HEREBY RELEASE, DISCHARGE, AND COVENANT NOT TO SUE the Club, the LAB, its respective administrators, directors, agents, officers, members, volunteers, and employees, other participants, any sponsors, advertisers, and, if applicable, owners and lessors of premises on which the Activity takes place, (each considered one of the "RELEASEES" herein) FROM ALL LIABILITY, CLAIMS, DEMANDS, LOSSES, OR DAMAGES ON MY ACCOUNT CAUSED OR ALLEGED TO BE CAUSED IN WHOLE OR IN PART BY THE NEGLIGENCE OF THE "RELEASEES" OR OTHERWISE, INCLUDING NEGLIGENT RESCUE OPERATIONS. And, I FURTHER AGREE that if, despite this RELEASE AND WAIVER OF LIABILITY, ASSUMPTION OF RISK, AND INDEMNITY AGREEMENT I, or anyone on my behalf, makes a claim against any of the Releasees, I WILL INDEMNIFY, SAVE, AND HOLD HARMLESS EACH OF THE RELEASEES from any litigation expenses, attorney fees, loss, liability, damage, or cost which any may incur as the result of such claim.
+
+I AM 18 YEARS OF AGE OR OLDER, HAVE READ AND UNDERSTAND THE TERMS OF THIS AGREEMENT, UNDERSTAND THAT I AM GIVING UP SUBSTANTIAL RIGHTS BY SIGNING THIS AGREEMENT, HAVE SIGNED IT VOLUNTARILY AND WITHOUT ANY INDUCEMENT OR ASSURANCE OF ANY NATURE AND INTEND IT TO BE A COMPLETE AND UNCONDITIONAL RELEASE OF ALL LIABILITY TO THE GREATEST EXTENT ALLOWED BY LAW. I AGREE THAT IF ANY PORTION OF THIS AGREEMENT IS HELD TO BE INVALID, THE BALANCE, NOTWITHSTANDING, SHALL CONTINUE IN FULL FORCE AND EFFECT.
+
+MINOR RELEASE
+(complete for Participants Under the Age of 18)
+
+AND I, THE MINOR'S PARENT AND/OR LEGAL GUARDIAN, UNDERSTAND THE NATURE OF BICYCLING ACTIVITIES AND THE MINOR'S EXPERIENCE AND CAPABILITIES AND BELIEVE THE MINOR TO BE QUALIFIED, IN GOOD HEALTH, AND IN PROPER PHYSICAL CONDITION TO PARTICIPATE IN SUCH ACTIVITY. I HEREBY RELEASE, DISCHARGE, COVENANT NOT TO SUE, AND AGREE TO INDEMNIFY AND SAVE AND HOLD HARMLESS EACH OF THE RELEASEES FROM ALL LIABILITY, CLAIMS, DEMANDS, LOSSES, OR DAMAGES ON THE MINOR'S ACCOUNT CAUSED OR ALLEGED TO BE CAUSED IN WHOLE OR IN PART BY THE NEGLIGENCE OF THE "RELEASEES" OR OTHERWISE, INCLUDING NEGLIGENT RESCUE OPERATIONS AND FURTHER AGREE THAT IF, DESPITE THIS RELEASE, I, THE MINOR, OR ANYONE ON THE MINOR'S BEHALF MAKES A CLAIM AGAINST ANY OF THE RELEASEES NAMED ABOVE, I WILL INDEMNIFY, SAVE, AND HOLD HARMLESS EACH OF THE RELEASEES FROM ANY LITIGATION EXPENSES, ATTORNEY FEES, LOSS, LIABILITY, DAMAGE, OR COST ANY MAY INCUR AS THE RESULT OF ANY SUCH CLAIM.$waiver$,
+    "acknowledgment", "is_required", now(), 'system:approved-household-waiver'
+  FROM "waiver_templates"
+  WHERE "title" = 'DEC Release and Waiver of Liability' AND "version" = 1
+    AND "created_by" = 'system:migration' AND "status" = 'published'
+  ON CONFLICT ("title", "version") DO NOTHING
+  RETURNING "id"
+)
+UPDATE "waiver_templates" SET "status" = 'retired', "updated_at" = now()
+WHERE "title" = 'DEC Release and Waiver of Liability' AND "version" = 1
+  AND "created_by" = 'system:migration' AND EXISTS (SELECT 1 FROM replacement);

@@ -8,6 +8,14 @@ interface PlanBenefits {
   [priceId: string]: string[];
 }
 
+export function getPlanTypeForPriceId(priceId: string): 'individual' | 'family' | undefined {
+  if (process.env.STRIPE_PRICE_FAMILY && priceId === process.env.STRIPE_PRICE_FAMILY)
+    return 'family';
+  if (process.env.STRIPE_PRICE_INDIVIDUAL && priceId === process.env.STRIPE_PRICE_INDIVIDUAL)
+    return 'individual';
+  return undefined;
+}
+
 // Map Stripe price IDs to their benefits
 export const PLAN_BENEFITS: PlanBenefits = {
   // Individual plan benefits

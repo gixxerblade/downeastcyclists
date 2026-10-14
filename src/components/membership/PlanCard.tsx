@@ -21,6 +21,7 @@ export interface MembershipPlan {
   price: number;
   benefits: string[];
   stripePriceId: string;
+  planType: 'individual' | 'family' | undefined;
 }
 
 interface PlanCardProps {
@@ -31,7 +32,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({plan, selected, onSelect, disabled}: PlanCardProps) {
-  const isFamily = plan.name.toLowerCase().includes('family');
+  const isFamily = plan.planType === 'family';
 
   return (
     <Card

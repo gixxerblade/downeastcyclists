@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material';
 import {useMutation, useQuery} from '@tanstack/react-query';
+import Link from 'next/link';
 import {useEffect, useState} from 'react';
 
 import {PlanCard, type MembershipPlan} from './PlanCard';
@@ -44,6 +45,7 @@ export function RenewMembershipClient({
   const [coverFees, setCoverFees] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [checkoutEmail, setCheckoutEmail] = useState('');
+  const [waiverUrl, setWaiverUrl] = useState<string | null>(null);
 
   const plansQuery = useQuery<MembershipPlan[]>({
     queryKey: ['membership-plans'],
@@ -83,6 +85,12 @@ export function RenewMembershipClient({
 
       if (!response.ok) {
         const data = await response.json();
+        if (
+          data.field === 'waiver' &&
+          typeof data.actionUrl === 'string' &&
+          data.actionUrl.startsWith('/waivers?')
+        )
+          setWaiverUrl(data.actionUrl);
         throw new Error(data.error || 'Failed to start renewal');
       }
 
@@ -127,6 +135,9 @@ export function RenewMembershipClient({
   return (
     <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', lg: '1.1fr .9fr'}, gap: 3}}>
       <Box>
+        <Button component={Link} href="/waivers?returnTo=%2Frenew" sx={{mb: 2}}>
+          Sign or view my waivers
+        </Button>
         {canceled && (
           <Alert severity="info" sx={{mb: 3}}>
             Your renewal payment was canceled. You can try again below.
@@ -134,7 +145,17 @@ export function RenewMembershipClient({
         )}
 
         {errorMessage && (
-          <Alert severity="error" sx={{mb: 3}}>
+          <Alert
+            severity="error"
+            sx={{mb: 3}}
+            action={
+              waiverUrl ? (
+                <Button component={Link} href={waiverUrl} color="inherit">
+                  Sign waiver
+                </Button>
+              ) : undefined
+            }
+          >
             {errorMessage}
           </Alert>
         )}

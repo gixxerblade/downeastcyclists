@@ -24,6 +24,8 @@ export type DashboardCapability =
   | 'stats:refresh'
   | 'trails:update'
   | 'trail-maintenance:manage'
+  | 'waivers:read'
+  | 'waivers:manage'
   | 'reconciliation:run'
   | 'organizers:manage';
 
@@ -38,6 +40,7 @@ const organizerCapabilities: ReadonlySet<DashboardCapability> = new Set([
   'stats:refresh',
   'trails:update',
   'trail-maintenance:manage',
+  'waivers:read',
 ]);
 
 const adminCapabilities: ReadonlySet<DashboardCapability> = new Set([
@@ -46,6 +49,7 @@ const adminCapabilities: ReadonlySet<DashboardCapability> = new Set([
   'members:payments',
   'members:refund',
   'members:import',
+  'waivers:manage',
   'reconciliation:run',
   'organizers:manage',
 ]);

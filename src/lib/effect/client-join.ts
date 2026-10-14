@@ -1,5 +1,6 @@
 import {Effect} from 'effect';
 
+import type {WaiverSignatureInput} from '@/src/lib/waivers/schemas';
 import {auth} from '@/src/utils/firebase';
 
 import {createSessionCookie} from './client-auth';
@@ -15,6 +16,10 @@ export interface JoinRequest {
   cancelUrl: string;
   coverFees: boolean;
   planPrice: number;
+  waivers: Array<{
+    templateId: string;
+    signature: WaiverSignatureInput;
+  }>;
 }
 
 export interface JoinResult {
@@ -88,15 +93,49 @@ const createCheckoutSession = (params: {
       }),
   });
 
+const signRequiredWaiver = (
+  waiver: JoinRequest['waivers'][number],
+): Effect.Effect<void, AuthError> =>
+  Effect.tryPromise({
+    try: async () => {
+      const response = await fetch(`/api/member/waivers/${waiver.templateId}/sign`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(waiver.signature),
+      });
+      if (!response.ok) {
+        const body: unknown = await response.json();
+        const message =
+          typeof body === 'object' &&
+          body !== null &&
+          'error' in body &&
+          typeof body.error === 'string'
+            ? body.error
+            : 'Failed to sign the required waiver';
+        throw new Error(message);
+      }
+    },
+    catch: (cause) =>
+      new AuthError({
+        code: 'WAIVER_SIGNATURE_FAILED',
+        message: cause instanceof Error ? cause.message : 'Failed to sign the required waiver',
+        cause,
+      }),
+  });
+
 // Complete join flow: create account + database user + checkout session
 export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult, AuthError> =>
   Effect.gen(function* () {
     // Step 1: Create Firebase Auth account
-    const user = yield* createAccount({
-      email: request.email,
-      password: request.password,
-      name: request.name,
-    });
+    const current = auth.currentUser;
+    const user =
+      current?.email?.toLowerCase() === request.email.trim().toLowerCase()
+        ? {email: current.email}
+        : yield* createAccount({
+            email: request.email,
+            password: request.password,
+            name: request.name,
+          });
 
     // Step 2: Get ID token for user creation
     const idToken = yield* Effect.tryPromise({
@@ -122,7 +161,11 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
     // endpoint derives the new member identity from this verified cookie.
     yield* createSessionCookie(idToken);
 
-    // Step 5: Create Stripe checkout session
+    // Step 5: Store the required waiver before taking payment. If interrupted
+    // after account creation, the member can sign in and finish in the portal.
+    yield* Effect.forEach(request.waivers, signRequiredWaiver, {discard: true});
+
+    // Step 6: Create Stripe checkout session
     const checkout = yield* createCheckoutSession({
       priceId: request.priceId,
       email: user.email,

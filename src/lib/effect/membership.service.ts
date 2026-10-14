@@ -8,8 +8,10 @@ import {
   getBenefitsForPriceId,
   getConfiguredPriceIds,
   getPlanNameForType,
+  getPlanTypeForPriceId,
 } from '../membership-plans-config';
 import {isCurrentMembershipStatus} from '../membership-status';
+import {isPrimaryAdminEmail} from '../primary-admin';
 
 import {MembershipCardService} from './card.service';
 import {DatabaseService} from './database.service';
@@ -29,26 +31,29 @@ import type {
 } from './schemas';
 import {StripeService} from './stripe.service';
 
-// Price ID to plan type mapping - loaded from environment variables
-// Validates that required price IDs are configured
-const getPriceToPlanMapping = (): Record<string, 'individual' | 'family'> => {
-  const individualPriceId = process.env.STRIPE_PRICE_INDIVIDUAL;
-  const familyPriceId = process.env.STRIPE_PRICE_FAMILY;
-
-  const mapping: Record<string, 'individual' | 'family'> = {};
-
-  if (individualPriceId) {
-    mapping[individualPriceId] = 'individual';
+// Login recovery creates profiles for people, never for the administrative account.
+export const ensureMemberProfile = Effect.fn('Membership.ensureMemberProfile')(function* (
+  identity: {uid: string; email?: string},
+  name?: string,
+) {
+  if (!isPrimaryAdminEmail(identity.email)) {
+    const database = yield* DatabaseService;
+    const existing = yield* database.getUser(identity.uid);
+    if (!existing) {
+      yield* database.setUser(
+        identity.uid,
+        {
+          id: identity.uid,
+          email: identity.email ?? '',
+          name,
+          createdAt: new Date().toISOString(),
+        },
+        true,
+      );
+    }
   }
-
-  if (familyPriceId) {
-    mapping[familyPriceId] = 'family';
-  }
-
-  return mapping;
-};
-
-const PRICE_TO_PLAN = getPriceToPlanMapping();
+  return {success: true, userId: identity.uid};
+});
 
 // Service interface
 export interface MembershipService {
@@ -76,7 +81,14 @@ export interface MembershipService {
   ) => Effect.Effect<S.Schema.Type<typeof MembershipStatusResponse>, DatabaseError | NotFoundError>;
 
   readonly getPlans: () => Effect.Effect<
-    Array<{id: string; name: string; price: number; benefits: string[]; stripePriceId: string}>,
+    Array<{
+      id: string;
+      name: string;
+      price: number;
+      benefits: string[];
+      stripePriceId: string;
+      planType: 'individual' | 'family' | undefined;
+    }>,
     StripeError
   >;
 }
@@ -222,7 +234,7 @@ const make = Effect.gen(function* () {
         }
 
         const priceId = subscription.items.data[0]?.price.id;
-        const planType = PRICE_TO_PLAN[priceId] || 'individual';
+        const planType = getPlanTypeForPriceId(priceId) || 'individual';
 
         const subscriptionItem = subscription.items.data[0];
         const currentPeriodStart = subscriptionItem?.current_period_start;
@@ -400,6 +412,7 @@ const make = Effect.gen(function* () {
             price: price.unit_amount ? price.unit_amount / 100 : 0, // Convert cents to dollars
             benefits: getBenefitsForPriceId(price.id),
             stripePriceId: price.id,
+            planType: getPlanTypeForPriceId(price.id),
           })),
         ),
       ),

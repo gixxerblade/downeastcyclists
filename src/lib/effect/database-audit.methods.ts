@@ -60,7 +60,7 @@ export interface EmailLogDocument {
 export interface LogEmailEventInput {
   membershipId?: string;
   emailType: string;
-  deliveryType: 'send' | 'resend' | 'automated';
+  deliveryType: 'send' | 'resend' | 'automated' | 'one-time';
   campaignKey: string;
   recipientEmail: string;
   subject: string;
