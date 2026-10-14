@@ -2,8 +2,8 @@ import {Effect, pipe} from 'effect';
 import {NextRequest, NextResponse} from 'next/server';
 
 import {AuthService} from '@/src/lib/effect/auth.service';
-import {DatabaseService} from '@/src/lib/effect/database.service';
 import {LiveLayer} from '@/src/lib/effect/layers';
+import {ensureMemberProfile} from '@/src/lib/effect/membership.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,34 +23,11 @@ export async function POST(request: NextRequest) {
     const program = pipe(
       Effect.gen(function* () {
         const auth = yield* AuthService;
-        const db = yield* DatabaseService;
 
         // Verify the ID token and get user info
         const decodedToken = yield* auth.verifyIdToken(idToken);
 
-        // Check if user already exists
-        const existingUser = yield* db.getUser(decodedToken.uid);
-
-        if (existingUser) {
-          yield* Effect.log(`User ${decodedToken.uid} already exists`);
-          return {success: true, userId: decodedToken.uid};
-        }
-
-        // Create user document
-        yield* db.setUser(
-          decodedToken.uid,
-          {
-            id: decodedToken.uid,
-            email: decodedToken.email || '',
-            name: name,
-            createdAt: new Date().toISOString(),
-          } as any,
-          true, // Concurrent login/signup recovery must never replace an existing profile.
-        );
-
-        yield* Effect.log(`Created user document for ${decodedToken.uid}`);
-
-        return {success: true, userId: decodedToken.uid};
+        return yield* ensureMemberProfile(decodedToken, name);
       }),
 
       Effect.catchTag('AuthError', () =>

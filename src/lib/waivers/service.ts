@@ -20,8 +20,14 @@ import {db} from '@/src/db/client';
 import {users, waiverSignatures, waiverTemplates} from '@/src/db/schema/tables';
 import {DatabaseService} from '@/src/lib/effect/database.service';
 import {EmailService} from '@/src/lib/effect/email.service';
-import {DatabaseError, NotFoundError, ValidationError} from '@/src/lib/effect/errors';
+import {
+  DatabaseError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from '@/src/lib/effect/errors';
 import {getPlanTypeForPriceId} from '@/src/lib/membership-plans-config';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 import {getSiteUrl} from '@/src/lib/site-url';
 
 import {waiverSignatureSecret} from './config';
@@ -200,7 +206,13 @@ export const getRequiredMembershipWaivers = Effect.fn('Waivers.getRequiredMember
 
 export const getMemberWaiverContext = Effect.fn('Waivers.getMemberContext')(function* (
   firebaseUid: string,
+  accountEmail: string | undefined,
 ) {
+  if (isPrimaryAdminEmail(accountEmail)) {
+    return yield* new UnauthorizedError({
+      message: 'The administrative account is not a member account.',
+    });
+  }
   const database = yield* DatabaseService;
   const membership = yield* database.getActiveMembership(firebaseUid);
   const waivers = yield* listMemberWaivers(firebaseUid);
@@ -224,12 +236,12 @@ export const hasSignedRequiredMembershipWaiver = Effect.fn(
   return yield* databaseEffect('check_required_signature', async () => {
     const latest = latestSignatures();
     const user = await db
-      .select({id: users.id})
+      .select({id: users.id, email: users.email})
       .from(users)
       .where(eq(users.firebaseUid, firebaseUid))
       .limit(1)
       .then((rows) => rows[0]);
-    if (!user) return false;
+    if (!user || isPrimaryAdminEmail(user.email)) return false;
 
     const required = await db
       .select({id: waiverTemplates.id, signatureId: latest.id, signerRole: latest.signerRole})
@@ -281,6 +293,11 @@ export const signWaiver = Effect.fn('Waivers.signWaiver')(function* (
   input: WaiverSignatureInput,
   evidence: WaiverRequestEvidence,
 ) {
+  if (isPrimaryAdminEmail(signerEmail)) {
+    return yield* new UnauthorizedError({
+      message: 'The administrative account cannot sign waivers. Use a personal member account.',
+    });
+  }
   const signerName = normalized(input.signerName);
   const signatureText = normalized(input.signatureText);
   const signedAt = new Date();
@@ -616,7 +633,9 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
   if (!selected) return {templates, selectedTemplateId: null, members: [], signed: 0, pending: 0};
 
   const database = yield* DatabaseService;
-  const currentMembers = yield* database.getCurrentMemberContacts();
+  const currentMembers = (yield* database.getCurrentMemberContacts()).filter(
+    (member) => !isPrimaryAdminEmail(member.email),
+  );
   const records = yield* databaseEffect('completion', () =>
     db
       .select({
@@ -655,29 +674,31 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
     ]),
   );
   for (const member of currentMembers) identities.set(member.userId, member);
-  const members = [...identities.values()].map((member) => {
-    const history = recordsByUser.get(member.userId) ?? [];
-    const latest = history[0];
-    const current = audience.get(member.userId);
-    return {
-      ...member,
-      isCurrent: !!current,
-      signatureId: latest?.signatureId ?? null,
-      signerName: latest?.signerName ?? null,
-      signerRole: latest?.signerRole ?? null,
-      participants: latest?.participants ?? null,
-      signedAt: latest?.signedAt.toISOString() ?? null,
-      isSigned: isWaiverComplete(
-        {isSigned: !!latest, signerRole: latest?.signerRole ?? null},
-        current?.planType === 'family',
-      ),
-      history: history.map((record) => ({
-        id: record.signatureId,
-        revision: record.revision,
-        signedAt: record.signedAt.toISOString(),
-      })),
-    };
-  });
+  const members = [...identities.values()]
+    .filter((member) => !isPrimaryAdminEmail(member.email))
+    .map((member) => {
+      const history = recordsByUser.get(member.userId) ?? [];
+      const latest = history[0];
+      const current = audience.get(member.userId);
+      return {
+        ...member,
+        isCurrent: !!current,
+        signatureId: latest?.signatureId ?? null,
+        signerName: latest?.signerName ?? null,
+        signerRole: latest?.signerRole ?? null,
+        participants: latest?.participants ?? null,
+        signedAt: latest?.signedAt.toISOString() ?? null,
+        isSigned: isWaiverComplete(
+          {isSigned: !!latest, signerRole: latest?.signerRole ?? null},
+          current?.planType === 'family',
+        ),
+        history: history.map((record) => ({
+          id: record.signatureId,
+          revision: record.revision,
+          signedAt: record.signedAt.toISOString(),
+        })),
+      };
+    });
 
   const signed = members.filter((member) => member.isCurrent && member.isSigned).length;
   return {

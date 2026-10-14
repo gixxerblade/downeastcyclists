@@ -131,6 +131,40 @@ afterEach(() => {
 afterAll(() => fixture.client.close());
 
 describe('waiver rollout regression coverage', () => {
+  it('excludes the administrative account but requires an organizer member to sign', async () => {
+    vi.stubEnv('ADMIN_EMAIL', 'system@example.test');
+    await member('system');
+    const organizer = await member('organizer');
+    await fixture.database
+      .update(tables.users)
+      .set({isOrganizer: true})
+      .where(eq(tables.users.id, organizer.id));
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const completion = await run(getWaiverCompletion(waiver.id));
+    expect(completion.pending).toBe(1);
+    expect(completion.members.map((row) => row.userId)).toEqual(['organizer']);
+    await expect(run(getMemberWaiverContext('system', 'system@example.test'))).rejects.toThrow(
+      'not a member account',
+    );
+    await expect(sign('system', waiver.id)).rejects.toThrow('cannot sign waivers');
+    expect(await run(sendUnsignedWaiverEmails(waiver.id, 'system'))).toMatchObject({
+      sent: 1,
+      failed: 0,
+    });
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({to: 'organizer@example.test'}),
+    );
+    expect(await run(getMemberWaiverContext('organizer', 'organizer@example.test'))).toMatchObject({
+      hasPendingRequired: true,
+    });
+    await sign('organizer', waiver.id);
+    expect(await run(getMemberWaiverContext('organizer', 'organizer@example.test'))).toMatchObject({
+      hasPendingRequired: false,
+    });
+    expect(await run(hasSignedRequiredMembershipWaiver('system'))).toBe(false);
+  });
+
   it('includes past-due, imported, and complimentary members but excludes expired members', async () => {
     for (const status of [
       'active',
@@ -153,7 +187,7 @@ describe('waiver rollout regression coverage', () => {
       'trialing',
     ]);
     for (const uid of ['legacy', 'complimentary']) {
-      expect(await run(getMemberWaiverContext(uid))).toMatchObject({
+      expect(await run(getMemberWaiverContext(uid, `${uid}@example.test`))).toMatchObject({
         requireHousehold: true,
         hasPendingRequired: true,
       });
@@ -161,7 +195,9 @@ describe('waiver rollout regression coverage', () => {
         sign(uid, waiver.id, {...signature, signerRole: 'adult', familyMembers: []}),
       ).rejects.toThrow('household signature');
       await sign(uid, waiver.id);
-      expect(await run(getMemberWaiverContext(uid))).toMatchObject({hasPendingRequired: false});
+      expect(await run(getMemberWaiverContext(uid, `${uid}@example.test`))).toMatchObject({
+        hasPendingRequired: false,
+      });
     }
   });
 

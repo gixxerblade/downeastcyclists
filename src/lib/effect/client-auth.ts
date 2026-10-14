@@ -75,8 +75,9 @@ export const getCurrentAccessRole = (): Effect.Effect<AccessRole, AuthError> =>
 export const getPostLoginRedirectPath = (returnTo?: string): Effect.Effect<string, AuthError> =>
   Effect.gen(function* () {
     const requested = safeLoginReturnPath(returnTo);
-    if (requested?.startsWith('/waivers')) return requested;
     const role = yield* getCurrentAccessRole();
+    if (role === 'admin') return '/dashboard';
+    if (requested?.startsWith('/waivers')) return requested;
     return yield* Effect.tryPromise({
       try: async () => {
         const waiverResponse = await fetch('/api/member/waivers', {cache: 'no-store'});

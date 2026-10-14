@@ -46,6 +46,9 @@ export async function POST(request: NextRequest, context: {params: Promise<{temp
       userAgent: request.headers.get('user-agent'),
     });
   }).pipe(
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, status: 403}),
+    ),
     Effect.catchTag('WaiverConfigurationError', () =>
       Effect.succeed({
         error: 'Waiver signing is temporarily unavailable. Please contact the club administrator.',

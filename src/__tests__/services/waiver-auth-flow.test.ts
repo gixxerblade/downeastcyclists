@@ -31,7 +31,7 @@ describe('login-to-waiver recovery', () => {
     },
     {role: 'member', membership: null, pending: false, expected: '/renew'},
     {role: 'member', membership: {status: 'active'}, pending: false, expected: '/member'},
-    {role: 'admin', membership: null, pending: true, expected: '/waivers?returnTo=%2Fdashboard'},
+    {role: 'admin', membership: null, pending: true, expected: '/dashboard'},
     {
       role: 'organizer',
       membership: null,
@@ -58,14 +58,24 @@ describe('login-to-waiver recovery', () => {
     },
   );
 
-  it('preserves a dedicated household-signing link for staff rather than opening the dashboard', async () => {
-    const fetcher = vi.fn();
+  it('preserves a dedicated household-signing link for an organizer', async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({role: 'organizer'}));
     vi.stubGlobal('fetch', fetcher);
     expect(
       await Effect.runPromise(getPostLoginRedirectPath('/waivers?household=1&returnTo=%2Frenew')),
     ).toBe('/waivers?household=1&returnTo=%2Frenew');
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/admin/check');
   });
+
+  it.each([undefined, '/waivers?household=1&returnTo=%2Frenew', '/renew', '/member'])(
+    'sends the administrative account straight to its dashboard from %s',
+    async (returnTo) => {
+      const fetcher = vi.fn().mockResolvedValue(Response.json({role: 'admin'}));
+      vi.stubGlobal('fetch', fetcher);
+      expect(await Effect.runPromise(getPostLoginRedirectPath(returnTo))).toBe('/dashboard');
+      expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/admin/check');
+    },
+  );
 
   it('repairs a missing database profile before establishing a returning member’s session', async () => {
     const calls: string[] = [];

@@ -4,6 +4,7 @@ import {redirect} from 'next/navigation';
 import {verifySession} from '@/src/actions/auth';
 import {getRenewalDashboard} from '@/src/actions/portal';
 import {RenewMembershipClient} from '@/src/components/membership/RenewMembershipClient';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 
 export const metadata = {
   title: 'Renew Membership - Down East Cyclists',
@@ -18,6 +19,7 @@ export default async function RenewPage({searchParams}: RenewPageProps) {
   const params = await searchParams;
   const isDirectRenewal = Boolean(params.token);
   const session = params.token ? null : await verifySession();
+  if (session?.authenticated && isPrimaryAdminEmail(session.email)) redirect('/dashboard');
   const canLoadRenewal = Boolean(params.token || session?.authenticated);
   const dashboardData = canLoadRenewal ? await getRenewalDashboard(params.token) : null;
 

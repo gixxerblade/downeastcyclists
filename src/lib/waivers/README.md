@@ -9,6 +9,12 @@
   form loading, signing, and campaign sending. The key is not a certificate.
 - `navigation.ts` owns allowlisted signing/login continuations. `client.ts` owns
   account-scoped private queries and rejects a response for a different account.
+- The configured primary admin is an administrative account, never a participant.
+  `primary-admin.ts` owns its identity, `Membership.ensureMemberProfile` skips
+  member-profile creation for it, and the waiver service rejects personal signing
+  and excludes it from completion/invitation audiences. Organizers are people with
+  memberships and still need individual or household signatures. Admin access to
+  other members' records and organizer-role management are unchanged.
 - Membership status and price-to-plan facts stay in `membership-status.ts` and
   `membership-plans-config.ts`. The database membership service provides current
   contact/plan data; waiver reporting does not query membership tables directly.

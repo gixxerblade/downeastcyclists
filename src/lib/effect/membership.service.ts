@@ -11,6 +11,7 @@ import {
   getPlanTypeForPriceId,
 } from '../membership-plans-config';
 import {isCurrentMembershipStatus} from '../membership-status';
+import {isPrimaryAdminEmail} from '../primary-admin';
 
 import {MembershipCardService} from './card.service';
 import {DatabaseService} from './database.service';
@@ -29,6 +30,30 @@ import type {
   MembershipStatus,
 } from './schemas';
 import {StripeService} from './stripe.service';
+
+// Login recovery creates profiles for people, never for the administrative account.
+export const ensureMemberProfile = Effect.fn('Membership.ensureMemberProfile')(function* (
+  identity: {uid: string; email?: string},
+  name?: string,
+) {
+  if (!isPrimaryAdminEmail(identity.email)) {
+    const database = yield* DatabaseService;
+    const existing = yield* database.getUser(identity.uid);
+    if (!existing) {
+      yield* database.setUser(
+        identity.uid,
+        {
+          id: identity.uid,
+          email: identity.email ?? '',
+          name,
+          createdAt: new Date().toISOString(),
+        },
+        true,
+      );
+    }
+  }
+  return {success: true, userId: identity.uid};
+});
 
 // Service interface
 export interface MembershipService {

@@ -4,6 +4,7 @@ import {redirect} from 'next/navigation';
 
 import {verifySession} from '@/src/actions/auth';
 import {MemberWaiverGate} from '@/src/components/waivers/MemberWaiverGate';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 import {waiverReturnPath, waiverSigningPath} from '@/src/lib/waivers/navigation';
 
 export const metadata = {title: 'Sign your waiver - Down East Cyclists'};
@@ -21,6 +22,7 @@ export default async function WaiversPage({
     returnTo: params.returnTo,
   });
   if (!session.authenticated) redirect(`/login?returnTo=${encodeURIComponent(path)}`);
+  if (isPrimaryAdminEmail(session.email)) redirect('/dashboard');
   return (
     <MemberWaiverGate
       requireHousehold={params.household === '1'}

@@ -17,8 +17,11 @@ export async function GET() {
   const program = Effect.gen(function* () {
     const portal = yield* PortalService;
     const session = yield* portal.verifySession(sessionCookie);
-    return yield* getMemberWaiverContext(session.uid);
+    return yield* getMemberWaiverContext(session.uid, session.email);
   }).pipe(
+    Effect.catchTag('UnauthorizedError', (error) =>
+      Effect.succeed({error: error.message, status: 403}),
+    ),
     Effect.catchTag('SessionError', () => Effect.succeed({error: 'Session expired', status: 401})),
     Effect.catchTag('DatabaseError', () =>
       Effect.succeed({error: 'Unable to load waivers', status: 500}),

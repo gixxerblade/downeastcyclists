@@ -216,9 +216,11 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
           <Typography variant="h4" component="h2">
             Liability waivers
           </Typography>
-          <Button component="a" href="/waivers?returnTo=%2Fdashboard">
-            Sign or view my own waiver
-          </Button>
+          {role === 'organizer' ? (
+            <Button component="a" href="/waivers?returnTo=%2Fdashboard">
+              Sign or view my own waiver
+            </Button>
+          ) : null}
           <Typography color="text.secondary">
             Publish versioned forms, track signatures, and open signed records instantly.
           </Typography>

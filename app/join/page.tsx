@@ -1,6 +1,9 @@
 import {Alert} from '@mui/material';
+import {redirect} from 'next/navigation';
 
+import {verifySession} from '@/src/actions/auth';
 import {JoinForm} from '@/src/components/membership/JoinForm';
+import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 
 export const metadata = {
   title: 'Join - Down East Cyclists',
@@ -12,6 +15,8 @@ interface JoinPageProps {
 }
 
 export default async function JoinPage({searchParams}: JoinPageProps) {
+  const session = await verifySession();
+  if (session.authenticated && isPrimaryAdminEmail(session.email)) redirect('/dashboard');
   const params = await searchParams;
   const wasCanceled = params.canceled === 'true';
 

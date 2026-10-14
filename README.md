@@ -60,7 +60,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 - **Join** (`/join`): Membership signup flow with every currently required membership waiver before Stripe checkout (individual and family plans)
 - **Member Portal** (`/member`): Authenticated member dashboard with digital membership card, QR code, required-waiver gate, and print-ready signed records
-- **Waivers** (`/waivers`): Authenticated signing and signed-record history for members, former members, organizers, and the primary administrator, independent of membership checkout
+- **Waivers** (`/waivers`): Authenticated signing and signed-record history for members, former members, and organizers, independent of membership checkout
 - **Renew** (`/renew`): Frictionless membership renewal flow that can be linked directly from renewal emails
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
@@ -214,8 +214,14 @@ Successful provider submissions are skipped on reruns; failed submissions remain
 Draft, future, expired, retired, and superseded forms cannot start an invitation campaign.
 
 Invitation links open `/waivers?templateId=…`. Signed-out recipients log in first, and both
-password and email-link login preserve the signing destination. Staff can sign here without
-entering the member-only dashboard. Normal login also checks for missing required waivers.
+password and email-link login preserve the signing destination. Organizers are members and
+must sign their own individual or household waivers; organizer access does not exempt them.
+The primary administrator is a non-person administrative account, not a member or signer.
+It goes directly to the dashboard, does not receive a member profile during login recovery,
+and is excluded from waiver completion counts and invitations. Personal signing APIs reject
+it, and its personal signup, renewal, and signing pages redirect to the dashboard. Admin can
+still manage waivers, access members' signed records, and assign organizer roles.
+Normal member and organizer login also checks for missing required waivers.
 Interrupted signup repairs a missing member profile before establishing the session, then
 routes unsigned members through signing and back to checkout. Renewal includes a signing
 link and a **Sign or view my waivers** link, including for expired members.
@@ -345,8 +351,9 @@ The following environment variables need to be set in Netlify:
 
 **Email and admin access:**
 
-- `ADMIN_EMAIL`: The single administrator account email. Organizer access is granted to member
-  accounts from the administrator dashboard.
+- `ADMIN_EMAIL`: The single non-person administrator account email, reserved for administration
+  rather than membership or waiver signing. Organizer access is granted to personal member
+  accounts from this account's dashboard.
 - `ADMIN_EMAIL_WHITELIST`: Optional comma-separated list of additional admin/report notification recipients.
 - `RESEND_API_KEY`: Resend API key used for transactional email.
 - `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.
