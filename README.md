@@ -152,8 +152,6 @@ These instructions guide review; they do not add automated architecture enforcem
 
 ```bash
 pnpm dev              # Start development server
-pnpm dev:waivers      # Start isolated local waiver sandbox (no real credentials)
-pnpm test:waivers:e2e # Browser acceptance tests against a fresh running sandbox
 pnpm build            # Production build
 pnpm start            # Start production server
 pnpm tsc              # TypeScript type-checking
@@ -172,58 +170,6 @@ pnpm db:migrate       # Run pending database migrations
 pnpm db:push          # Push schema directly to database
 pnpm db:studio        # Launch Drizzle Studio UI
 ```
-
-### Isolated waiver rehearsal
-
-Use Node.js 22+ and a worktree **without `.env` files or decrypted Firebase credentials**. The sandbox refuses
-to start if those files are present, and does not inherit provider secrets from your shell.
-It uses the official Firebase Auth emulator (`demo-dec-waivers`), a local PGlite PostgreSQL
-database with the real migrations, a captured email inbox, and a clearly labeled payment
-simulator. No Docker, running PostgreSQL server, or cloud credentials are needed.
-
-```bash
-pnpm dev:waivers
-```
-
-- Website: <http://127.0.0.1:3000/login>; new-member flow: <http://127.0.0.1:3000/join>.
-- Test desk, account list, and captured messages: <http://127.0.0.1:4311>.
-- Accounts: `admin@example.test`, `individual@example.test`, `family@example.test`,
-  `returning@example.test`, and `outsider@example.test`. All use `WaiverTest123!`.
-- Every restart starts fresh unsigned accounts. Logs and databases from earlier runs remain
-  under ignored `.local/waiver-tests/run-*` directories. Ctrl+C stops the sandbox services.
-- Only loopback addresses are accepted; local provider overrides fail in production. Never
-  deploy these test environment settings or use real member information in the sandbox.
-
-For automated browser checks, start a **fresh** sandbox, then in another terminal run:
-
-```bash
-pnpm exec playwright install chromium
-pnpm test:waivers:e2e
-```
-
-The browser suite exercises the real application and database, including household signing,
-revision history, print records, record privacy, invitation deduplication, and interrupted
-signup. Reports and failure traces are in ignored `playwright-report` and `test-results`.
-Restart again afterward to give a human tester clean unsigned accounts. Stop the development
-server before running a production build because both use `.next`.
-
-The full browser rehearsal is **manual-only** in GitHub Actions, not part of routine push or
-pull-request CI. Once `.github/workflows/waiver-rehearsal.yml` is merged into `master`, open
-**Actions → Waiver browser rehearsal → Run workflow** and select the branch to test. Run it
-when changing waiver/signup behavior or preparing a release. Fast waiver validation,
-authorization, and migration tests remain in the normal `pnpm test:run` CI suite.
-
-Manual rehearsal order: sign as an existing individual; sign as a family with an adult and a
-child; print the saved copy; edit the family and verify the original copy is unchanged; use
-the administrator's **Waivers → Email unsigned members once** action and inspect the local
-inbox; follow a captured invitation in a signed-out browser; abandon a new-member form and
-return; then sign a new-member waiver and cancel or complete simulated checkout.
-
-This does **not** verify real email delivery or Stripe's hosted checkout. Before the one-time
-production invitation, separately rehearse those integrations with approved test recipients
-and Stripe test mode. Current product gaps remain: signed-copy receipt emails are not sent;
-staff invitations lead to the dashboard without a personal signing route; unsigned form
-drafts do not survive a reload. A saved signature does survive checkout cancellation.
 
 ### Content Management
 
@@ -267,6 +213,13 @@ The portal and admin completion view use the latest revision, and the member can
 copies. Signed records include a name/birth-date table and the household signer's signature,
 and can be printed or saved as PDF in the browser. Access requires the owning account or
 staff with waiver-read permission. Roster changes never rewrite an earlier signed copy.
+
+Waiver validation, authorization, revision, and migration tests run in the normal
+`pnpm test:run` CI suite. Before the one-time production invitation, separately rehearse
+actual email delivery and Stripe's hosted checkout with approved test recipients and Stripe
+test mode. Current product gaps remain: signed-copy receipt emails are not sent; staff
+invitations lead to the dashboard without a personal signing route; unsigned form drafts
+do not survive a reload. A saved signature survives checkout cancellation.
 
 ```bash
 pnpm db:generate         # Generate migration from schema changes

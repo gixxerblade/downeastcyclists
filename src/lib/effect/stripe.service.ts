@@ -2,8 +2,6 @@ import type {Schema as S} from 'effect';
 import {Context, Effect, Layer} from 'effect';
 import Stripe from 'stripe';
 
-import {localTestEndpoint} from '../local-testing';
-
 import {StripeError, ValidationError} from './errors';
 import type {CheckoutSessionRequest} from './schemas';
 
@@ -93,20 +91,7 @@ const createStripeClient = (): {stripe: Stripe; webhookSecret: string | undefine
     throw new Error('STRIPE_SECRET_KEY environment variable is not set');
   }
 
-  const localEndpoint = localTestEndpoint(process.env.LOCAL_STRIPE_API_URL, process.env.NODE_ENV);
-  if (localEndpoint && !secretKey.startsWith('sk_test_local_')) {
-    throw new Error('The local payment simulator requires a dummy local test key');
-  }
-  const stripe = new Stripe(
-    secretKey,
-    localEndpoint
-      ? {
-          host: localEndpoint.hostname,
-          port: Number(localEndpoint.port),
-          protocol: 'http',
-        }
-      : undefined,
-  );
+  const stripe = new Stripe(secretKey);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   return {stripe, webhookSecret};

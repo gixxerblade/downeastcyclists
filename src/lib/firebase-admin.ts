@@ -6,18 +6,11 @@ import {initializeApp, getApps, cert, App} from 'firebase-admin/app';
 import {getAuth, Auth} from 'firebase-admin/auth';
 
 import {AuthError} from './effect/errors';
-import {authEmulatorProject, localTestEndpoint} from './local-testing';
 
 let adminApp: App | null = null;
 let adminAuth: Auth | null = null;
 
 function initializeAdminApp(): App {
-  const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
-  if (emulatorHost) {
-    localTestEndpoint(`http://${emulatorHost}`, process.env.NODE_ENV);
-    const projectId = authEmulatorProject(process.env.GOOGLE_PROJECT_ID);
-    return getApps()[0] ?? initializeApp({projectId});
-  }
   const existing = getApps()[0];
   if (existing) return existing;
 

@@ -36,7 +36,8 @@ describe('trail photo upload sessions', () => {
       'test-upload-secret-that-is-at-least-32-characters';
 
     const session = createTrailPhotoUploadSession([PHOTO], NOW);
-    const tampered = `${session.token.slice(0, -1)}x`;
+    // Distinct canonical base64url endings always change the decoded signature bytes.
+    const tampered = `${session.token.slice(0, -1)}${session.token.endsWith('A') ? 'Q' : 'A'}`;
 
     expect(verifyTrailPhotoUploadSession(tampered, NOW)).toEqual({ok: false});
     expect(
