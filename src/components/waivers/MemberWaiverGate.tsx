@@ -4,6 +4,13 @@ import {Alert, Box, Button, CircularProgress, Container, Paper, Typography} from
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 
+import {useAuth} from '@/src/components/auth/AuthProvider';
+import {
+  memberWaiversQueryKey,
+  memberWaiversQueryOptions,
+  type MemberWaiver,
+} from '@/src/lib/waivers/client';
+import {isWaiverComplete} from '@/src/lib/waivers/policy';
 import type {WaiverSignatureInput} from '@/src/lib/waivers/schemas';
 
 import {
@@ -13,46 +20,11 @@ import {
   type WaiverSignatureDraft,
 } from './WaiverSignatureFields';
 
-interface MemberWaiver {
-  readonly id: string;
-  readonly title: string;
-  readonly version: number;
-  readonly content: string;
-  readonly acknowledgment: string;
-  readonly isRequired: boolean;
-  readonly signatureId: string | null;
-  readonly signedAt: string | null;
-  readonly signerName: string | null;
-  readonly signerRole: 'adult' | 'guardian' | 'household' | null;
-  readonly participants: Array<{name: string; birthDate: string}> | null;
-  readonly phone: string | null;
-  readonly addressStreet: string | null;
-  readonly addressCity: string | null;
-  readonly addressState: string | null;
-  readonly addressZip: string | null;
-  readonly isSigned: boolean;
-  readonly history: Array<{id: string; revision: number; signedAt: string}>;
-}
-
 interface MemberWaiverGateProps {
-  readonly memberName: string;
+  readonly memberName?: string;
   readonly requireHousehold?: boolean;
+  readonly requestedTemplateId?: string;
   readonly children: React.ReactNode;
-}
-
-async function loadWaivers(): Promise<MemberWaiver[]> {
-  const response = await fetch('/api/member/waivers', {cache: 'no-store'});
-  const body: unknown = await response.json();
-  if (
-    !response.ok ||
-    typeof body !== 'object' ||
-    body === null ||
-    !('waivers' in body) ||
-    !Array.isArray(body.waivers)
-  ) {
-    throw new Error('Unable to load your waiver status');
-  }
-  return body.waivers;
 }
 
 function draftForWaiver(
@@ -74,22 +46,58 @@ function draftForWaiver(
   };
 }
 
-export function MemberWaiverGate({
-  memberName,
-  requireHousehold = false,
-  children,
-}: MemberWaiverGateProps) {
-  const queryClient = useQueryClient();
-  const waiversQuery = useQuery({queryKey: ['member', 'waivers'], queryFn: loadWaivers});
-  const pending = waiversQuery.data?.find(
-    (waiver) =>
-      waiver.isRequired &&
-      (!waiver.isSigned || (requireHousehold && waiver.signerRole !== 'household')),
+export function MemberWaiverGate(props: MemberWaiverGateProps) {
+  const {user, loading} = useAuth();
+  if (loading)
+    return (
+      <Container sx={{py: 6}}>
+        <CircularProgress aria-label="Verifying your account" />
+      </Container>
+    );
+  if (!user)
+    return (
+      <Container sx={{py: 6}}>
+        <Button component="a" href="/login?returnTo=%2Fwaivers">
+          Sign in to complete your waiver
+        </Button>
+      </Container>
+    );
+  return (
+    <AccountWaiverGate
+      key={user.uid}
+      {...props}
+      userId={user.uid}
+      memberName={props.memberName || user.displayName || ''}
+    />
   );
+}
+
+function AccountWaiverGate({
+  memberName = '',
+  userId,
+  requireHousehold: requestedHousehold = false,
+  requestedTemplateId,
+  children,
+}: MemberWaiverGateProps & {userId: string}) {
+  const queryClient = useQueryClient();
+  const waiversQuery = useQuery(memberWaiversQueryOptions(userId));
+  const requireHousehold = requestedHousehold || waiversQuery.data?.requireHousehold === true;
+  const waivers = waiversQuery.data?.waivers;
+  const pending =
+    waivers?.find(
+      (waiver) =>
+        waiver.isActive && waiver.isRequired && !isWaiverComplete(waiver, requireHousehold),
+    ) ??
+    waivers?.find(
+      (waiver) =>
+        waiver.isActive &&
+        waiver.id === requestedTemplateId &&
+        !isWaiverComplete(waiver, requireHousehold),
+    );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, WaiverSignatureDraft>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
-  const editing = pending ?? waiversQuery.data?.find((waiver) => waiver.id === editingId);
+  const editing = pending ?? waivers?.find((waiver) => waiver.isActive && waiver.id === editingId);
   const draft = editing
     ? (drafts[editing.id] ?? draftForWaiver(editing, memberName, requireHousehold))
     : makeWaiverSignatureDraft(memberName, requireHousehold);
@@ -128,7 +136,7 @@ export function MemberWaiverGate({
       });
       setEditingId(null);
       setValidationError(null);
-      await queryClient.invalidateQueries({queryKey: ['member', 'waivers']});
+      await queryClient.invalidateQueries({queryKey: memberWaiversQueryKey(userId)});
     },
   });
 
@@ -148,87 +156,98 @@ export function MemberWaiverGate({
       </Container>
     );
 
-  if (editing)
-    return (
-      <Box className="dec-page" sx={{minHeight: '100vh'}}>
-        <Container maxWidth="md" sx={{py: {xs: 4, md: 7}}}>
-          <Alert severity={editing.isSigned ? 'info' : 'warning'} sx={{mb: 3}}>
-            {editing.isSigned
-              ? 'Review the names and birth dates, then sign to save a new copy. Your earlier signed copy will remain available.'
-              : 'Complete your waiver before participating in club rides or events.'}
-          </Alert>
-          <Paper
-            className="dec-card"
-            component="form"
-            sx={{p: {xs: 2.5, md: 4}}}
-            onSubmit={(event) => {
-              event.preventDefault();
-              const parsed = parseWaiverDraft(draft);
-              if (parsed.error !== undefined) {
-                setValidationError(parsed.error);
-                return;
-              }
+  const editor = editing ? (
+    <Box className="dec-page" sx={{minHeight: '100vh'}}>
+      <Container maxWidth="md" sx={{py: {xs: 4, md: 7}}}>
+        <Alert severity={editing.isSigned ? 'info' : 'warning'} sx={{mb: 3}}>
+          {editing.isSigned
+            ? 'Review the names and birth dates, then sign to save a new copy. Your earlier signed copy will remain available.'
+            : 'Complete your waiver before participating in club rides or events.'}
+        </Alert>
+        <Paper
+          className="dec-card"
+          component="form"
+          sx={{p: {xs: 2.5, md: 4}}}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const parsed = parseWaiverDraft(draft);
+            if (parsed.error !== undefined) {
+              setValidationError(parsed.error);
+              return;
+            }
+            setValidationError(null);
+            signMutation.mutate({templateId: editing.id, signature: parsed.input});
+          }}
+        >
+          <WaiverSignatureFields
+            title={editing.title}
+            version={editing.version}
+            content={editing.content}
+            acknowledgment={editing.acknowledgment}
+            value={draft}
+            onChange={(next) => {
+              setDrafts((current) => ({...current, [editing.id]: next}));
               setValidationError(null);
-              signMutation.mutate({templateId: editing.id, signature: parsed.input});
             }}
+            requireHousehold={requireHousehold}
+            disabled={signMutation.isPending}
+            error={validationError ?? signMutation.error?.message}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            fullWidth
+            disabled={signMutation.isPending || !draft.consent}
+            sx={{mt: 3}}
           >
-            <WaiverSignatureFields
-              title={editing.title}
-              version={editing.version}
-              content={editing.content}
-              acknowledgment={editing.acknowledgment}
-              value={draft}
-              onChange={(next) => {
-                setDrafts((current) => ({...current, [editing.id]: next}));
-                setValidationError(null);
-              }}
-              requireHousehold={requireHousehold}
-              disabled={signMutation.isPending}
-              error={validationError ?? signMutation.error?.message}
-            />
+            {signMutation.isPending
+              ? 'Saving signature…'
+              : draft.signerRole === 'household'
+                ? 'Sign for my household'
+                : 'Sign waiver'}
+          </Button>
+          {!pending ? (
             <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              fullWidth
-              disabled={signMutation.isPending || !draft.consent}
-              sx={{mt: 3}}
+              type="button"
+              disabled={signMutation.isPending}
+              onClick={() => {
+                setEditingId(null);
+                setValidationError(null);
+                signMutation.reset();
+              }}
+              sx={{mt: 1}}
             >
-              {signMutation.isPending
-                ? 'Saving signature…'
-                : draft.signerRole === 'household'
-                  ? 'Sign for my household'
-                  : 'Sign waiver'}
+              Cancel
             </Button>
-            {!pending ? (
-              <Button
-                type="button"
-                disabled={signMutation.isPending}
-                onClick={() => {
-                  setEditingId(null);
-                  setValidationError(null);
-                  signMutation.reset();
-                }}
-                sx={{mt: 1}}
-              >
-                Cancel
-              </Button>
-            ) : null}
-            <Typography variant="body2" color="text.secondary" sx={{mt: 2}}>
-              You can print or save a copy after signing.
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
-    );
+          ) : null}
+          <Typography variant="body2" color="text.secondary" sx={{mt: 2}}>
+            You can print or save a copy after signing.
+          </Typography>
+        </Paper>
+      </Container>
+    </Box>
+  ) : null;
 
-  const signed = waiversQuery.data?.filter((waiver) => waiver.isSigned) ?? [];
+  const signed = waivers?.filter((waiver) => waiver.isSigned) ?? [];
   return (
     <>
+      {!editing &&
+        waivers
+          ?.filter((waiver) => waiver.isActive && !waiver.isRequired && !waiver.isSigned)
+          .map((waiver) => (
+            <Container key={waiver.id} sx={{py: 2}}>
+              <Button onClick={() => setEditingId(waiver.id)}>Sign {waiver.title}</Button>
+            </Container>
+          ))}
       {signed.length ? (
         <Container maxWidth="lg" sx={{py: 2}}>
           {signed.map((waiver) => (
             <Paper key={waiver.id} sx={{p: 2, mb: 1}}>
+              <Typography>
+                {waiver.title} · Version {waiver.version}
+                {waiver.isActive ? '' : ' · Archived signed record'}
+              </Typography>
               <Typography fontWeight={700}>
                 {waiver.signerRole === 'household'
                   ? `Family waiver complete · ${waiver.participants?.length ?? 0} people listed`
@@ -248,14 +267,16 @@ export function MemberWaiverGate({
                 >
                   Print or save signed waiver
                 </Button>
-                <Button
-                  onClick={() => {
-                    setEditingId(waiver.id);
-                    signMutation.reset();
-                  }}
-                >
-                  Update family details
-                </Button>
+                {waiver.isActive && !editing ? (
+                  <Button
+                    onClick={() => {
+                      setEditingId(waiver.id);
+                      signMutation.reset();
+                    }}
+                  >
+                    Update family details
+                  </Button>
+                ) : null}
               </Box>
               {waiver.history.length > 1 ? (
                 <Box component="details" sx={{mt: 1}}>
@@ -279,7 +300,8 @@ export function MemberWaiverGate({
           ))}
         </Container>
       ) : null}
-      {children}
+      {editor}
+      {!editing ? children : null}
     </>
   );
 }

@@ -3,7 +3,11 @@ import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Effect} from 'effect';
 
 import {emailLog, membershipCards, memberships, users} from '@/src/db/schema/tables';
-import {getEffectiveMembershipStatus, toStoredMembershipStatus} from '@/src/lib/membership-status';
+import {
+  CURRENT_MEMBERSHIP_STATUSES,
+  getEffectiveMembershipStatus,
+  toStoredMembershipStatus,
+} from '@/src/lib/membership-status';
 import {buildRenewalEmailCampaignKey, RENEWAL_EMAIL_TYPE} from '@/src/lib/renewal-email';
 
 import {resolveUserId} from './database.service';
@@ -26,13 +30,7 @@ function getDb() {
 
 type DatabaseMembershipStatus = typeof memberships.$inferSelect.status;
 
-const currentDatabaseStatuses: DatabaseMembershipStatus[] = [
-  'active',
-  'trialing',
-  'past_due',
-  'complimentary',
-  'legacy',
-];
+const currentDatabaseStatuses = CURRENT_MEMBERSHIP_STATUSES;
 
 const databaseStatuses: ReadonlySet<string> = new Set([
   ...currentDatabaseStatuses,
@@ -112,6 +110,37 @@ export function createMembershipMethods(
   db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
 ) {
   return {
+    getCurrentMemberContacts: () =>
+      Effect.tryPromise({
+        try: () =>
+          db
+            .selectDistinctOn([users.id], {
+              userId: users.firebaseUid,
+              name: users.name,
+              email: users.email,
+              planType: memberships.planType,
+            })
+            .from(users)
+            .innerJoin(memberships, eq(memberships.userId, users.id))
+            .where(
+              and(
+                inArray(memberships.status, currentDatabaseStatuses),
+                gte(memberships.endDate, new Date()),
+              ),
+            )
+            .orderBy(
+              users.id,
+              desc(memberships.endDate),
+              desc(memberships.createdAt),
+              desc(memberships.id),
+            ),
+        catch: (cause) =>
+          new DatabaseError({
+            code: 'CURRENT_MEMBER_CONTACTS_FAILED',
+            message: 'Unable to load current members',
+            cause,
+          }),
+      }),
     getMembership: (userId: string, membershipId: string) =>
       Effect.gen(function* () {
         const userRow = yield* resolveUserId(userId, db);
@@ -154,7 +183,7 @@ export function createMembershipMethods(
               .where(
                 and(
                   eq(memberships.userId, userRow.id),
-                  inArray(memberships.status, ['active', 'trialing', 'past_due']),
+                  inArray(memberships.status, currentDatabaseStatuses),
                 ),
               )
               .orderBy(desc(memberships.endDate))

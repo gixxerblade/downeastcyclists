@@ -2,13 +2,15 @@ import type {MembershipStatus} from './effect/schemas';
 
 export type StoredMembershipStatus = Exclude<MembershipStatus, 'expired'>;
 
-const currentStatuses = new Set<string>([
+export const CURRENT_MEMBERSHIP_STATUSES: readonly StoredMembershipStatus[] = [
   'active',
   'trialing',
   'past_due',
   'complimentary',
   'legacy',
-]);
+];
+
+const currentStatuses = new Set<string>(CURRENT_MEMBERSHIP_STATUSES);
 
 const inactiveStatuses = new Set<string>([
   'canceled',

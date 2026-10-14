@@ -16,6 +16,7 @@ export class DatabaseError extends Data.TaggedError('DatabaseError')<{
 export class ValidationError extends Data.TaggedError('ValidationError')<{
   readonly field: string;
   readonly message: string;
+  readonly actionUrl?: string;
   readonly cause?: unknown;
 }> {}
 

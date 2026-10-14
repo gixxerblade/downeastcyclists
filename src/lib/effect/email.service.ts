@@ -6,6 +6,7 @@ import {getUpcomingRenewalEmailSubject} from '../renewal-email';
 import {EmailError} from './errors';
 
 export interface EmailService {
+  readonly ensureWaiverEmailConfigured: () => Effect.Effect<void, EmailError>;
   readonly sendWelcomeEmail: (params: {
     to: string;
     name: string | undefined;
@@ -60,6 +61,17 @@ const make = Effect.gen(function* () {
   }
 
   const resend = apiKey ? new Resend(apiKey) : null;
+  const requireWaiverEmailClient = () =>
+    resend
+      ? Effect.succeed(resend)
+      : Effect.fail(
+          new EmailError({
+            code: 'WAIVER_EMAIL_NOT_CONFIGURED',
+            message:
+              'Configure RESEND_API_KEY before sending waiver invitations. No invitations were sent.',
+          }),
+        );
+  const ensureWaiverEmailConfigured = () => Effect.asVoid(requireWaiverEmailClient());
   const from = process.env.EMAIL_FROM ?? 'Down East Cyclists <noreply@downeastcyclists.com>';
   const renewalTemplateId = process.env.RESEND_RENEWAL_TEMPLATE_ID;
   const upcomingRenewalTemplateId = process.env.RESEND_UPCOMING_RENEWAL_TEMPLATE_ID;
@@ -444,12 +456,7 @@ const make = Effect.gen(function* () {
 
     sendWaiverSignatureRequestEmail: ({to, name, waiverTitle, signUrl, idempotencyKey}) =>
       Effect.gen(function* () {
-        if (!resend) {
-          yield* Effect.logWarning(
-            `Skipping waiver signature request to ${to}: RESEND_API_KEY not configured`,
-          );
-          return;
-        }
+        const waiverEmailClient = yield* requireWaiverEmailClient();
 
         const displayName = name?.trim() || 'Member';
         const subject = 'Action required: sign your Down East Cyclists liability waiver';
@@ -476,7 +483,7 @@ const make = Effect.gen(function* () {
 
         yield* Effect.tryPromise({
           try: async () => {
-            const {error} = await resend.emails.send(
+            const {error} = await waiverEmailClient.emails.send(
               {from, to, subject, html, text},
               {idempotencyKey},
             );
@@ -490,6 +497,7 @@ const make = Effect.gen(function* () {
             }),
         });
       }),
+    ensureWaiverEmailConfigured,
   });
 });
 

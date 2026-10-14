@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
             name: name,
             createdAt: new Date().toISOString(),
           } as any,
-          false, // Don't merge, create new document
+          true, // Concurrent login/signup recovery must never replace an existing profile.
         );
 
         yield* Effect.log(`Created user document for ${decodedToken.uid}`);

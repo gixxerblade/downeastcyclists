@@ -132,10 +132,7 @@ export function MemberDashboardClient({initialData}: MemberDashboardClientProps)
   }
 
   return (
-    <MemberWaiverGate
-      memberName={user.name || ''}
-      requireHousehold={membership?.planType === 'family'}
-    >
+    <MemberWaiverGate memberName={user.name || ''}>
       <Box className="dec-page" sx={{minHeight: '100vh'}}>
         <Container maxWidth="lg" sx={{py: {xs: 5, md: 8}}}>
           {/* Success message after checkout */}

@@ -36,6 +36,7 @@ const createTestDatabaseService = (
   ) as unknown as DatabaseServiceType['upsertUserByStripeCustomer'],
   getMembership: vi.fn(() => Effect.succeed(null)),
   getActiveMembership: vi.fn(() => Effect.succeed(null)),
+  getCurrentMemberContacts: vi.fn(() => Effect.succeed([])),
   setMembership: vi.fn(() => Effect.void),
   updateMembership: vi.fn(() => Effect.void),
   deleteMembership: vi.fn(() => Effect.void),

@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       'AuthError',
       'DatabaseError',
       'EmailError',
+      'WaiverConfigurationError',
       'ValidationError',
       'NotFoundError',
     ],

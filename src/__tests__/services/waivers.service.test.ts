@@ -1,10 +1,14 @@
 import {Effect, Either} from 'effect';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {waiverSignatures} from '@/src/db/schema/tables';
+import {DatabaseService} from '@/src/lib/effect/database.service';
 import type {WaiverSignatureInput} from '@/src/lib/waivers/schemas';
 
+import {createTestDatabaseService} from '../layers/test-layers';
+
 const database = vi.hoisted(() => ({select: vi.fn(), insert: vi.fn(), update: vi.fn()}));
+const selectResult = vi.fn();
 vi.mock('@/src/db/client', () => ({db: database}));
 
 import {getWaiverRecord, signWaiver} from '@/src/lib/waivers/service';
@@ -16,6 +20,7 @@ const template = {
   content: 'The approved waiver text.',
   acknowledgment: 'I have read this waiver.',
   status: 'published',
+  isActive: true,
   effectiveFrom: null,
   expiresAt: null,
 };
@@ -60,7 +65,7 @@ function context(existing?: {
   revision: number;
   signedAt: Date;
 }) {
-  database.select
+  selectResult
     .mockReturnValueOnce(query([user]))
     .mockReturnValueOnce(query([template]))
     .mockReturnValueOnce(query(existing ? [existing] : []));
@@ -77,18 +82,34 @@ function insertResult(rows: Array<{id: string; signedAt: Date}>) {
 
 function sign(signature: WaiverSignatureInput = input) {
   return Effect.runPromise(
-    signWaiver('member-uid', 'alex@example.test', template.id, signature, evidence),
+    signWaiver('member-uid', 'alex@example.test', template.id, signature, evidence).pipe(
+      Effect.provideService(DatabaseService, createTestDatabaseService()),
+    ),
   );
 }
 
 beforeEach(() => {
+  vi.stubEnv('WAIVER_SIGNATURE_SECRET', 'synthetic-test-key-not-for-production-12345');
   vi.resetAllMocks();
+  database.select.mockImplementation((fields) =>
+    fields && Object.keys(fields).length === 1 && 'id' in fields ? query([]) : selectResult(fields),
+  );
   saved = [];
   insertResult([{id: signatureId, signedAt}]);
   database.update.mockReturnValue({set: () => ({where: () => Promise.resolve()})});
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('household waiver signing', () => {
+  it.each(['', 'short', 'replace-with-an-independent-random-secret-at-least-32-characters'])(
+    'rejects missing, weak, or placeholder signing secrets: %s',
+    async (secret) => {
+      vi.stubEnv('WAIVER_SIGNATURE_SECRET', secret);
+      await expect(sign()).rejects.toThrow('configure WAIVER_SIGNATURE_SECRET');
+      expect(database.select).not.toHaveBeenCalled();
+      expect(database.insert).not.toHaveBeenCalled();
+    },
+  );
   it('stores one signature with the complete roster and the exact signed terms', async () => {
     context();
     expect(await sign()).toEqual({
@@ -164,7 +185,7 @@ describe('household waiver signing', () => {
     if (!original) throw new Error('Expected the initial signature');
     context();
     insertResult([]);
-    database.select.mockReturnValueOnce(
+    selectResult.mockReturnValueOnce(
       query([{id: signatureId, signedAt, documentDigest: original.documentDigest}]),
     );
 
@@ -175,7 +196,7 @@ describe('household waiver signing', () => {
   it('does not accept a conflicting concurrent roster as this member’s signature', async () => {
     context();
     insertResult([]);
-    database.select.mockReturnValueOnce(
+    selectResult.mockReturnValueOnce(
       query([{id: signatureId, signedAt, documentDigest: 'a different roster'}]),
     );
 
@@ -190,9 +211,9 @@ describe('household waiver signing', () => {
   });
 
   it('rejects a retired template without saving a signature', async () => {
-    database.select
+    selectResult
       .mockReturnValueOnce(query([user]))
-      .mockReturnValueOnce(query([{...template, status: 'retired'}]));
+      .mockReturnValueOnce(query([{...template, status: 'retired', isActive: false}]));
     await expect(sign()).rejects.toThrow('no longer available');
     expect(database.insert).not.toHaveBeenCalled();
   });
@@ -200,7 +221,7 @@ describe('household waiver signing', () => {
 
 describe('signed household record access', () => {
   it('hides a family record from another member', async () => {
-    database.select.mockReturnValueOnce(query([{signature: {signedAt}, ownerUid: 'owner-uid'}]));
+    selectResult.mockReturnValueOnce(query([{signature: {signedAt}, ownerUid: 'owner-uid'}]));
     const result = await Effect.runPromise(
       Effect.either(getWaiverRecord(signatureId, 'another-uid', false)),
     );
@@ -212,7 +233,7 @@ describe('signed household record access', () => {
     ['owner-uid', false],
     ['staff-uid', true],
   ])('allows the owner or authorized staff to retrieve the snapshot', async (uid, canViewAll) => {
-    database.select.mockReturnValueOnce(
+    selectResult.mockReturnValueOnce(
       query([{signature: {signedAt, participants: input.familyMembers}, ownerUid: 'owner-uid'}]),
     );
     const result = await Effect.runPromise(getWaiverRecord(signatureId, uid, canViewAll));

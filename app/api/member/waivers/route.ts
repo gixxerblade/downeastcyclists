@@ -4,7 +4,7 @@ import {NextResponse} from 'next/server';
 
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
-import {listMemberWaivers} from '@/src/lib/waivers/service';
+import {getMemberWaiverContext} from '@/src/lib/waivers/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ export async function GET() {
   const program = Effect.gen(function* () {
     const portal = yield* PortalService;
     const session = yield* portal.verifySession(sessionCookie);
-    return yield* listMemberWaivers(session.uid);
+    return yield* getMemberWaiverContext(session.uid);
   }).pipe(
     Effect.catchTag('SessionError', () => Effect.succeed({error: 'Session expired', status: 401})),
     Effect.catchTag('DatabaseError', () =>
@@ -29,5 +29,5 @@ export async function GET() {
   if ('error' in result) {
     return NextResponse.json({error: result.error}, {status: result.status});
   }
-  return NextResponse.json({waivers: result});
+  return NextResponse.json(result, {headers: {'Cache-Control': 'private, no-store'}});
 }

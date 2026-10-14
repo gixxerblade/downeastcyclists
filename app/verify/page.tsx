@@ -20,6 +20,7 @@ import {
   isValidSignInLink,
 } from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
+import {loginReturnPathFromUrl} from '@/src/lib/waivers/navigation';
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -31,7 +32,9 @@ export default function VerifyPage() {
   const verifyMutation = useMutation<unknown, AuthError, string>({
     mutationFn: (email) => Effect.runPromise(completeMagicLinkSignIn(email, window.location.href)),
     onSuccess: async () => {
-      const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+      const redirectPath = await Effect.runPromise(
+        getPostLoginRedirectPath(loginReturnPathFromUrl(window.location.href)),
+      );
       router.replace(redirectPath);
     },
     onError: () => {

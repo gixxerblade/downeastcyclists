@@ -3,6 +3,7 @@ import {Effect} from 'effect';
 import {cookies} from 'next/headers';
 import {NextRequest, NextResponse} from 'next/server';
 
+import {getTrustedClientIp} from '@/src/lib/api/client-identity';
 import {ValidationError} from '@/src/lib/effect/errors';
 import {LiveLayer} from '@/src/lib/effect/layers';
 import {PortalService} from '@/src/lib/effect/portal.service';
@@ -10,9 +11,7 @@ import {WaiverSignatureInput} from '@/src/lib/waivers/schemas';
 import {signWaiver} from '@/src/lib/waivers/service';
 
 function getClientIp(request: NextRequest): string | null {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]?.trim() || null;
-  return request.headers.get('x-real-ip');
+  return getTrustedClientIp(request) ?? request.headers.get('x-real-ip');
 }
 
 export async function POST(request: NextRequest, context: {params: Promise<{templateId: string}>}) {
@@ -47,6 +46,12 @@ export async function POST(request: NextRequest, context: {params: Promise<{temp
       userAgent: request.headers.get('user-agent'),
     });
   }).pipe(
+    Effect.catchTag('WaiverConfigurationError', () =>
+      Effect.succeed({
+        error: 'Waiver signing is temporarily unavailable. Please contact the club administrator.',
+        status: 503,
+      }),
+    ),
     Effect.catchTag('SessionError', () =>
       Effect.succeed({error: 'Your session expired. Please sign in again.', status: 401}),
     ),

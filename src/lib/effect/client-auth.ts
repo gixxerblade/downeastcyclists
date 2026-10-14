@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth';
 
 import type {AccessRole} from '@/src/lib/access-control';
+import {safeLoginReturnPath, waiverSigningPath} from '@/src/lib/waivers/navigation';
 import {auth} from '@/src/utils/firebase';
 
 import {AuthError} from './errors';
@@ -23,6 +24,29 @@ interface LoginCredentials {
   email: string;
   password: string;
 }
+
+// All cookie mutations share one queue so a slow previous-account response
+// cannot overwrite the new account's session or recreate a logged-out session.
+let sessionUpdates: Promise<void> = Promise.resolve();
+function updateSession<A>(operation: () => Promise<A>): Promise<A> {
+  const result = sessionUpdates.then(operation);
+  sessionUpdates = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+export const clearSessionCookie = (): Effect.Effect<void, AuthError> =>
+  Effect.tryPromise({
+    try: () =>
+      updateSession(async () => {
+        const response = await fetch('/api/auth/session', {method: 'DELETE'});
+        if (!response.ok) throw new Error('Unable to clear your session');
+      }),
+    catch: (cause) =>
+      new AuthError({code: 'SESSION_CLEAR_FAILED', message: 'Unable to clear your session', cause}),
+  });
 
 export const getCurrentAccessRole = (): Effect.Effect<AccessRole, AuthError> =>
   Effect.tryPromise({
@@ -48,33 +72,32 @@ export const getCurrentAccessRole = (): Effect.Effect<AccessRole, AuthError> =>
       }),
   });
 
-export const getPostLoginRedirectPath = (): Effect.Effect<string, AuthError> =>
+export const getPostLoginRedirectPath = (returnTo?: string): Effect.Effect<string, AuthError> =>
   Effect.gen(function* () {
+    const requested = safeLoginReturnPath(returnTo);
+    if (requested?.startsWith('/waivers')) return requested;
     const role = yield* getCurrentAccessRole();
-    if (role !== 'member') {
-      return '/dashboard';
-    }
-
     return yield* Effect.tryPromise({
       try: async () => {
-        const response = await fetch('/api/member/dashboard');
-        if (!response.ok) return '/member';
-
-        const data = await response.json();
+        const waiverResponse = await fetch('/api/member/waivers', {cache: 'no-store'});
+        const waiverStatus: unknown = waiverResponse.ok ? await waiverResponse.json() : null;
+        const needsMembership =
+          typeof waiverStatus === 'object' &&
+          waiverStatus !== null &&
+          'needsMembership' in waiverStatus &&
+          waiverStatus.needsMembership === true;
+        const destination =
+          requested ?? (role !== 'member' ? '/dashboard' : needsMembership ? '/renew' : '/member');
+        if (!waiverResponse.ok) return waiverSigningPath({returnTo: destination});
         if (
-          typeof data === 'object' &&
-          data !== null &&
-          'membership' in data &&
-          (!data.membership ||
-            (typeof data.membership === 'object' &&
-              data.membership !== null &&
-              'status' in data.membership &&
-              data.membership.status === 'expired'))
+          typeof waiverStatus !== 'object' ||
+          waiverStatus === null ||
+          !('hasPendingRequired' in waiverStatus) ||
+          waiverStatus.hasPendingRequired !== false
         ) {
-          return '/renew';
+          return waiverSigningPath({returnTo: destination});
         }
-
-        return '/member';
+        return destination;
       },
       catch: (error) =>
         new AuthError({
@@ -102,20 +125,30 @@ export const signInWithPassword = (
 // Create session cookie via API
 export const createSessionCookie = (idToken: string): Effect.Effect<SessionResponse, AuthError> =>
   Effect.tryPromise({
-    try: async () => {
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({idToken}),
-      });
+    try: () =>
+      updateSession(async () => {
+        // Idempotently repair signup interruptions between Firebase account creation
+        // and the database profile, including password and magic-link recovery.
+        const profile = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({idToken}),
+        });
+        if (!profile.ok)
+          throw new Error('Unable to prepare your member account. Please sign in again to retry.');
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({idToken}),
+        });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create session');
-      }
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create session');
+        }
 
-      return response.json();
-    },
+        return response.json();
+      }),
     catch: (error) =>
       new AuthError({
         code: 'SESSION_CREATE_FAILED',

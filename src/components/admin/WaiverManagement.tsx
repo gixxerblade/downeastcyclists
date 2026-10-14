@@ -30,6 +30,7 @@ import {
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 
+import {useAuth} from '@/src/components/auth/AuthProvider';
 import type {StaffRole} from '@/src/lib/access-control';
 import {
   DEFAULT_WAIVER_ACKNOWLEDGMENT,
@@ -46,6 +47,7 @@ interface WaiverTemplateSummary {
   readonly version: number;
   readonly isRequired: boolean;
   readonly signatureCount: number;
+  readonly canInvite: boolean;
 }
 
 interface CompletionMember {
@@ -58,6 +60,8 @@ interface CompletionMember {
   readonly signerName: string | null;
   readonly signerRole: 'adult' | 'guardian' | 'household' | null;
   readonly participants: Array<{name: string; birthDate: string}> | null;
+  readonly isCurrent: boolean;
+  readonly history: Array<{id: string; revision: number; signedAt: string}>;
 }
 
 interface CompletionResponse {
@@ -112,6 +116,7 @@ function isNotificationResult(
 }
 
 export function WaiverManagement({role}: {readonly role: StaffRole}) {
+  const {user} = useAuth();
   const queryClient = useQueryClient();
   const canManage = role === 'admin';
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -126,7 +131,8 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
   const [isRequired, setIsRequired] = useState(true);
 
   const completionQuery = useQuery({
-    queryKey: ['admin', 'waivers', selectedTemplateId],
+    queryKey: ['admin', 'waivers', user?.uid, selectedTemplateId],
+    enabled: !!user,
     queryFn: async () => {
       const result = await jsonRequest(
         `/api/admin/waivers/completion${
@@ -138,6 +144,9 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
     },
   });
   const selectedId = selectedTemplateId || completionQuery.data?.selectedTemplateId || '';
+  const selectedTemplate = completionQuery.data?.templates.find(
+    (template) => template.id === selectedId,
+  );
 
   const refresh = async () => {
     await queryClient.invalidateQueries({queryKey: ['admin', 'waivers']});
@@ -207,6 +216,9 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
           <Typography variant="h4" component="h2">
             Liability waivers
           </Typography>
+          <Button component="a" href="/waivers?returnTo=%2Fdashboard">
+            Sign or view my own waiver
+          </Button>
           <Typography color="text.secondary">
             Publish versioned forms, track signatures, and open signed records instantly.
           </Typography>
@@ -254,13 +266,18 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
             <Button
               variant="outlined"
               startIcon={<EmailIcon />}
-              disabled={notificationMutation.isPending}
+              disabled={notificationMutation.isPending || !selectedTemplate?.canInvite}
               onClick={() => notificationMutation.mutate()}
             >
               Email unsigned members once
             </Button>
           ) : null}
         </Box>
+        {!selectedTemplate?.canInvite ? (
+          <Typography variant="body2" sx={{mt: 2}}>
+            Invitations are available only while this published waiver is open for signing.
+          </Typography>
+        ) : null}
         <Box sx={{display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap'}}>
           <Chip color="success" label={`${completionQuery.data?.signed ?? 0} signed`} />
           <Chip color="warning" label={`${completionQuery.data?.pending ?? 0} pending`} />
@@ -293,7 +310,13 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
                   <Chip
                     size="small"
                     color={member.isSigned ? 'success' : 'warning'}
-                    label={member.isSigned ? 'Signed' : 'Pending'}
+                    label={
+                      !member.isCurrent
+                        ? 'Historical record'
+                        : member.isSigned
+                          ? 'Signed'
+                          : 'Pending'
+                    }
                   />
                 </TableCell>
                 <TableCell>
@@ -315,16 +338,37 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
                 </TableCell>
                 <TableCell align="right">
                   {member.signatureId ? (
-                    <Button
-                      component="a"
-                      href={`/api/waivers/records/${member.signatureId}`}
-                      target="_blank"
-                      rel="noopener"
-                      size="small"
-                      startIcon={<DescriptionIcon />}
-                    >
-                      Open
-                    </Button>
+                    <Box>
+                      <Button
+                        component="a"
+                        href={`/api/waivers/records/${member.signatureId}`}
+                        target="_blank"
+                        rel="noopener"
+                        size="small"
+                        startIcon={<DescriptionIcon />}
+                      >
+                        Open
+                      </Button>
+                      {member.history.length > 1 ? (
+                        <Box component="details">
+                          <summary>Earlier copies</summary>
+                          {member.history
+                            .filter((record) => record.id !== member.signatureId)
+                            .map((record) => (
+                              <Button
+                                key={record.id}
+                                component="a"
+                                href={`/api/waivers/records/${record.id}`}
+                                target="_blank"
+                                rel="noopener"
+                              >
+                                Copy {record.revision} ·{' '}
+                                {new Date(record.signedAt).toLocaleDateString()}
+                              </Button>
+                            ))}
+                        </Box>
+                      ) : null}
+                    </Box>
                   ) : (
                     '—'
                   )}

@@ -58,8 +58,9 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 
 ### Membership & Payments
 
-- **Join** (`/join`): Membership signup flow with a required digital liability waiver before Stripe checkout (individual and family plans)
+- **Join** (`/join`): Membership signup flow with every currently required membership waiver before Stripe checkout (individual and family plans)
 - **Member Portal** (`/member`): Authenticated member dashboard with digital membership card, QR code, required-waiver gate, and print-ready signed records
+- **Waivers** (`/waivers`): Authenticated signing and signed-record history for members, former members, organizers, and the primary administrator, independent of membership checkout
 - **Renew** (`/renew`): Frictionless membership renewal flow that can be linked directly from renewal emails
 - **Renew Complete** (`/renew/complete`): Post-checkout confirmation for renewal payments
 - **Verify** (`/verify`): Email verification page
@@ -199,6 +200,31 @@ listed. The signer is included automatically; every additional family member nee
 and birth date. No separate adult invitations or child signatures are collected. The join flow
 selects family signing for family plans, and family checkout requires a household waiver.
 Existing family members complete the same form in the member portal.
+Family classification uses the configured price ID at signup/checkout and the stored plan
+type for existing memberships, including imported and complimentary memberships; it does
+not depend on a plan's display name. The server independently enforces household signing.
+
+Existing-member invitation emails are **admin-triggered**, not sent automatically on
+deployment or publication. In the dashboard's waiver section, select the current form and
+choose **Email unsigned members once**. The campaign includes current active, trialing,
+past-due, legacy, and complimentary memberships; expired memberships are excluded.
+Missing email/signing configuration stops the campaign before any send is recorded.
+Successful provider submissions are skipped on reruns; failed submissions remain retryable.
+"Sent" means Resend accepted the request, not proof of delivery to the recipient's inbox.
+Draft, future, expired, retired, and superseded forms cannot start an invitation campaign.
+
+Invitation links open `/waivers?templateId=…`. Signed-out recipients log in first, and both
+password and email-link login preserve the signing destination. Staff can sign here without
+entering the member-only dashboard. Normal login also checks for missing required waivers.
+Interrupted signup repairs a missing member profile before establishing the session, then
+routes unsigned members through signing and back to checkout. Renewal includes a signing
+link and a **Sign or view my waivers** link, including for expired members.
+
+For versions sharing a title and scope, the newest published version that has reached its
+effective date supersedes earlier versions. Scheduling a future replacement does not close
+the current version early, and canceling that future version leaves the current one open.
+Retiring or expiring an effective replacement does not revive superseded wording. Different
+required membership forms are all shown during signup and all checked again before payment.
 
 Each signature stores the exact terms, acknowledgment, household/electronic signing statement,
 complete roster, contact details, authenticated account identity, timestamp, browser evidence,
@@ -213,13 +239,20 @@ The portal and admin completion view use the latest revision, and the member can
 copies. Signed records include a name/birth-date table and the household signer's signature,
 and can be printed or saved as PDF in the browser. Access requires the owning account or
 staff with waiver-read permission. Roster changes never rewrite an earlier signed copy.
+Retired, expired, and superseded signed copies remain accessible, including all earlier
+revisions. Admin history includes former members, but they do not affect the current-member
+completion counts or invitation audience. Private browser caches are keyed by account,
+cleared on account changes, and checked against the authenticated response identity.
+
+Domain ownership and lifecycle rules are documented beside the implementation in
+[`src/lib/waivers/README.md`](src/lib/waivers/README.md).
 
 Waiver validation, authorization, revision, and migration tests run in the normal
 `pnpm test:run` CI suite. Before the one-time production invitation, separately rehearse
 actual email delivery and Stripe's hosted checkout with approved test recipients and Stripe
-test mode. Current product gaps remain: signed-copy receipt emails are not sent; staff
-invitations lead to the dashboard without a personal signing route; unsigned form drafts
-do not survive a reload. A saved signature survives checkout cancellation.
+test mode. Current product gaps remain: signed-copy receipt emails are not sent; unsigned
+form drafts do not survive a reload; membership-card scans do not enforce waiver completion.
+A saved signature survives checkout cancellation. No production emails are sent by the tests.
 
 ```bash
 pnpm db:generate         # Generate migration from schema changes
@@ -294,7 +327,14 @@ The following environment variables need to be set in Netlify:
 - `RATE_LIMIT_SECRET`: Independent random secret of at least 32 characters used to protect stored
   rate-limit identifiers.
 - `WAIVER_SIGNATURE_SECRET`: Independent random secret of at least 32 characters used to HMAC
-  signer IP addresses before they are stored with waiver evidence.
+  signer IP addresses before they are stored with waiver evidence. Required before signup
+  waiver loading, signing, or invitation sending; missing, short, and `replace-with-…`
+  placeholder values fail explicitly. This is not an X.509 certificate and does not
+  cryptographically sign the PDF. Generate a separate value per environment with
+  `openssl rand -hex 32`, put it in local `.env.local` and the deployment's runtime secrets
+  as appropriate, and never commit the value. The blank entry is documented in `.env.example`.
+  Keep the key securely backed up if historical IP-hash comparisons are needed; rotating it
+  does not change stored waivers or their content digests.
 
 **Stripe:**
 

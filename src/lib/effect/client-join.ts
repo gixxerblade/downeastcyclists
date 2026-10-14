@@ -16,10 +16,10 @@ export interface JoinRequest {
   cancelUrl: string;
   coverFees: boolean;
   planPrice: number;
-  waiver: {
+  waivers: Array<{
     templateId: string;
     signature: WaiverSignatureInput;
-  };
+  }>;
 }
 
 export interface JoinResult {
@@ -93,7 +93,9 @@ const createCheckoutSession = (params: {
       }),
   });
 
-const signRequiredWaiver = (waiver: JoinRequest['waiver']): Effect.Effect<void, AuthError> =>
+const signRequiredWaiver = (
+  waiver: JoinRequest['waivers'][number],
+): Effect.Effect<void, AuthError> =>
   Effect.tryPromise({
     try: async () => {
       const response = await fetch(`/api/member/waivers/${waiver.templateId}/sign`, {
@@ -125,11 +127,15 @@ const signRequiredWaiver = (waiver: JoinRequest['waiver']): Effect.Effect<void, 
 export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult, AuthError> =>
   Effect.gen(function* () {
     // Step 1: Create Firebase Auth account
-    const user = yield* createAccount({
-      email: request.email,
-      password: request.password,
-      name: request.name,
-    });
+    const current = auth.currentUser;
+    const user =
+      current?.email?.toLowerCase() === request.email.trim().toLowerCase()
+        ? {email: current.email}
+        : yield* createAccount({
+            email: request.email,
+            password: request.password,
+            name: request.name,
+          });
 
     // Step 2: Get ID token for user creation
     const idToken = yield* Effect.tryPromise({
@@ -157,7 +163,7 @@ export const joinAndCheckout = (request: JoinRequest): Effect.Effect<JoinResult,
 
     // Step 5: Store the required waiver before taking payment. If interrupted
     // after account creation, the member can sign in and finish in the portal.
-    yield* signRequiredWaiver(request.waiver);
+    yield* Effect.forEach(request.waivers, signRequiredWaiver, {discard: true});
 
     // Step 6: Create Stripe checkout session
     const checkout = yield* createCheckoutSession({

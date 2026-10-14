@@ -4,7 +4,7 @@ import {Box, Button, TextField, Typography, Alert, Divider} from '@mui/material'
 import {useMutation} from '@tanstack/react-query';
 import {Effect} from 'effect';
 import Link from 'next/link';
-import {useRouter} from 'next/navigation';
+import {useRouter, useSearchParams} from 'next/navigation';
 import {useState, useEffect} from 'react';
 
 import {
@@ -13,6 +13,7 @@ import {
   sendMagicLink,
 } from '@/src/lib/effect/client-auth';
 import type {AuthError} from '@/src/lib/effect/errors';
+import {safeLoginReturnPath} from '@/src/lib/waivers/navigation';
 import {auth} from '@/src/utils/firebase';
 
 interface LoginCredentials {
@@ -22,6 +23,7 @@ interface LoginCredentials {
 
 export function LoginForm() {
   const router = useRouter();
+  const returnTo = safeLoginReturnPath(useSearchParams()?.get('returnTo'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -60,7 +62,7 @@ export function LoginForm() {
           if (response.ok) {
             const data = await response.json();
             if (data.authenticated) {
-              const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+              const redirectPath = await Effect.runPromise(getPostLoginRedirectPath(returnTo));
               router.replace(redirectPath);
             }
           }
@@ -71,13 +73,13 @@ export function LoginForm() {
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, returnTo]);
 
   // Email/Password Login Mutation - using Effect
   const loginMutation = useMutation<unknown, AuthError, LoginCredentials>({
     mutationFn: (credentials) => Effect.runPromise(loginWithPassword(credentials)),
     onSuccess: async () => {
-      const redirectPath = await Effect.runPromise(getPostLoginRedirectPath());
+      const redirectPath = await Effect.runPromise(getPostLoginRedirectPath(returnTo));
       router.replace(redirectPath);
     },
   });
@@ -85,7 +87,12 @@ export function LoginForm() {
   // Magic Link Mutation - using Effect
   const magicLinkMutation = useMutation<void, AuthError, string>({
     mutationFn: (email) =>
-      Effect.runPromise(sendMagicLink(email, `${window.location.origin}/auth-handler`)),
+      Effect.runPromise(
+        sendMagicLink(
+          email,
+          `${window.location.origin}/auth-handler${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,
+        ),
+      ),
     onSuccess: () => {
       setMagicLinkSent(true);
     },
