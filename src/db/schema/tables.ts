@@ -1,5 +1,7 @@
+import {sql} from 'drizzle-orm';
 import {
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -252,6 +254,8 @@ export const emailLog = pgTable(
     subject: varchar('subject', {length: 255}).notNull(),
     status: varchar('status', {length: 20}).notNull(),
     idempotencyKey: varchar('idempotency_key', {length: 255}).notNull(),
+    operationKey: varchar('operation_key', {length: 255}),
+    providerEmailId: varchar('provider_email_id', {length: 255}),
     sentBy: varchar('sent_by', {length: 128}).notNull(),
     sentByEmail: varchar('sent_by_email', {length: 255}),
     errorMessage: text('error_message'),
@@ -261,6 +265,11 @@ export const emailLog = pgTable(
     index('email_log_user_type_campaign_idx').on(table.userId, table.emailType, table.campaignKey),
     index('email_log_membership_idx').on(table.membershipId),
     index('email_log_created_at_idx').on(table.createdAt),
+    uniqueIndex('email_log_operation_key_idx').on(table.operationKey),
+    check(
+      'email_log_claim_status_check',
+      sql`${table.operationKey} IS NULL OR ${table.status} IN ('pending', 'uncertain', 'sent')`,
+    ),
   ],
 );
 

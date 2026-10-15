@@ -28,6 +28,49 @@ function runWithEmail<A, E>(program: (service: EmailService) => Effect.Effect<A,
 }
 
 describe('waiver email configuration', () => {
+  it.each([400, 401, 403, 404, 422, 429])(
+    'marks an explicit %i provider rejection as safe for a new attempt',
+    async (statusCode) => {
+      vi.stubEnv('RESEND_API_KEY', 're_synthetic_key');
+      send.mockResolvedValue({
+        data: null,
+        error: {statusCode, name: 'validation_error', message: 'Rejected'},
+      });
+      const result = await runWithEmail((email) =>
+        Effect.either(email.sendWaiverSignatureRequestEmail(input)),
+      );
+      expect(result).toMatchObject({_tag: 'Left', left: {definitelyRejected: true}});
+    },
+  );
+
+  it.each([409, 500, 503, undefined])(
+    'keeps an uncertain %s provider result blocked',
+    async (statusCode) => {
+      vi.stubEnv('RESEND_API_KEY', 're_synthetic_key');
+      send.mockResolvedValue({
+        data: null,
+        error: {statusCode, name: 'api_error', message: 'Unknown outcome'},
+      });
+      const result = await runWithEmail((email) =>
+        Effect.either(email.sendWaiverSignatureRequestEmail(input)),
+      );
+      expect(result).toMatchObject({_tag: 'Left', left: {definitelyRejected: false}});
+    },
+  );
+
+  it('does not treat a timeout or missing provider ID as proof of rejection', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_synthetic_key');
+    send.mockRejectedValueOnce(new Error('Network timeout'));
+    send.mockResolvedValueOnce({data: null, error: null});
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await runWithEmail((email) =>
+        Effect.either(email.sendWaiverSignatureRequestEmail(input)),
+      );
+      expect(result._tag).toBe('Left');
+      if (result._tag === 'Left') expect(result.left.definitelyRejected).not.toBe(true);
+    }
+  });
+
   it('uses the hosted template and the same variables for invitations, reminders, and tests', async () => {
     vi.stubEnv('RESEND_API_KEY', 're_synthetic_key');
     send.mockResolvedValue({data: {id: 'synthetic'}, error: null});

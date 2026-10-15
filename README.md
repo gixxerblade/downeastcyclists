@@ -212,21 +212,28 @@ Every send opens a confirmation showing the exact recipients; sending starts onl
 confirmation. The campaign includes current active, trialing,
 past-due, legacy, and complimentary memberships; expired memberships are excluded.
 Missing email/signing configuration stops the campaign before any send is recorded.
-Successful provider submissions are skipped on reruns; failed submissions remain retryable.
+Successful provider submissions are skipped on reruns; definite provider rejections remain retryable.
 "Sent" means Resend accepted the request, not proof of delivery to the recipient's inbox.
 Draft, future, expired, retired, and superseded forms cannot start an invitation campaign.
 
 Previously emailed, still-unsigned members have a separate **Resend reminder** action.
 It requires confirmation and is bound to the member's last successful email record, so a
 replayed/stale confirmation cannot send another reminder after that record changes.
-Failed attempts remain retryable with the same provider idempotency key. Last accepted
-send time and failed-attempt status appear in the member table. Signed members and the
+Each invitation/reminder is reserved durably in the email log before contacting Resend.
+A unique operation key prevents simultaneous requests from sending twice. Definite
+rejections release that reservation; a retry gets a new attempt and provider key, while
+the failed attempt remains in history. Last accepted
+send time and attempt status appear in the member table. Signed members and the
 non-person admin are excluded. Eligibility is rechecked on the server before sending.
 The browser processes selections in batches of 20, with sequential paced sends; keep
 the confirmation dialog open until it finishes. After an interruption, reselect members
-and retry; recorded successes are skipped. Provider acceptance followed by a database
-logging failure remains an ambiguous outcome: Resend deduplicates the same key for 24
-hours, but this is not a durable transactional outbox or proof of inbox delivery.
+and retry eligible members; recorded successes are skipped. A timeout, unknown provider
+outcome, or interrupted database update leaves the reservation blocked without an expiry,
+including beyond Resend's 24-hour idempotency window. The table shows pending/uncertain
+delivery and disables further sends until an operator reconciles it. This deliberately
+requires review in rare ambiguous cases, rather than assuming the message was not sent.
+It is not a background outbox or proof of inbox delivery. See the
+[delivery recovery runbook](src/lib/waivers/README.md#delivery-recovery) before unblocking a send.
 
 **Preview email / send test** loads the published Resend template without sending mail.
 The preview uses a sample greeting and is isolated in a sandboxed frame. A template with
@@ -250,7 +257,10 @@ Preview requires a Full access Resend key: use `RESEND_TEMPLATE_API_KEY` if the 
 The admin-only `/api/admin/waivers/notifications` endpoint uses GET for preview and POST
 for explicit `invite`, confirmed `remind`, or self-only `test` requests. An omitted or
 empty recipient selection is rejected instead of meaning "everyone". Email status is
-read through the existing email-log owner; no new database migration is required.
+read through the existing email-log owner. Apply migration
+`0014_waiver_email_delivery_claims` before deploying these email controls; it adds nullable
+operation/provider IDs and a uniqueness guard without rewriting existing history.
+No new environment variable is needed for this guard.
 
 Invitation links open `/waivers?templateId=…`. Signed-out recipients log in first, and both
 password and email-link login preserve the signing destination. Organizers are members and

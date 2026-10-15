@@ -696,11 +696,14 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
         b.timestamp.localeCompare(a.timestamp),
       );
       const lastSent = emailHistory.find((entry) => entry.status === 'sent');
+      const unresolved = emailHistory.find(
+        (entry) => entry.status === 'pending' || entry.status === 'uncertain',
+      );
       const isSigned = isWaiverComplete(
         {isSigned: !!latest, signerRole: latest?.signerRole ?? null},
         current?.planType === 'family',
       );
-      const canEmail = selected.canInvite && !!current && !isSigned;
+      const canEmail = selected.canInvite && !!current && !isSigned && !unresolved;
       return {
         ...member,
         isCurrent: !!current,
@@ -714,8 +717,8 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
         canRemind: canEmail && !!lastSent,
         lastEmailId: lastSent?.id ?? null,
         lastEmailSentAt: lastSent?.timestamp ?? null,
-        lastEmailStatus: emailHistory[0]?.status ?? null,
-        lastEmailAttemptAt: emailHistory[0]?.timestamp ?? null,
+        lastEmailStatus: unresolved?.status ?? emailHistory[0]?.status ?? null,
+        lastEmailAttemptAt: unresolved?.timestamp ?? emailHistory[0]?.timestamp ?? null,
         history: history.map((record) => ({
           id: record.signatureId,
           revision: record.revision,
@@ -831,34 +834,42 @@ export const sendUnsignedWaiverEmails = Effect.fn('Waivers.sendUnsignedEmails')(
       ) {
         return {...result, skipped: result.skipped + 1};
       }
-      const idempotencyKey = reminder
+      const operationKey = reminder
         ? `waiver-reminder/${templateId}/${member.userId}/${existing?.id}`
         : `waiver-request/${templateId}/${member.userId}`;
       // Keep sequential campaign requests below Resend's default rate limit.
       if (result.sent + result.failed > 0) yield* Effect.sleep('600 millis');
+      const claim = yield* database.claimEmailDelivery(member.userId, {
+        emailType,
+        deliveryType: reminder ? 'resend' : 'one-time',
+        campaignKey,
+        recipientEmail: member.email,
+        subject,
+        operationKey,
+        sentBy,
+        sentByEmail,
+      });
+      if (!claim) return {...result, failed: result.failed + 1};
       const outcome = yield* email
         .sendWaiverSignatureRequestEmail({
           to: member.email,
           name: member.name ?? undefined,
           waiverTitle: template.title,
           signUrl,
-          idempotencyKey,
+          idempotencyKey: claim.idempotencyKey,
           reminder,
         })
         .pipe(Effect.either);
 
-      yield* database.logEmailEvent(member.userId, {
-        emailType,
-        deliveryType: reminder ? 'resend' : 'one-time',
-        campaignKey,
-        recipientEmail: member.email,
-        subject,
-        status: outcome._tag === 'Right' ? 'sent' : 'failed',
-        idempotencyKey,
-        sentBy,
-        sentByEmail,
-        errorMessage: outcome._tag === 'Left' ? outcome.left.message : undefined,
-      });
+      yield* database.completeEmailDelivery(
+        claim.id,
+        outcome._tag === 'Right'
+          ? {status: 'sent', providerEmailId: outcome.right.id}
+          : {
+              status: outcome.left.definitelyRejected ? 'failed' : 'uncertain',
+              errorMessage: outcome.left.message,
+            },
+      );
 
       return outcome._tag === 'Right'
         ? {...result, sent: result.sent + 1}

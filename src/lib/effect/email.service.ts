@@ -68,7 +68,7 @@ export interface EmailService {
       signUrl: string;
       idempotencyKey: string;
     },
-  ) => Effect.Effect<void, EmailError>;
+  ) => Effect.Effect<{id: string}, EmailError>;
 }
 
 export const EmailService = Context.GenericTag<EmailService>('EmailService');
@@ -510,9 +510,9 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         const waiverEmailClient = yield* requireWaiverEmailClient();
 
-        yield* Effect.tryPromise({
+        return yield* Effect.tryPromise({
           try: async () => {
-            const {error} = await waiverEmailClient.emails.send(
+            const {data, error} = await waiverEmailClient.emails.send(
               {
                 from,
                 to,
@@ -524,14 +524,26 @@ const make = Effect.gen(function* () {
               },
               {idempotencyKey},
             );
-            if (error) throw error;
+            if (error)
+              throw new EmailError({
+                code: 'SEND_WAIVER_REQUEST_FAILED',
+                message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+                // Timeouts, server errors, and idempotency conflicts do not prove
+                // rejection. Never release their durable claim automatically.
+                definitelyRejected: [400, 401, 403, 404, 422, 429].includes(error.statusCode ?? 0),
+                cause: error,
+              });
+            if (!data?.id) throw new Error('Provider did not return an email ID');
+            return {id: data.id};
           },
           catch: (error) =>
-            new EmailError({
-              code: 'SEND_WAIVER_REQUEST_FAILED',
-              message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
-              cause: error,
-            }),
+            error instanceof EmailError
+              ? error
+              : new EmailError({
+                  code: 'SEND_WAIVER_REQUEST_FAILED',
+                  message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+                  cause: error,
+                }),
         });
       }),
     ensureWaiverEmailConfigured,

@@ -109,6 +109,7 @@ export class ImportError extends Data.TaggedError('ImportError')<{
 export class EmailError extends Data.TaggedError('EmailError')<{
   readonly code: string;
   readonly message: string;
+  readonly definitelyRejected?: boolean;
   readonly cause?: unknown;
 }> {}
 

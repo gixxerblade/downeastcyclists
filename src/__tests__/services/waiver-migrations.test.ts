@@ -64,6 +64,14 @@ describe('waiver migrations after the published membership migrations', () => {
         })
         .returning();
       const originalPeriods = await db.select().from(schema.membershipPeriods);
+      // Historical duplicate provider keys must remain valid: only new operation
+      // claims are unique, and old delivery history is not rewritten or deleted.
+      for (let index = 0; index < 2; index++)
+        await client.query(
+          `INSERT INTO email_log (user_id, email_type, delivery_type, campaign_key, recipient_email, subject, status, idempotency_key, sent_by)
+         VALUES ($1, 'liability_waiver_signature_request', 'one-time', 'waiver/legacy', 'existing@example.test', 'Legacy invitation', 'sent', 'legacy-key', 'admin')`,
+          [member.id],
+        );
 
       await migrate(db, {migrationsFolder: 'drizzle'});
       // A second deployment must not rerun the waiver seed or the existing migrations.
@@ -72,6 +80,14 @@ describe('waiver migrations after the published membership migrations', () => {
       expect(await db.select().from(schema.users)).toEqual([member]);
       expect(await db.select().from(schema.memberships)).toEqual([membership]);
       expect(await db.select().from(schema.membershipPeriods)).toEqual(originalPeriods);
+      const oldEmails = await db.select().from(schema.emailLog);
+      expect(oldEmails).toHaveLength(2);
+      expect(
+        oldEmails.every(
+          (row) =>
+            row.operationKey === null && row.providerEmailId === null && row.status === 'sent',
+        ),
+      ).toBe(true);
       const templates = await db.select().from(schema.waiverTemplates);
       expect(templates).toHaveLength(2);
       expect(templates.find((template) => template.status === 'published')).toMatchObject({

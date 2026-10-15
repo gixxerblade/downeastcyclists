@@ -383,7 +383,7 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
                     <Typography variant="caption" display="block">
                       {member.lastEmailSentAt
                         ? `Last accepted ${new Date(member.lastEmailSentAt).toLocaleString()}`
-                        : 'Not yet emailed'}
+                        : 'No confirmed acceptance'}
                     </Typography>
                     {member.lastEmailStatus === 'failed' ? (
                       <Typography variant="caption" color="error" display="block">
@@ -391,6 +391,16 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
                         {member.lastEmailAttemptAt
                           ? ` ${new Date(member.lastEmailAttemptAt).toLocaleString()}`
                           : ''}
+                      </Typography>
+                    ) : null}
+                    {member.lastEmailStatus === 'pending' ||
+                    member.lastEmailStatus === 'uncertain' ? (
+                      <Typography variant="caption" color="warning.main" display="block">
+                        {member.lastEmailStatus === 'pending'
+                          ? 'Send in progress or awaiting delivery review. Refresh shortly.'
+                          : 'Delivery uncertain — review required.'}{' '}
+                        Further sends are blocked. If this persists, ask the site operator to
+                        reconcile the send with Resend.
                       </Typography>
                     ) : null}
                     {member.canInvite ? (

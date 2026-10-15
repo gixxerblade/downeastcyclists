@@ -212,13 +212,15 @@ export function WaiverEmailDialog({
         {test.error ? <Alert severity="error">{test.error.message}</Alert> : null}
         {send.error ? (
           <Alert severity="error">
-            {send.error.message} Some emails may already have been accepted. You can retry this
-            selection safely; recorded successes will be skipped.
+            {send.error.message} Some emails may already have been accepted. Close this dialog and
+            refresh the member list. Recorded successes are skipped; unresolved sends stay blocked
+            until the site operator reviews their delivery status.
           </Alert>
         ) : null}
         {send.isPending || send.data || send.error ? (
           <Alert severity={progress.failed ? 'warning' : 'info'}>
-            Accepted: {progress.sent}. Skipped: {progress.skipped}. Failed: {progress.failed}.
+            Accepted: {progress.sent}. Skipped: {progress.skipped}. Failed or needs review:{' '}
+            {progress.failed}.
             {send.isPending
               ? ' Please keep this window open.'
               : ' Accepted means Resend received the request, not confirmed inbox delivery.'}
