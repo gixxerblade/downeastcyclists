@@ -10,6 +10,10 @@ import {
   type ActionLogResult,
   type AuditEntryDocument,
   type EmailLogDocument,
+  type EmailCampaignStatus,
+  type ClaimEmailDeliveryInput,
+  type EmailDeliveryClaim,
+  type EmailDeliveryOutcome,
   type LogEmailEventInput,
   createAuditMethods,
 } from './database-audit.methods';
@@ -227,6 +231,20 @@ export interface DatabaseService {
     emailType: string,
     campaignKey: string,
   ) => Effect.Effect<EmailLogDocument | null, DatabaseError>;
+
+  readonly getEmailCampaignStatuses: (
+    emailType: string,
+    campaignKey: string,
+  ) => Effect.Effect<EmailCampaignStatus[], DatabaseError>;
+
+  readonly claimEmailDelivery: (
+    userId: string,
+    input: ClaimEmailDeliveryInput,
+  ) => Effect.Effect<EmailDeliveryClaim | null, DatabaseError>;
+  readonly completeEmailDelivery: (
+    id: string,
+    outcome: EmailDeliveryOutcome,
+  ) => Effect.Effect<void, DatabaseError>;
 
   readonly logEmailEvent: (
     userId: string,

@@ -99,7 +99,7 @@ The Down East Cyclists website is built with Next.js and deployed on Netlify. It
 - **Database**: PostgreSQL via Neon (serverless) with Drizzle ORM; Google Firestore for trail status
 - **Authentication**: Firebase Authentication
 - **Payments**: Stripe (subscriptions, checkout, customer portal, webhooks)
-- **Email**: Resend transactional email for welcome emails, manual renewal reminders, upcoming automatic-renewal notices, and organizer access notifications
+- **Email**: Resend transactional email for welcome emails, manual renewal reminders, upcoming automatic-renewal notices, organizer access notifications, and waiver invitations/reminders
 - **Bot Protection**: hCaptcha for contact forms; Cloudflare Turnstile for trail issue reports
 - **Object Storage**: R2-compatible storage for trail maintenance report photos
 - **Error Handling**: Effect-TS for type-safe, composable operations
@@ -206,12 +206,61 @@ not depend on a plan's display name. The server independently enforces household
 
 Existing-member invitation emails are **admin-triggered**, not sent automatically on
 deployment or publication. In the dashboard's waiver section, select the current form and
-choose **Email unsigned members once**. The campaign includes current active, trialing,
+choose **Email unsigned members once**, use **Send invitation** beside a member, or check
+members and choose **Email selected**. The checkboxes select first invitations only.
+Every send opens a confirmation showing the exact recipients; sending starts only after
+confirmation. The campaign includes current active, trialing,
 past-due, legacy, and complimentary memberships; expired memberships are excluded.
 Missing email/signing configuration stops the campaign before any send is recorded.
-Successful provider submissions are skipped on reruns; failed submissions remain retryable.
+Successful provider submissions are skipped on reruns; definite provider rejections remain retryable.
 "Sent" means Resend accepted the request, not proof of delivery to the recipient's inbox.
 Draft, future, expired, retired, and superseded forms cannot start an invitation campaign.
+
+Previously emailed, still-unsigned members have a separate **Resend reminder** action.
+It requires confirmation and is bound to the member's last successful email record, so a
+replayed/stale confirmation cannot send another reminder after that record changes.
+Each invitation/reminder is reserved durably in the email log before contacting Resend.
+A unique operation key prevents simultaneous requests from sending twice. Definite
+rejections release that reservation; a retry gets a new attempt and provider key, while
+the failed attempt remains in history. Last accepted
+send time and attempt status appear in the member table. Signed members and the
+non-person admin are excluded. Eligibility is rechecked on the server before sending.
+The browser processes selections in batches of 20, with sequential paced sends; keep
+the confirmation dialog open until it finishes. After an interruption, reselect members
+and retry eligible members; recorded successes are skipped. A timeout, unknown provider
+outcome, or interrupted database update leaves the reservation blocked without an expiry,
+including beyond Resend's 24-hour idempotency window. The table shows pending/uncertain
+delivery and disables further sends until an operator reconciles it. This deliberately
+requires review in rare ambiguous cases, rather than assuming the message was not sent.
+It is not a background outbox or proof of inbox delivery. See the
+[delivery recovery runbook](src/lib/waivers/README.md#delivery-recovery) before unblocking a send.
+
+**Preview email / send test** loads the published Resend template without sending mail.
+The preview uses a sample greeting and is isolated in a sandboxed frame. A template with
+unpublished edits must be published before it can be previewed as the outgoing email.
+**Send test to me** sends a clearly marked test only to the verified administrative
+session's email, never a supplied recipient; it creates no member profile or invitation
+history. The administrative account still cannot sign a personal waiver.
+
+The hosted template alias is `liability-waiver-invitation` (override with
+`RESEND_WAIVER_TEMPLATE_ID`). It matches the existing club email design. Create and
+publish it once with `pnpm resend:setup-waiver-template`; this create-only command does
+not overwrite later dashboard edits. Source HTML/text live in `emails/`. Edit and publish
+the body/layout in Resend thereafter. The application supplies the subject and the
+`MEMBER_NAME`, `WAIVER_TITLE`, `SIGN_URL`, and `INTRO` variables for invitations, reminders,
+and tests. HTML uses their `_HTML` variants, escaped by the application; keep the
+unsuffixed variables in the plain-text body only. There is no silent plain-email
+fallback if the hosted template is missing.
+Preview requires a Full access Resend key: use `RESEND_TEMPLATE_API_KEY` if the normal
+`RESEND_API_KEY` is sending-only. Sending itself does not require template-read access.
+
+The admin-only `/api/admin/waivers/notifications` endpoint uses GET for preview and POST
+for explicit `invite`, confirmed `remind`, or self-only `test` requests. An omitted or
+empty recipient selection is rejected instead of meaning "everyone". Email status is
+read through the existing email-log owner. Apply migration
+`0014_waiver_email_delivery_claims` before deploying these email controls; it adds nullable
+operation/provider IDs and a uniqueness guard without rewriting existing history.
+No new environment variable is needed for this guard.
 
 Invitation links open `/waivers?templateId=…`. Signed-out recipients log in first, and both
 password and email-link login preserve the signing destination. Organizers are members and
@@ -356,6 +405,8 @@ The following environment variables need to be set in Netlify:
   accounts from this account's dashboard.
 - `ADMIN_EMAIL_WHITELIST`: Optional comma-separated list of additional admin/report notification recipients.
 - `RESEND_API_KEY`: Resend API key used for transactional email.
+- `RESEND_WAIVER_TEMPLATE_ID`: Published waiver email template ID or alias; defaults to `liability-waiver-invitation`.
+- `RESEND_TEMPLATE_API_KEY`: Optional server-only Full access key for admin email preview when `RESEND_API_KEY` is sending-only.
 - `EMAIL_FROM`: Verified Resend sender address for member and organizer emails.
 - `RESEND_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for renewal reminders.
 - `RESEND_UPCOMING_RENEWAL_TEMPLATE_ID`: Resend template alias or ID for 30-day automatic-renewal notices.

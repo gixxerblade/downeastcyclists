@@ -31,6 +31,8 @@ import {isPrimaryAdminEmail} from '@/src/lib/primary-admin';
 import {getSiteUrl} from '@/src/lib/site-url';
 
 import {waiverSignatureSecret} from './config';
+import {WAIVER_EMAIL_TYPE, waiverEmailSubject} from './email-content';
+import type {WaiverEmailRequest} from './email-schemas';
 import {waiverSigningPath} from './navigation';
 import {isWaiverComplete} from './policy';
 import type {WaiverSignatureInput, WaiverTemplateInput} from './schemas';
@@ -662,6 +664,16 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
     recordsByUser.set(record.userId, history);
   }
   const audience = new Map(currentMembers.map((member) => [member.userId, member]));
+  const emailStatuses = yield* database.getEmailCampaignStatuses(
+    WAIVER_EMAIL_TYPE,
+    `waiver/${selected.id}`,
+  );
+  const statusByUser = new Map<string, typeof emailStatuses>();
+  for (const status of emailStatuses) {
+    const history = statusByUser.get(status.userId) ?? [];
+    history.push(status);
+    statusByUser.set(status.userId, history);
+  }
   // Include former members in record browsing, but never in the invitation audience.
   const identities = new Map(
     records.map((record) => [
@@ -680,6 +692,18 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
       const history = recordsByUser.get(member.userId) ?? [];
       const latest = history[0];
       const current = audience.get(member.userId);
+      const emailHistory = (statusByUser.get(member.userId) ?? []).toSorted((a, b) =>
+        b.timestamp.localeCompare(a.timestamp),
+      );
+      const lastSent = emailHistory.find((entry) => entry.status === 'sent');
+      const unresolved = emailHistory.find(
+        (entry) => entry.status === 'pending' || entry.status === 'uncertain',
+      );
+      const isSigned = isWaiverComplete(
+        {isSigned: !!latest, signerRole: latest?.signerRole ?? null},
+        current?.planType === 'family',
+      );
+      const canEmail = selected.canInvite && !!current && !isSigned && !unresolved;
       return {
         ...member,
         isCurrent: !!current,
@@ -688,10 +712,13 @@ export const getWaiverCompletion = Effect.fn('Waivers.getCompletion')(function* 
         signerRole: latest?.signerRole ?? null,
         participants: latest?.participants ?? null,
         signedAt: latest?.signedAt.toISOString() ?? null,
-        isSigned: isWaiverComplete(
-          {isSigned: !!latest, signerRole: latest?.signerRole ?? null},
-          current?.planType === 'family',
-        ),
+        isSigned,
+        canInvite: canEmail && !lastSent,
+        canRemind: canEmail && !!lastSent,
+        lastEmailId: lastSent?.id ?? null,
+        lastEmailSentAt: lastSent?.timestamp ?? null,
+        lastEmailStatus: unresolved?.status ?? emailHistory[0]?.status ?? null,
+        lastEmailAttemptAt: unresolved?.timestamp ?? emailHistory[0]?.timestamp ?? null,
         history: history.map((record) => ({
           id: record.signatureId,
           revision: record.revision,
@@ -742,63 +769,170 @@ export const sendUnsignedWaiverEmails = Effect.fn('Waivers.sendUnsignedEmails')(
   templateId: string,
   sentBy: string,
   sentByEmail?: string,
+  selection?: Exclude<WaiverEmailRequest, {action: 'test'}>,
 ) {
   yield* waiverSignatureSecret();
   const completion = yield* getWaiverCompletion(templateId);
-  const template = completion.templates.find((item) => item.id === templateId);
-  if (!template) {
-    return yield* Effect.fail(new NotFoundError({resource: 'Waiver template', id: templateId}));
-  }
-  if (!template.canInvite) {
-    return yield* new ValidationError({
-      field: 'templateId',
-      message: 'Invitations require a published waiver that is currently available to sign.',
-    });
-  }
+  const template = yield* requireInvitableWaiver(completion.templates, templateId);
 
   const database = yield* DatabaseService;
   const email = yield* EmailService;
   yield* email.ensureWaiverEmailConfigured();
   const campaignKey = `waiver/${templateId}`;
-  const emailType = 'liability_waiver_signature_request';
-  const subject = 'Action required: sign your Down East Cyclists liability waiver';
+  const emailType = WAIVER_EMAIL_TYPE;
+  const reminder = selection?.action === 'remind';
+  const subject = waiverEmailSubject({reminder});
   const signUrl = `${getSiteUrl()}${waiverSigningPath({templateId})}`;
   const initial = {sent: 0, skipped: 0, failed: 0};
+  const requestedIds = selection
+    ? new Set(
+        selection.action === 'invite'
+          ? selection.userIds
+          : selection.recipients.map((recipient) => recipient.userId),
+      )
+    : null;
+  if (
+    requestedIds &&
+    [...requestedIds].some((id) => !completion.members.some((member) => member.userId === id))
+  ) {
+    return yield* new ValidationError({
+      field: 'userIds',
+      message: 'The selected member list has changed. Refresh it before sending.',
+    });
+  }
+  const recipients = completion.members.filter(
+    (member) => !requestedIds || requestedIds.has(member.userId),
+  );
 
-  return yield* Effect.reduce(completion.members, initial, (result, member) =>
+  return yield* Effect.reduce(recipients, initial, (result, member) =>
     Effect.gen(function* () {
       if (!member.isCurrent || member.isSigned) return {...result, skipped: result.skipped + 1};
 
       const existing = yield* database.getLatestEmailLog(member.userId, emailType, campaignKey);
-      if (existing?.status === 'sent') return {...result, skipped: result.skipped + 1};
+      if (selection?.action === 'remind') {
+        const previous = selection.recipients.find(
+          (recipient) => recipient.userId === member.userId,
+        );
+        if (
+          !selection.confirmed ||
+          !existing ||
+          existing.status !== 'sent' ||
+          existing.id !== previous?.previousEmailId
+        ) {
+          return {...result, skipped: result.skipped + 1};
+        }
+      } else if (existing?.status === 'sent') return {...result, skipped: result.skipped + 1};
 
-      const idempotencyKey = `waiver-request/${templateId}/${member.userId}`;
+      // Recheck after selection/confirmation: the member may have signed or
+      // changed membership while another recipient's email was being sent.
+      const context = yield* getMemberWaiverContext(member.userId, member.email);
+      const currentWaiver = context.waivers.find((waiver) => waiver.id === templateId);
+      if (
+        context.needsMembership ||
+        !currentWaiver?.isActive ||
+        isWaiverComplete(currentWaiver, context.requireHousehold)
+      ) {
+        return {...result, skipped: result.skipped + 1};
+      }
+      const operationKey = reminder
+        ? `waiver-reminder/${templateId}/${member.userId}/${existing?.id}`
+        : `waiver-request/${templateId}/${member.userId}`;
+      // Keep sequential campaign requests below Resend's default rate limit.
+      if (result.sent + result.failed > 0) yield* Effect.sleep('600 millis');
+      const claim = yield* database.claimEmailDelivery(member.userId, {
+        emailType,
+        deliveryType: reminder ? 'resend' : 'one-time',
+        campaignKey,
+        recipientEmail: member.email,
+        subject,
+        operationKey,
+        sentBy,
+        sentByEmail,
+      });
+      if (!claim) return {...result, failed: result.failed + 1};
       const outcome = yield* email
         .sendWaiverSignatureRequestEmail({
           to: member.email,
           name: member.name ?? undefined,
           waiverTitle: template.title,
           signUrl,
-          idempotencyKey,
+          idempotencyKey: claim.idempotencyKey,
+          reminder,
         })
         .pipe(Effect.either);
 
-      yield* database.logEmailEvent(member.userId, {
-        emailType,
-        deliveryType: 'one-time',
-        campaignKey,
-        recipientEmail: member.email,
-        subject,
-        status: outcome._tag === 'Right' ? 'sent' : 'failed',
-        idempotencyKey,
-        sentBy,
-        sentByEmail,
-        errorMessage: outcome._tag === 'Left' ? outcome.left.message : undefined,
-      });
+      yield* database.completeEmailDelivery(
+        claim.id,
+        outcome._tag === 'Right'
+          ? {status: 'sent', providerEmailId: outcome.right.id}
+          : {
+              status: outcome.left.definitelyRejected ? 'failed' : 'uncertain',
+              errorMessage: outcome.left.message,
+            },
+      );
 
       return outcome._tag === 'Right'
         ? {...result, sent: result.sent + 1}
         : {...result, failed: result.failed + 1};
     }),
   );
+});
+
+const requireInvitableWaiver = Effect.fn('Waivers.requireInvitable')(function* (
+  templates: ReadonlyArray<{id: string; title: string; canInvite: boolean}>,
+  templateId: string,
+) {
+  const template = templates.find((item) => item.id === templateId);
+  if (!template) return yield* new NotFoundError({resource: 'Waiver template', id: templateId});
+  if (!template.canInvite)
+    return yield* new ValidationError({
+      field: 'templateId',
+      message: 'Invitations require a published waiver that is currently available to sign.',
+    });
+  return template;
+});
+
+const waiverEmailContext = Effect.fn('Waivers.emailContext')(function* (templateId: string) {
+  yield* waiverSignatureSecret();
+  const template = yield* requireInvitableWaiver(yield* listWaiverTemplates(), templateId);
+  return {
+    waiverTitle: template.title,
+    signUrl: `${getSiteUrl()}${waiverSigningPath({templateId})}`,
+  };
+});
+
+export const previewWaiverEmail = Effect.fn('Waivers.previewEmail')(function* (
+  templateId: string,
+  adminEmail: string,
+  reminder = false,
+) {
+  const context = yield* waiverEmailContext(templateId);
+  const email = yield* EmailService;
+  const preview = yield* email.previewWaiverSignatureRequestEmail({
+    ...context,
+    name: 'Member',
+    reminder,
+  });
+  return {...preview, testRecipient: adminEmail};
+});
+
+export const sendTestWaiverEmail = Effect.fn('Waivers.sendTestEmail')(function* (
+  templateId: string,
+  actor: {uid: string; email: string},
+  requestId: string,
+  reminder = false,
+) {
+  const context = yield* waiverEmailContext(templateId);
+  const email = yield* EmailService;
+  yield* email.sendWaiverSignatureRequestEmail({
+    ...context,
+    to: actor.email,
+    name: 'Administrator',
+    test: true,
+    reminder,
+    idempotencyKey: `waiver-test/${actor.uid}/${requestId}`,
+  });
+  // The administrative identity is not a member. Never create a member profile
+  // or consume any member's invitation when an administrator tests the template.
+  return {sent: 1, skipped: 0, failed: 0, testRecipient: actor.email};
 });

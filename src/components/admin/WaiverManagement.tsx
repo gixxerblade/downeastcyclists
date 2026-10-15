@@ -38,6 +38,8 @@ import {
   DEFAULT_WAIVER_TITLE,
 } from '@/src/lib/waivers/default-waiver';
 
+import {WaiverEmailDialog, type WaiverEmailDialogState} from './WaiverEmailDialog';
+
 interface WaiverTemplateSummary {
   readonly id: string;
   readonly title: string;
@@ -61,6 +63,12 @@ interface CompletionMember {
   readonly signerRole: 'adult' | 'guardian' | 'household' | null;
   readonly participants: Array<{name: string; birthDate: string}> | null;
   readonly isCurrent: boolean;
+  readonly canInvite: boolean;
+  readonly canRemind: boolean;
+  readonly lastEmailId: string | null;
+  readonly lastEmailSentAt: string | null;
+  readonly lastEmailStatus: string | null;
+  readonly lastEmailAttemptAt: string | null;
   readonly history: Array<{id: string; revision: number; signedAt: string}>;
 }
 
@@ -100,26 +108,13 @@ function isCompletionResponse(value: unknown): value is CompletionResponse {
   );
 }
 
-function isNotificationResult(
-  value: unknown,
-): value is {sent: number; skipped: number; failed: number} {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'sent' in value &&
-    typeof value.sent === 'number' &&
-    'skipped' in value &&
-    typeof value.skipped === 'number' &&
-    'failed' in value &&
-    typeof value.failed === 'number'
-  );
-}
-
 export function WaiverManagement({role}: {readonly role: StaffRole}) {
   const {user} = useAuth();
   const queryClient = useQueryClient();
   const canManage = role === 'admin';
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [emailDialog, setEmailDialog] = useState<WaiverEmailDialogState | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState(DEFAULT_WAIVER_TITLE);
   const [description, setDescription] = useState(
@@ -147,6 +142,8 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
   const selectedTemplate = completionQuery.data?.templates.find(
     (template) => template.id === selectedId,
   );
+  const invitees = (completionQuery.data?.members ?? []).filter((member) => member.canInvite);
+  const selectedInvitees = invitees.filter((member) => selectedMembers.includes(member.userId));
 
   const refresh = async () => {
     await queryClient.invalidateQueries({queryKey: ['admin', 'waivers']});
@@ -182,24 +179,10 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
     onSuccess: refresh,
   });
 
-  const notificationMutation = useMutation({
-    mutationFn: () =>
-      jsonRequest('/api/admin/waivers/notifications', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({templateId: selectedId}),
-      }).then((result) => {
-        if (!isNotificationResult(result)) throw new Error('Invalid email campaign response');
-        return result;
-      }),
-    onSuccess: refresh,
-  });
-
   const error =
     completionQuery.error?.message ||
     createMutation.error?.message ||
-    statusMutation.error?.message ||
-    notificationMutation.error?.message;
+    statusMutation.error?.message;
 
   return (
     <Box sx={{display: 'grid', gap: 3}}>
@@ -233,12 +216,6 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
       </Box>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {notificationMutation.data ? (
-        <Alert severity={notificationMutation.data.failed ? 'warning' : 'success'}>
-          Sent {notificationMutation.data.sent}; skipped {notificationMutation.data.skipped}; failed{' '}
-          {notificationMutation.data.failed}.
-        </Alert>
-      ) : null}
 
       <Paper className="dec-card" sx={{p: 3}}>
         <Box
@@ -255,7 +232,10 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
               labelId="waiver-template-label"
               label="Waiver version"
               value={selectedId}
-              onChange={(event) => setSelectedTemplateId(event.target.value)}
+              onChange={(event) => {
+                setSelectedTemplateId(event.target.value);
+                setSelectedMembers([]);
+              }}
             >
               {(completionQuery.data?.templates ?? []).map((template) => (
                 <MenuItem key={template.id} value={template.id}>
@@ -268,13 +248,39 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
             <Button
               variant="outlined"
               startIcon={<EmailIcon />}
-              disabled={notificationMutation.isPending || !selectedTemplate?.canInvite}
-              onClick={() => notificationMutation.mutate()}
+              disabled={!invitees.length || !selectedTemplate?.canInvite}
+              onClick={() =>
+                setEmailDialog({action: 'invite', templateId: selectedId, recipients: invitees})
+              }
             >
               Email unsigned members once
             </Button>
           ) : null}
         </Box>
+        {canManage && selectedId ? (
+          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2}}>
+            <Button
+              disabled={!selectedInvitees.length}
+              onClick={() =>
+                setEmailDialog({
+                  action: 'invite',
+                  templateId: selectedId,
+                  recipients: selectedInvitees,
+                })
+              }
+            >
+              Email selected ({selectedInvitees.length})
+            </Button>
+            <Button
+              disabled={!selectedTemplate?.canInvite}
+              onClick={() =>
+                setEmailDialog({action: 'preview', templateId: selectedId, recipients: []})
+              }
+            >
+              Preview email / send test
+            </Button>
+          </Box>
+        ) : null}
         {!selectedTemplate?.canInvite ? (
           <Typography variant="body2" sx={{mt: 2}}>
             Invitations are available only while this published waiver is open for signing.
@@ -290,16 +296,50 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
         <Table>
           <TableHead>
             <TableRow>
+              {canManage ? (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    inputProps={{'aria-label': 'Select all members needing a first invitation'}}
+                    disabled={!invitees.length}
+                    checked={!!invitees.length && selectedInvitees.length === invitees.length}
+                    indeterminate={
+                      selectedInvitees.length > 0 && selectedInvitees.length < invitees.length
+                    }
+                    onChange={(_event, checked) =>
+                      setSelectedMembers(checked ? invitees.map((member) => member.userId) : [])
+                    }
+                  />
+                </TableCell>
+              ) : null}
               <TableCell>Member</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>People listed</TableCell>
               <TableCell>Signed</TableCell>
+              {canManage ? <TableCell>Email invitation</TableCell> : null}
               <TableCell align="right">Record</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {(completionQuery.data?.members ?? []).map((member) => (
               <TableRow key={member.userId}>
+                {canManage ? (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      inputProps={{
+                        'aria-label': `Select ${member.name || member.email} for invitation`,
+                      }}
+                      disabled={!member.canInvite}
+                      checked={member.canInvite && selectedMembers.includes(member.userId)}
+                      onChange={(_event, checked) =>
+                        setSelectedMembers((current) =>
+                          checked
+                            ? [...current, member.userId]
+                            : current.filter((id) => id !== member.userId),
+                        )
+                      }
+                    />
+                  </TableCell>
+                ) : null}
                 <TableCell>
                   <Typography fontWeight={700}>{member.name || member.email}</Typography>
                   {member.name ? (
@@ -338,6 +378,62 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
                 <TableCell>
                   {member.signedAt ? new Date(member.signedAt).toLocaleString() : '—'}
                 </TableCell>
+                {canManage ? (
+                  <TableCell>
+                    <Typography variant="caption" display="block">
+                      {member.lastEmailSentAt
+                        ? `Last accepted ${new Date(member.lastEmailSentAt).toLocaleString()}`
+                        : 'No confirmed acceptance'}
+                    </Typography>
+                    {member.lastEmailStatus === 'failed' ? (
+                      <Typography variant="caption" color="error" display="block">
+                        Last attempt failed
+                        {member.lastEmailAttemptAt
+                          ? ` ${new Date(member.lastEmailAttemptAt).toLocaleString()}`
+                          : ''}
+                      </Typography>
+                    ) : null}
+                    {member.lastEmailStatus === 'pending' ||
+                    member.lastEmailStatus === 'uncertain' ? (
+                      <Typography variant="caption" color="warning.main" display="block">
+                        {member.lastEmailStatus === 'pending'
+                          ? 'Send in progress or awaiting delivery review. Refresh shortly.'
+                          : 'Delivery uncertain — review required.'}{' '}
+                        Further sends are blocked. If this persists, ask the site operator to
+                        reconcile the send with Resend.
+                      </Typography>
+                    ) : null}
+                    {member.canInvite ? (
+                      <Button
+                        size="small"
+                        startIcon={<EmailIcon />}
+                        onClick={() =>
+                          setEmailDialog({
+                            action: 'invite',
+                            templateId: selectedId,
+                            recipients: [member],
+                          })
+                        }
+                      >
+                        Send invitation
+                      </Button>
+                    ) : null}
+                    {member.canRemind ? (
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          setEmailDialog({
+                            action: 'remind',
+                            templateId: selectedId,
+                            recipients: [member],
+                          })
+                        }
+                      >
+                        Resend reminder
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                ) : null}
                 <TableCell align="right">
                   {member.signatureId ? (
                     <Box>
@@ -380,6 +476,15 @@ export function WaiverManagement({role}: {readonly role: StaffRole}) {
           </TableBody>
         </Table>
       </TableContainer>
+      {emailDialog && user && canManage ? (
+        <WaiverEmailDialog
+          key={`${user.uid}/${emailDialog.templateId}/${emailDialog.action}`}
+          state={emailDialog}
+          adminUid={user.uid}
+          onClose={() => setEmailDialog(null)}
+          onRefresh={refresh}
+        />
+      ) : null}
 
       {canManage ? (
         <Paper className="dec-card" sx={{p: 3}}>

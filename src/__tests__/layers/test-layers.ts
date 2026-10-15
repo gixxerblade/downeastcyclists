@@ -106,6 +106,9 @@ export const createTestDatabaseService = (
   getMemberAuditLog: vi.fn(() => Effect.succeed([])),
   getActionLog: vi.fn(() => Effect.succeed({entries: [], total: 0})),
   getLatestEmailLog: vi.fn(() => Effect.succeed(null)),
+  getEmailCampaignStatuses: vi.fn(() => Effect.succeed([])),
+  claimEmailDelivery: vi.fn(() => Effect.succeed({id: 'test-claim', idempotencyKey: 'test-key'})),
+  completeEmailDelivery: vi.fn(() => Effect.void),
   logEmailEvent: vi.fn(() => Effect.void),
   getExpiringMemberships: vi.fn(() => Effect.succeed([])),
   softDeleteMember: vi.fn(() => Effect.void),
@@ -149,8 +152,16 @@ export const createTestEmailService = (
   sendRenewalEmail: vi.fn(() => Effect.void),
   sendUpcomingRenewalEmail: vi.fn(() => Effect.void),
   sendOrganizerAccessGrantedEmail: vi.fn(() => Effect.void),
-  sendWaiverSignatureRequestEmail: vi.fn(() => Effect.void),
+  sendWaiverSignatureRequestEmail: vi.fn(() => Effect.succeed({id: 'test-provider-id'})),
   ensureWaiverEmailConfigured: vi.fn(() => Effect.void),
+  previewWaiverSignatureRequestEmail: vi.fn(() =>
+    Effect.succeed({
+      subject: 'Waiver preview',
+      html: '<p>Preview</p>',
+      text: 'Preview',
+      from: 'club@example.test',
+    }),
+  ),
   ...overrides,
 });
 

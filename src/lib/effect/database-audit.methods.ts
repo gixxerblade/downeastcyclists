@@ -1,4 +1,7 @@
-import {and, desc, eq, gte, ilike, lte, or, sql} from 'drizzle-orm';
+import {randomUUID} from 'node:crypto';
+
+import {and, desc, eq, gte, ilike, isNotNull, lte, or, sql} from 'drizzle-orm';
+import type {PgDatabase, PgQueryResultHKT} from 'drizzle-orm/pg-core';
 import {Effect} from 'effect';
 
 import {auditLog, emailLog, users} from '@/src/db/schema/tables';
@@ -71,16 +74,119 @@ export interface LogEmailEventInput {
   errorMessage?: string;
 }
 
+export interface EmailCampaignStatus {
+  userId: string;
+  id: string;
+  status: string;
+  timestamp: string;
+}
+
+export type ClaimEmailDeliveryInput = Omit<
+  LogEmailEventInput,
+  'status' | 'errorMessage' | 'idempotencyKey'
+> & {operationKey: string};
+export interface EmailDeliveryClaim {
+  id: string;
+  idempotencyKey: string;
+}
+export type EmailDeliveryOutcome =
+  | {status: 'sent'; providerEmailId: string}
+  | {status: 'failed' | 'uncertain'; errorMessage: string};
+
 // ---------------------------------------------------------------------------
 // Audit method implementations
 // ---------------------------------------------------------------------------
 
-export function createAuditMethods() {
-  const db = getDb();
+export function createAuditMethods(
+  db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
+) {
   return {
+    // A non-expiring database claim protects the send even if the provider accepts
+    // it and the process dies before recording the outcome. Only a definite
+    // rejection releases the operation; ambiguous outcomes require reconciliation.
+    claimEmailDelivery: (userId: string, input: ClaimEmailDeliveryInput) =>
+      Effect.gen(function* () {
+        const userRow = yield* resolveUserId(userId, db);
+        return yield* Effect.tryPromise({
+          try: async () => {
+            const id = randomUUID();
+            const rows = await db
+              .insert(emailLog)
+              .values({
+                ...input,
+                id,
+                userId: userRow.id,
+                idempotencyKey: `email-delivery/${id}`,
+                status: 'pending',
+              })
+              .onConflictDoNothing({target: emailLog.operationKey})
+              .returning({id: emailLog.id, idempotencyKey: emailLog.idempotencyKey});
+            return rows[0] ?? null;
+          },
+          catch: (cause) =>
+            new DatabaseError({
+              code: 'CLAIM_EMAIL_DELIVERY_FAILED',
+              message: 'Could not reserve email delivery; no email was sent by this request',
+              cause,
+            }),
+        });
+      }),
+    completeEmailDelivery: (id: string, outcome: EmailDeliveryOutcome) =>
+      Effect.tryPromise({
+        try: async () => {
+          const rows = await db
+            .update(emailLog)
+            .set({
+              status: outcome.status,
+              providerEmailId: outcome.status === 'sent' ? outcome.providerEmailId : null,
+              errorMessage: outcome.status === 'sent' ? null : outcome.errorMessage,
+              ...(outcome.status === 'failed' ? {operationKey: null} : {}),
+            })
+            .where(
+              and(
+                eq(emailLog.id, id),
+                eq(emailLog.status, 'pending'),
+                isNotNull(emailLog.operationKey),
+              ),
+            )
+            .returning({id: emailLog.id});
+          if (!rows.length) throw new Error('Email claim is no longer pending');
+        },
+        catch: (cause) =>
+          new DatabaseError({
+            code: 'COMPLETE_EMAIL_DELIVERY_FAILED',
+            message:
+              'Email outcome could not be saved. Further sends are blocked pending delivery review.',
+            cause,
+          }),
+      }),
+    getEmailCampaignStatuses: (emailType: string, campaignKey: string) =>
+      Effect.tryPromise({
+        try: async () => {
+          // Latest row for each status, including any unresolved delivery claim.
+          const rows = await db
+            .selectDistinctOn([emailLog.userId, emailLog.status], {
+              userId: users.firebaseUid,
+              id: emailLog.id,
+              status: emailLog.status,
+              createdAt: emailLog.createdAt,
+            })
+            .from(emailLog)
+            .innerJoin(users, eq(users.id, emailLog.userId))
+            .where(and(eq(emailLog.emailType, emailType), eq(emailLog.campaignKey, campaignKey)))
+            .orderBy(emailLog.userId, emailLog.status, desc(emailLog.createdAt), desc(emailLog.id));
+          return rows.map(({createdAt, ...row}) => ({...row, timestamp: createdAt.toISOString()}));
+        },
+        catch: (cause) =>
+          new DatabaseError({
+            code: 'EMAIL_CAMPAIGN_STATUS_FAILED',
+            message: 'Failed to read email campaign status',
+            cause,
+          }),
+      }),
     logAuditEntry: (userId: string, action: string, details: Record<string, unknown>) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {
@@ -108,7 +214,7 @@ export function createAuditMethods() {
 
     getMemberAuditLog: (userId: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         return yield* Effect.tryPromise({
           try: async () => {
@@ -232,7 +338,7 @@ export function createAuditMethods() {
 
     getLatestEmailLog: (userId: string, emailType: string, campaignKey: string) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         return yield* Effect.tryPromise({
           try: async () => {
@@ -247,7 +353,7 @@ export function createAuditMethods() {
                   eq(emailLog.status, 'sent'),
                 ),
               )
-              .orderBy(desc(emailLog.createdAt))
+              .orderBy(desc(emailLog.createdAt), desc(emailLog.id))
               .limit(1)
               .then((rows) => rows[0] ?? null);
 
@@ -278,7 +384,7 @@ export function createAuditMethods() {
 
     logEmailEvent: (userId: string, input: LogEmailEventInput) =>
       Effect.gen(function* () {
-        const userRow = yield* resolveUserId(userId);
+        const userRow = yield* resolveUserId(userId, db);
 
         yield* Effect.tryPromise({
           try: async () => {

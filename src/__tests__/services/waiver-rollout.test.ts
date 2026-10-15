@@ -1,14 +1,16 @@
-import {eq} from 'drizzle-orm';
+import {randomUUID} from 'node:crypto';
+
+import {asc, eq} from 'drizzle-orm';
 import {migrate} from 'drizzle-orm/pglite/migrator';
 import {Effect} from 'effect';
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import * as tables from '@/src/db/schema/tables';
-import type {EmailLogDocument} from '@/src/lib/effect/database-audit.methods';
+import {createAuditMethods} from '@/src/lib/effect/database-audit.methods';
 import {createMembershipMethods} from '@/src/lib/effect/database-membership.methods';
 import {DatabaseService} from '@/src/lib/effect/database.service';
 import {EmailService} from '@/src/lib/effect/email.service';
-import {EmailError} from '@/src/lib/effect/errors';
+import {DatabaseError, EmailError} from '@/src/lib/effect/errors';
 import type {WaiverSignatureInput} from '@/src/lib/waivers/schemas';
 
 import {createTestDatabaseService, createTestEmailService} from '../layers/test-layers';
@@ -31,28 +33,21 @@ import {
   hasSignedRequiredMembershipWaiver,
   listMemberWaivers,
   sendUnsignedWaiverEmails,
+  previewWaiverEmail,
+  sendTestWaiverEmail,
   signWaiver,
   updateWaiverTemplateStatus,
 } from '@/src/lib/waivers/service';
 
 const now = new Date('2026-10-14T12:00:00Z');
-const logs = new Map<string, EmailLogDocument>();
 const methods = createMembershipMethods(fixture.database);
+const audit = createAuditMethods(fixture.database);
+const attempts = () =>
+  fixture.database.select().from(tables.emailLog).orderBy(asc(tables.emailLog.createdAt));
 const database = createTestDatabaseService({
   getActiveMembership: methods.getActiveMembership,
   getCurrentMemberContacts: methods.getCurrentMemberContacts,
-  getLatestEmailLog: (uid, type, campaign) =>
-    Effect.succeed(logs.get(`${uid}/${type}/${campaign}`) ?? null),
-  logEmailEvent: (uid, event) =>
-    Effect.sync(() => {
-      logs.set(`${uid}/${event.emailType}/${event.campaignKey}`, {
-        ...event,
-        id: 'synthetic-log',
-        sentByEmail: event.sentByEmail ?? null,
-        errorMessage: event.errorMessage ?? null,
-        timestamp: now.toISOString(),
-      });
-    }),
+  ...audit,
 });
 const email = createTestEmailService();
 function run<A, E>(program: Effect.Effect<A, E, DatabaseService | EmailService>) {
@@ -119,10 +114,11 @@ beforeEach(async () => {
   vi.setSystemTime(now);
   vi.stubEnv('WAIVER_SIGNATURE_SECRET', 'synthetic-waiver-secret-at-least-32-characters');
   await fixture.client.exec('TRUNCATE waiver_signatures, waiver_templates, users CASCADE');
-  logs.clear();
   vi.clearAllMocks();
   vi.mocked(email.ensureWaiverEmailConfigured).mockReturnValue(Effect.void);
-  vi.mocked(email.sendWaiverSignatureRequestEmail).mockReturnValue(Effect.void);
+  vi.mocked(email.sendWaiverSignatureRequestEmail).mockReturnValue(
+    Effect.succeed({id: 'test-provider-id'}),
+  );
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -131,6 +127,350 @@ afterEach(() => {
 afterAll(() => fixture.client.close());
 
 describe('waiver rollout regression coverage', () => {
+  it('atomically reserves one invitation across simultaneous requests and records the provider ID', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const results = await Promise.all([
+      run(sendUnsignedWaiverEmails(waiver.id, 'first-admin')),
+      run(sendUnsignedWaiverEmails(waiver.id, 'second-admin')),
+    ]);
+    expect(results.reduce((sum, result) => sum + result.sent, 0)).toBe(1);
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(1);
+    expect(await attempts()).toEqual([
+      expect.objectContaining({
+        status: 'sent',
+        providerEmailId: 'test-provider-id',
+        operationKey: `waiver-request/${waiver.id}/rider`,
+      }),
+    ]);
+  });
+
+  it('does not contact Resend when the durable reservation cannot be saved', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const failure = vi
+      .spyOn(database, 'claimEmailDelivery')
+      .mockReturnValueOnce(
+        Effect.fail(new DatabaseError({code: 'TEST', message: 'Reservation unavailable'})),
+      );
+    try {
+      await expect(run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).rejects.toThrow(
+        'Reservation unavailable',
+      );
+    } finally {
+      failure.mockRestore();
+    }
+    expect(email.sendWaiverSignatureRequestEmail).not.toHaveBeenCalled();
+    expect(await attempts()).toHaveLength(0);
+    expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({sent: 1});
+  });
+
+  it('holds ambiguous provider outcomes for review without expiring the guard', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    vi.mocked(email.sendWaiverSignatureRequestEmail).mockReturnValueOnce(
+      Effect.fail(new EmailError({code: 'TEST', message: 'Connection interrupted'})),
+    );
+    expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({failed: 1});
+    vi.setSystemTime(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+    expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({
+      sent: 0,
+      failed: 1,
+    });
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(1);
+    expect((await run(getWaiverCompletion(waiver.id))).members[0]).toMatchObject({
+      canInvite: false,
+      canRemind: false,
+      lastEmailStatus: 'uncertain',
+      lastEmailId: null,
+    });
+    const [record] = await attempts();
+    expect(record).toMatchObject({status: 'uncertain', errorMessage: 'Connection interrupted'});
+    // A stale worker cannot overwrite an already settled/reviewed attempt.
+    await expect(
+      Effect.runPromise(
+        audit.completeEmailDelivery(record.id, {status: 'failed', errorMessage: 'stale worker'}),
+      ),
+    ).rejects.toThrow('Further sends are blocked');
+    expect((await attempts())[0].operationKey).toBe(record.operationKey);
+  });
+
+  it('honors successful legacy logs without resending an invitation after the migration', async () => {
+    const rider = await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    await fixture.database.insert(tables.emailLog).values({
+      userId: rider.id,
+      emailType: 'liability_waiver_signature_request',
+      campaignKey: `waiver/${waiver.id}`,
+      deliveryType: 'one-time',
+      recipientEmail: rider.email,
+      subject: 'Original invitation',
+      status: 'sent',
+      idempotencyKey: `waiver-request/${waiver.id}/rider`,
+      sentBy: 'admin',
+    });
+    expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({
+      sent: 0,
+      skipped: 1,
+    });
+    expect(email.sendWaiverSignatureRequestEmail).not.toHaveBeenCalled();
+    expect((await run(getWaiverCompletion(waiver.id))).members[0]).toMatchObject({
+      canInvite: false,
+      canRemind: true,
+    });
+  });
+
+  it('does not send two simultaneous reminders for the same confirmation', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    await run(sendUnsignedWaiverEmails(waiver.id, 'admin'));
+    const previous = (await run(getWaiverCompletion(waiver.id))).members[0].lastEmailId;
+    if (!previous) throw new Error('Expected initial invitation record');
+    vi.setSystemTime(new Date(Date.now() + 1));
+    const selection = {
+      action: 'remind',
+      templateId: waiver.id,
+      confirmed: true,
+      recipients: [{userId: 'rider', previousEmailId: previous}],
+    } satisfies Parameters<typeof sendUnsignedWaiverEmails>[3];
+    let release!: () => void;
+    let started!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    vi.mocked(email.sendWaiverSignatureRequestEmail).mockImplementationOnce(() =>
+      Effect.promise(async () => {
+        started();
+        await held;
+        return {id: 'test-provider-id'};
+      }),
+    );
+    const first = run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, selection));
+    await entered;
+    try {
+      await run(sendUnsignedWaiverEmails(waiver.id, 'another-admin', undefined, selection));
+    } finally {
+      release();
+    }
+    await first;
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(2); // Invitation + one reminder.
+  });
+
+  it('does not resend after provider acceptance and a failed database write, even after 25 hours', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const failure = vi
+      .spyOn(database, 'completeEmailDelivery')
+      .mockReturnValueOnce(
+        Effect.fail(new DatabaseError({code: 'TEST', message: 'Write unavailable'})),
+      );
+    try {
+      await expect(run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).rejects.toThrow(
+        'Write unavailable',
+      );
+    } finally {
+      failure.mockRestore();
+    }
+    vi.setSystemTime(new Date(now.getTime() + 25 * 60 * 60 * 1000));
+    await run(sendUnsignedWaiverEmails(waiver.id, 'admin'));
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(1);
+    expect((await run(getWaiverCompletion(waiver.id))).members[0]).toMatchObject({
+      canInvite: false,
+      canRemind: false,
+      lastEmailStatus: 'pending',
+    });
+  });
+
+  it('reads the latest success and failure per member without mixing campaigns or email types', async () => {
+    const first = await member('first');
+    const second = await member('second');
+    const base = {
+      emailType: 'liability_waiver_signature_request',
+      campaignKey: 'waiver/test',
+      deliveryType: 'one-time',
+      recipientEmail: 'synthetic@example.test',
+      subject: 'Test',
+      idempotencyKey: 'synthetic',
+      sentBy: 'admin',
+    };
+    const rows = await fixture.database
+      .insert(tables.emailLog)
+      .values([
+        {...base, userId: first.id, status: 'sent', createdAt: new Date('2026-10-01')},
+        {...base, userId: first.id, status: 'sent', createdAt: new Date('2026-10-02')},
+        {...base, userId: first.id, status: 'failed', createdAt: new Date('2026-10-03')},
+        {...base, userId: second.id, status: 'failed', createdAt: new Date('2026-10-02')},
+        {...base, userId: first.id, status: 'sent', campaignKey: 'waiver/other'},
+        {...base, userId: first.id, status: 'sent', emailType: 'renewal'},
+      ])
+      .returning();
+    const statuses = await Effect.runPromise(
+      createAuditMethods(fixture.database).getEmailCampaignStatuses(
+        base.emailType,
+        base.campaignKey,
+      ),
+    );
+    expect(statuses).toHaveLength(3);
+    expect(statuses).toEqual(
+      expect.arrayContaining([
+        {userId: 'first', id: rows[1].id, status: 'sent', timestamp: '2026-10-02T00:00:00.000Z'},
+        {userId: 'first', id: rows[2].id, status: 'failed', timestamp: '2026-10-03T00:00:00.000Z'},
+        {userId: 'second', id: rows[3].id, status: 'failed', timestamp: '2026-10-02T00:00:00.000Z'},
+      ]),
+    );
+  });
+
+  it('sends only to selected members, deduplicates selection, and keeps all other invitations available', async () => {
+    await member('selected');
+    await member('other');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const selection = {
+      action: 'invite',
+      templateId: waiver.id,
+      userIds: ['selected', 'selected'],
+    } satisfies Parameters<typeof sendUnsignedWaiverEmails>[3];
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, selection)),
+    ).toMatchObject({sent: 1, failed: 0});
+    const report = await run(getWaiverCompletion(waiver.id));
+    expect(report.members.find((row) => row.userId === 'selected')).toMatchObject({
+      canInvite: false,
+      canRemind: true,
+      lastEmailStatus: 'sent',
+    });
+    expect(report.members.find((row) => row.userId === 'other')).toMatchObject({
+      canInvite: true,
+      canRemind: false,
+      lastEmailId: null,
+    });
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, selection)),
+    ).toMatchObject({sent: 0, skipped: 1});
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects unknown selection before sending and skips a member who signed after selection', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    await expect(
+      run(
+        sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, {
+          action: 'invite',
+          templateId: waiver.id,
+          userIds: ['rider', 'unknown'],
+        }),
+      ),
+    ).rejects.toThrow('list has changed');
+    expect(email.sendWaiverSignatureRequestEmail).not.toHaveBeenCalled();
+    await sign('rider', waiver.id);
+    expect(
+      await run(
+        sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, {
+          action: 'invite',
+          templateId: waiver.id,
+          userIds: ['rider'],
+        }),
+      ),
+    ).toMatchObject({sent: 0, skipped: 1});
+  });
+
+  it('requires a matching prior send for a reminder and skips replayed or stale confirmations', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const reminder = (previousEmailId: string) =>
+      ({
+        action: 'remind',
+        templateId: waiver.id,
+        confirmed: true,
+        recipients: [{userId: 'rider', previousEmailId}],
+      }) satisfies Parameters<typeof sendUnsignedWaiverEmails>[3];
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, reminder(randomUUID()))),
+    ).toMatchObject({sent: 0, skipped: 1});
+    await run(sendUnsignedWaiverEmails(waiver.id, 'admin'));
+    const previous = (await attempts())[0].id;
+    vi.setSystemTime(new Date(Date.now() + 1));
+    await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, reminder(previous)));
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        reminder: true,
+        idempotencyKey: (await attempts())[1].idempotencyKey,
+      }),
+    );
+    expect((await attempts())[1]).toMatchObject({
+      deliveryType: 'resend',
+      operationKey: `waiver-reminder/${waiver.id}/rider/${previous}`,
+    });
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, reminder(previous))),
+    ).toMatchObject({sent: 0, skipped: 1});
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a definitively rejected reminder with a new attempt key and preserves the previous successful invitation', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    await run(sendUnsignedWaiverEmails(waiver.id, 'admin'));
+    const prior = (await attempts())[0].id;
+    vi.setSystemTime(new Date(Date.now() + 1));
+    const selection = {
+      action: 'remind',
+      templateId: waiver.id,
+      confirmed: true,
+      recipients: [{userId: 'rider', previousEmailId: prior}],
+    } satisfies Parameters<typeof sendUnsignedWaiverEmails>[3];
+    vi.mocked(email.sendWaiverSignatureRequestEmail).mockReturnValueOnce(
+      Effect.fail(
+        new EmailError({code: 'TEST', message: 'Rate limited', definitelyRejected: true}),
+      ),
+    );
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, selection)),
+    ).toMatchObject({failed: 1});
+    expect((await run(getWaiverCompletion(waiver.id))).members[0]).toMatchObject({
+      lastEmailId: prior,
+      canInvite: false,
+      canRemind: true,
+      lastEmailStatus: 'failed',
+    });
+    vi.setSystemTime(new Date(Date.now() + 1));
+    expect(
+      await run(sendUnsignedWaiverEmails(waiver.id, 'admin', undefined, selection)),
+    ).toMatchObject({sent: 1});
+    const calls = vi.mocked(email.sendWaiverSignatureRequestEmail).mock.calls;
+    expect(calls[1][0].idempotencyKey).not.toBe(calls[2][0].idempotencyKey);
+    expect(await attempts()).toHaveLength(3);
+  });
+
+  it('previews without sending and sends tests only to the administrative identity without consuming a member invitation', async () => {
+    await member('rider');
+    const waiver = await template();
+    await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
+    const preview = await run(previewWaiverEmail(waiver.id, 'system@example.test'));
+    expect(preview.testRecipient).toBe('system@example.test');
+    expect(email.sendWaiverSignatureRequestEmail).not.toHaveBeenCalled();
+    await run(
+      sendTestWaiverEmail(waiver.id, {uid: 'admin', email: 'system@example.test'}, randomUUID()),
+    );
+    expect(email.sendWaiverSignatureRequestEmail).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({to: 'system@example.test', test: true}),
+    );
+    expect(await attempts()).toHaveLength(0);
+    expect((await run(getWaiverCompletion(waiver.id))).members[0].canInvite).toBe(true);
+  });
   it('excludes the administrative account but requires an organizer member to sign', async () => {
     vi.stubEnv('ADMIN_EMAIL', 'system@example.test');
     await member('system');
@@ -314,7 +654,7 @@ describe('waiver rollout regression coverage', () => {
         'currently available',
       );
     expect(email.sendWaiverSignatureRequestEmail).not.toHaveBeenCalled();
-    expect(logs.size).toBe(0);
+    expect(await attempts()).toHaveLength(0);
   });
 
   it('does not consume the campaign when email configuration is missing', async () => {
@@ -332,7 +672,7 @@ describe('waiver rollout regression coverage', () => {
     await expect(run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).rejects.toThrow(
       'Missing email configuration',
     );
-    expect(logs.size).toBe(0);
+    expect(await attempts()).toHaveLength(0);
     vi.mocked(email.ensureWaiverEmailConfigured).mockReturnValue(Effect.void);
     expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({
       sent: 1,
@@ -355,7 +695,9 @@ describe('waiver rollout regression coverage', () => {
     const waiver = await template();
     await run(updateWaiverTemplateStatus(waiver.id, 'publish'));
     vi.mocked(email.sendWaiverSignatureRequestEmail).mockReturnValueOnce(
-      Effect.fail(new EmailError({code: 'SEND_FAILED', message: 'Transient provider failure'})),
+      Effect.fail(
+        new EmailError({code: 'SEND_FAILED', message: 'Rate limited', definitelyRejected: true}),
+      ),
     );
     expect(await run(sendUnsignedWaiverEmails(waiver.id, 'admin'))).toMatchObject({
       sent: 0,

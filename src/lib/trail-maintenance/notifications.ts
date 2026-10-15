@@ -1,17 +1,9 @@
 import {Resend} from 'resend';
 
+import {escapeHtml} from '@/src/lib/html';
 import {getSiteUrl} from '@/src/lib/site-url';
 
 import type {TrailMaintenanceReportDetail} from './repository';
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 export async function sendTrailMaintenanceNotification({
   report,

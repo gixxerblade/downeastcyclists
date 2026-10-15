@@ -1,12 +1,29 @@
 import {Context, Effect, Layer} from 'effect';
 import {Resend} from 'resend';
 
+import {escapeHtml} from '../html';
 import {getUpcomingRenewalEmailSubject} from '../renewal-email';
+import {
+  WAIVER_EMAIL_TEMPLATE,
+  waiverEmailSubject,
+  waiverEmailVariables,
+  renderWaiverEmailTemplate,
+  type WaiverEmailContent,
+} from '../waivers/email-content';
 
 import {EmailError} from './errors';
 
 export interface EmailService {
   readonly ensureWaiverEmailConfigured: () => Effect.Effect<void, EmailError>;
+  readonly previewWaiverSignatureRequestEmail: (input: WaiverEmailContent) => Effect.Effect<
+    {
+      subject: string;
+      html: string;
+      text: string;
+      from: string;
+    },
+    EmailError
+  >;
   readonly sendWelcomeEmail: (params: {
     to: string;
     name: string | undefined;
@@ -43,13 +60,15 @@ export interface EmailService {
     idempotencyKey: string;
   }) => Effect.Effect<void, EmailError>;
 
-  readonly sendWaiverSignatureRequestEmail: (params: {
-    to: string;
-    name: string | undefined;
-    waiverTitle: string;
-    signUrl: string;
-    idempotencyKey: string;
-  }) => Effect.Effect<void, EmailError>;
+  readonly sendWaiverSignatureRequestEmail: (
+    params: WaiverEmailContent & {
+      to: string;
+      name: string | undefined;
+      waiverTitle: string;
+      signUrl: string;
+      idempotencyKey: string;
+    },
+  ) => Effect.Effect<{id: string}, EmailError>;
 }
 
 export const EmailService = Context.GenericTag<EmailService>('EmailService');
@@ -84,14 +103,6 @@ const make = Effect.gen(function* () {
       : typeof error === 'object' && error !== null && 'message' in error
         ? String((error as {message: unknown}).message)
         : JSON.stringify(error);
-
-  const escapeHtml = (value: string) =>
-    value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
 
   return EmailService.of({
     sendWelcomeEmail: ({to, name, passwordSetupLink}) =>
@@ -454,47 +465,85 @@ const make = Effect.gen(function* () {
         );
       }),
 
-    sendWaiverSignatureRequestEmail: ({to, name, waiverTitle, signUrl, idempotencyKey}) =>
+    previewWaiverSignatureRequestEmail: (input) =>
       Effect.gen(function* () {
-        const waiverEmailClient = yield* requireWaiverEmailClient();
-
-        const displayName = name?.trim() || 'Member';
-        const subject = 'Action required: sign your Down East Cyclists liability waiver';
-        const text = [
-          `Hi ${displayName},`,
-          '',
-          `Down East Cyclists now keeps ${waiverTitle} signatures securely in the member portal.`,
-          'Please sign in and complete the waiver before your next club ride or event.',
-          '',
-          signUrl,
-          '',
-          'After signing, you can print or save a copy for your records.',
-          '',
-          'Down East Cyclists',
-        ].join('\n');
-        const html = `
-          <p>Hi ${escapeHtml(displayName)},</p>
-          <p>Down East Cyclists now keeps ${escapeHtml(waiverTitle)} signatures securely in the member portal.</p>
-          <p>Please sign in and complete the waiver before your next club ride or event.</p>
-          <p><a href="${escapeHtml(signUrl)}">Sign the liability waiver</a></p>
-          <p>After signing, you can print or save a copy for your records.</p>
-          <p>Down East Cyclists</p>
-        `.trim();
-
-        yield* Effect.tryPromise({
+        const client = yield* requireWaiverEmailClient();
+        const previewClient = process.env.RESEND_TEMPLATE_API_KEY
+          ? new Resend(process.env.RESEND_TEMPLATE_API_KEY)
+          : client;
+        return yield* Effect.tryPromise({
           try: async () => {
-            const {error} = await waiverEmailClient.emails.send(
-              {from, to, subject, html, text},
-              {idempotencyKey},
+            const {data, error} = await previewClient.templates.get(
+              process.env.RESEND_WAIVER_TEMPLATE_ID || WAIVER_EMAIL_TEMPLATE,
             );
-            if (error) throw error;
+            if (error)
+              throw new Error(
+                `Unable to preview the Resend template: ${error.message}. Template reads require a Full access key (RESEND_TEMPLATE_API_KEY may be used separately).`,
+              );
+            if (!data || data.status !== 'published' || data.has_unpublished_versions) {
+              throw new Error(
+                'Publish the latest waiver email template in Resend before previewing it.',
+              );
+            }
+            const variables: Record<string, string | number> = {...waiverEmailVariables(input)};
+            for (const variable of data.variables ?? []) {
+              if (!(variable.key in variables) && variable.fallback_value !== null)
+                variables[variable.key] = variable.fallback_value;
+            }
+            return {
+              subject: waiverEmailSubject(input),
+              from,
+              html: renderWaiverEmailTemplate(data.html, variables),
+              text: renderWaiverEmailTemplate(data.text ?? '', variables),
+            };
           },
           catch: (error) =>
             new EmailError({
-              code: 'SEND_WAIVER_REQUEST_FAILED',
-              message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+              code: 'WAIVER_EMAIL_PREVIEW_FAILED',
+              message: describeResendError(error),
               cause: error,
             }),
+        });
+      }),
+
+    sendWaiverSignatureRequestEmail: ({to, idempotencyKey, ...input}) =>
+      Effect.gen(function* () {
+        const waiverEmailClient = yield* requireWaiverEmailClient();
+
+        return yield* Effect.tryPromise({
+          try: async () => {
+            const {data, error} = await waiverEmailClient.emails.send(
+              {
+                from,
+                to,
+                subject: waiverEmailSubject(input),
+                template: {
+                  id: process.env.RESEND_WAIVER_TEMPLATE_ID || WAIVER_EMAIL_TEMPLATE,
+                  variables: waiverEmailVariables(input),
+                },
+              },
+              {idempotencyKey},
+            );
+            if (error)
+              throw new EmailError({
+                code: 'SEND_WAIVER_REQUEST_FAILED',
+                message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+                // Timeouts, server errors, and idempotency conflicts do not prove
+                // rejection. Never release their durable claim automatically.
+                definitelyRejected: [400, 401, 403, 404, 422, 429].includes(error.statusCode ?? 0),
+                cause: error,
+              });
+            if (!data?.id) throw new Error('Provider did not return an email ID');
+            return {id: data.id};
+          },
+          catch: (error) =>
+            error instanceof EmailError
+              ? error
+              : new EmailError({
+                  code: 'SEND_WAIVER_REQUEST_FAILED',
+                  message: `Failed to send waiver request to ${to}: ${describeResendError(error)}`,
+                  cause: error,
+                }),
         });
       }),
     ensureWaiverEmailConfigured,
