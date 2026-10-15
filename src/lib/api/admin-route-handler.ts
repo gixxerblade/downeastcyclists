@@ -71,7 +71,10 @@ const errorHandlers = {
     Effect.succeed({error: error.message, _tag: 'error' as const, status: 400}),
   EmailError: (error: {message: string; code?: string}) =>
     Effect.succeed({
-      error: error.code === 'WAIVER_EMAIL_NOT_CONFIGURED' ? error.message : 'Email request failed',
+      error:
+        error.code === 'WAIVER_EMAIL_NOT_CONFIGURED' || error.code === 'WAIVER_EMAIL_PREVIEW_FAILED'
+          ? error.message
+          : 'Email request failed',
       _tag: 'error' as const,
       status: error.code === 'WAIVER_EMAIL_NOT_CONFIGURED' ? 503 : 500,
     }),

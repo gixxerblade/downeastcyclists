@@ -21,6 +21,20 @@
 - Email delivery and configuration checks stay in `EmailService`. Administrators
   explicitly launch a campaign. Only successful provider submissions consume a
   recipient's one-time invitation; failures can be retried.
+- Individual and selected invitations use that same campaign owner; selections never
+  expand to all members implicitly. `email-schemas.ts` defines explicit invite,
+  confirmed reminder, and self-test requests, with batches limited to 20 recipients.
+  Reminders use the last successful email ID as the concurrency/replay guard and
+  provider idempotency key. Failed reminders preserve that ID for a safe retry.
+  The email-log persistence owner supplies latest successful/failed status in bulk.
+- `email-content.ts` owns the subject, variables, batch limit, and escaped preview
+  substitution. `EmailService` sends through the published Resend template and reads
+  it for preview; the browser never receives a provider key. Previews are sandboxed.
+  Admin tests use only the authorized session email and do not create member records
+  or consume invitations. Template lifecycle checks apply to previews and tests too.
+- Sending is paced and batched, not a durable outbox. A provider success followed by
+  a failed database log is protected by Resend idempotency for 24 hours only; an
+  unresolved ambiguous result needs operator investigation before retrying later.
 
 ## Version lifecycle
 

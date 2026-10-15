@@ -1,17 +1,9 @@
 import type {waiverSignatures} from '@/src/db/schema/tables';
+import {escapeHtml} from '@/src/lib/html';
 
 export type SignedWaiverRecord = Omit<typeof waiverSignatures.$inferSelect, 'signedAt'> & {
   signedAt: string;
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
 
 export function renderWaiverRecord(result: SignedWaiverRecord): string {
   const minorDetails =

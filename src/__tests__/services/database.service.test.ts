@@ -54,6 +54,7 @@ const createTestDatabaseService = (
   getMemberAuditLog: vi.fn(() => Effect.succeed([])),
   getActionLog: vi.fn(() => Effect.succeed({entries: [], total: 0})),
   getLatestEmailLog: vi.fn(() => Effect.succeed(null)),
+  getEmailCampaignStatuses: vi.fn(() => Effect.succeed([])),
   logEmailEvent: vi.fn(() => Effect.void),
   getAllUsers: vi.fn(() => Effect.succeed([])),
   softDeleteMember: vi.fn(() => Effect.void),

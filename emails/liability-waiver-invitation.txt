@@ -1,0 +1,24 @@
+Down East Cyclists
+
+READY FOR YOUR NEXT RIDE?
+
+Hi {{{MEMBER_NAME}}},
+
+{{{INTRO}}}
+
+Please review and sign {{{WAIVER_TITLE}}} before your next club ride or event. You can complete it on your phone, tablet, or computer.
+
+Sign in with your membership account. If you do not have a password or prefer not to use one, choose the email sign-in link option on the login page.
+
+Review and sign waiver: {{{SIGN_URL}}}
+
+HAVE A FAMILY MEMBERSHIP?
+
+The head of household or initial member signs once for the household. Have the full name and birth date of each family member ready, including your own.
+
+KEEP A COPY FOR YOUR RECORDS
+
+After signing, you can open your completed waiver in the member portal to print it or save it as a PDF. If you have already completed this waiver, no further action is needed.
+
+See you on the ride,
+Down East Cyclists
