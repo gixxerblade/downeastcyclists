@@ -198,7 +198,10 @@ export interface AdminService {
     adminUid: string,
     adminEmail?: string,
     options?: {resend?: boolean},
-  ) => Effect.Effect<RenewalEmailResult, MemberNotFoundError | DatabaseError | EmailError>;
+  ) => Effect.Effect<
+    RenewalEmailResult,
+    MemberNotFoundError | DatabaseError | EmailError | ValidationError
+  >;
 }
 
 // Service tag
@@ -1363,31 +1366,27 @@ const make = Effect.gen(function* () {
         const members = yield* db.getExpiringMemberships(withinDays);
         const now = new Date();
 
-        return members
-          .filter((m) => m.user && m.membership)
-          .map((m) => {
-            // Dates are ISO strings from Postgres
-            // Safe: .filter above ensures both user and membership exist
-            const membership = m.membership as NonNullable<typeof m.membership>;
-            const user = m.user as NonNullable<typeof m.user>;
-            const expirationDate = new Date(membership.endDate as string);
+        return members.flatMap(({user, membership, card}) => {
+          if (!user || !membership) return [];
+          const expirationDate = parseMembershipDate(membership.endDate);
+          const daysUntilExpiration = getMembershipDaysUntilExpiration(membership.endDate, now);
+          if (!expirationDate || daysUntilExpiration === null) return [];
 
-            const daysUntilExpiration = Math.ceil(
-              (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-            );
-
-            return {
+          return [
+            {
               userId: user.id,
               email: user.email,
               name: user.name,
               phone: user.phone,
               planType: membership.planType,
               status: membership.status,
-              membershipNumber: m.card?.membershipNumber,
+              autoRenew: membership.autoRenew,
+              membershipNumber: card?.membershipNumber,
               expirationDate: expirationDate.toISOString(),
               daysUntilExpiration,
-            };
-          });
+            },
+          ];
+        });
       }),
 
     // Get member audit log
@@ -1538,6 +1537,13 @@ const make = Effect.gen(function* () {
         }
 
         const membership = yield* db.getActiveMembership(userId);
+        if (membership?.autoRenew) {
+          return yield* new ValidationError({
+            field: 'membership',
+            message:
+              'This membership renews automatically. Manual renewal emails are disabled. Automatic subscribers receive a separate 30-day charge notice.',
+          });
+        }
         const renewalUrl = buildRenewalUrl(user.id);
         const endDate = membership ? parseMembershipDate(membership.endDate) : null;
         const daysUntilExpiration = membership

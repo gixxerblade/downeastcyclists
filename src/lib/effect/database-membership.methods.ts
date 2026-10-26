@@ -109,6 +109,36 @@ function rowToCardDocument(row: typeof membershipCards.$inferSelect, now: Date =
 export function createMembershipMethods(
   db: PgDatabase<PgQueryResultHKT, typeof import('@/src/db/schema')> = getDb(),
 ) {
+  // Select the representative term before filtering so historical terms cannot
+  // put renewed members back into an expired or expiring result.
+  const currentMembershipIds = (now: Date) =>
+    db
+      .selectDistinctOn([memberships.userId], {id: memberships.id})
+      .from(memberships)
+      .orderBy(
+        memberships.userId,
+        desc(
+          sql`(${inArray(memberships.status, currentDatabaseStatuses)} AND ${memberships.endDate} >= ${now.toISOString()})`,
+        ),
+        desc(memberships.endDate),
+        desc(memberships.createdAt),
+        desc(memberships.id),
+      );
+  const currentCardJoin = () => {
+    const currentCardIds = db
+      .selectDistinctOn([membershipCards.membershipId], {id: membershipCards.id})
+      .from(membershipCards)
+      .orderBy(
+        membershipCards.membershipId,
+        desc(membershipCards.updatedAt),
+        desc(membershipCards.id),
+      );
+    return and(
+      eq(membershipCards.membershipId, memberships.id),
+      inArray(membershipCards.id, currentCardIds),
+    );
+  };
+
   return {
     getCurrentMemberContacts: () =>
       Effect.tryPromise({
@@ -313,33 +343,8 @@ export function createMembershipMethods(
       Effect.tryPromise({
         try: async () => {
           const now = new Date();
-          // Select one representative membership before filtering/pagination so an old
-          // term cannot make a renewed member appear in the expired list.
-          const currentMembershipIds = db
-            .selectDistinctOn([memberships.userId], {id: memberships.id})
-            .from(memberships)
-            .orderBy(
-              memberships.userId,
-              desc(
-                sql`(${inArray(memberships.status, currentDatabaseStatuses)} AND ${memberships.endDate} >= ${now.toISOString()})`,
-              ),
-              desc(memberships.endDate),
-              desc(memberships.createdAt),
-              desc(memberships.id),
-            );
-          const currentCardIds = db
-            .selectDistinctOn([membershipCards.membershipId], {id: membershipCards.id})
-            .from(membershipCards)
-            .orderBy(
-              membershipCards.membershipId,
-              desc(membershipCards.updatedAt),
-              desc(membershipCards.id),
-            );
-          const cardJoin = and(
-            eq(membershipCards.membershipId, memberships.id),
-            inArray(membershipCards.id, currentCardIds),
-          );
-          const conditions = [inArray(memberships.id, currentMembershipIds)];
+          const cardJoin = currentCardJoin();
+          const conditions = [inArray(memberships.id, currentMembershipIds(now))];
 
           if (params.status) {
             if (params.status === 'expired') {
@@ -479,9 +484,10 @@ export function createMembershipMethods(
             })
             .from(memberships)
             .innerJoin(users, eq(memberships.userId, users.id))
-            .leftJoin(membershipCards, eq(membershipCards.membershipId, memberships.id))
+            .leftJoin(membershipCards, currentCardJoin())
             .where(
               and(
+                inArray(memberships.id, currentMembershipIds(now)),
                 inArray(memberships.status, currentDatabaseStatuses),
                 gte(memberships.endDate, now),
                 lte(memberships.endDate, expiryDate),

@@ -283,7 +283,7 @@ export function MembershipManagement({role}: {role: StaffRole}) {
               startIcon={<Schedule />}
               sx={{order: {xs: 3, lg: 2}}}
             >
-              Expiring Report
+              Renewals Report
             </Button>
             <Button
               variant="contained"
