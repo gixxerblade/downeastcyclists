@@ -156,6 +156,7 @@ export interface RefundRequest {
 
 // Expiring member with additional info
 export interface ExpiringMember {
+  autoRenew: boolean;
   userId: string;
   email: string;
   name?: string;

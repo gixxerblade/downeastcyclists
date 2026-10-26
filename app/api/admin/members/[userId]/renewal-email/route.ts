@@ -22,6 +22,7 @@ export async function POST(request: NextRequest, {params}: {params: Promise<{use
       'DatabaseError',
       'MemberNotFoundError',
       'EmailError',
+      'ValidationError',
     ],
   });
 }

@@ -5,7 +5,7 @@ import {eq} from 'drizzle-orm';
 import {drizzle} from 'drizzle-orm/pglite';
 import {migrate} from 'drizzle-orm/pglite/migrator';
 import {Effect, Layer} from 'effect';
-import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import * as schema from '@/src/db/schema';
 import {MembershipCardServiceLive} from '@/src/lib/effect/card.service';
@@ -13,11 +13,14 @@ import {createCardMethods} from '@/src/lib/effect/database-card.methods';
 import {createMembershipMethods} from '@/src/lib/effect/database-membership.methods';
 import {MembershipService, MembershipServiceLive} from '@/src/lib/effect/membership.service';
 import {QRService} from '@/src/lib/effect/qr.service';
+import {sendScheduledRenewalReminders} from '@/src/lib/effect/renewal-reminders';
 import type {MemberSearchParams} from '@/src/lib/effect/schemas';
 
 import {
   createTestDatabaseService,
   createTestStripeService,
+  createTestEmailService,
+  TestEmailLayer,
   TestDatabaseLayer,
   TestStripeLayer,
 } from '../layers/test-layers';
@@ -187,6 +190,117 @@ describe('renewed memberships in the member list', () => {
     const result = await Effect.runPromise(methods.getAllMemberships({}));
     expect(result.total).toBe(1);
     expect(result.members).toHaveLength(1);
+  });
+});
+
+describe('current terms in expiring reports and scheduled reminders', () => {
+  const now = new Date('2026-10-15T12:00:00Z');
+  const due = new Date('2026-11-14T12:00:00Z');
+
+  beforeEach(() => {
+    vi.useFakeTimers({toFake: ['Date']});
+    vi.setSystemTime(now);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('excludes an old term in every window after an early renewal and sends no reminder', async () => {
+    const {oldTerm} = await seedRenewal();
+    await db
+      .update(schema.memberships)
+      .set({endDate: due})
+      .where(eq(schema.memberships.id, oldTerm.id));
+    for (const days of [30, 60, 90]) {
+      expect(await Effect.runPromise(methods.getExpiringMemberships(days))).toEqual([]);
+    }
+    const email = createTestEmailService();
+    const result = await Effect.runPromise(
+      sendScheduledRenewalReminders.pipe(
+        Effect.provide(
+          Layer.merge(TestDatabaseLayer(createTestDatabaseService(methods)), TestEmailLayer(email)),
+        ),
+      ),
+    );
+    expect(result.sent).toBe(0);
+    expect(email.sendRenewalEmail).not.toHaveBeenCalled();
+    expect(email.sendUpcomingRenewalEmail).not.toHaveBeenCalled();
+    expect(await db.select().from(schema.memberships)).toHaveLength(2);
+  });
+
+  it.each([true, false])(
+    'returns and emails only the current term with duplicate cards (auto renew: %s)',
+    async (autoRenew) => {
+      const {user, oldTerm, renewedTerm, card} = await seedRenewal();
+      await db
+        .update(schema.memberships)
+        .set({endDate: new Date('2026-11-01T12:00:00Z')})
+        .where(eq(schema.memberships.id, oldTerm.id));
+      await db
+        .update(schema.memberships)
+        .set({endDate: due, autoRenew})
+        .where(eq(schema.memberships.id, renewedTerm.id));
+      await db
+        .update(schema.membershipCards)
+        .set({membershipId: renewedTerm.id, updatedAt: now})
+        .where(eq(schema.membershipCards.id, card.id));
+      await db.insert(schema.membershipCards).values({
+        userId: user.id,
+        membershipId: renewedTerm.id,
+        membershipNumber: 'DEC-2026-000050',
+        memberName: 'Renewed Member',
+        email: user.email,
+        planType: 'family',
+        status: 'active',
+        validFrom: renewedStart,
+        validUntil: due,
+        qrCodeData: 'latest-qr',
+        updatedAt: new Date('2026-10-15T12:00:01Z'),
+      });
+      const rows = await Effect.runPromise(methods.getExpiringMemberships(30));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].membership).toMatchObject({id: renewedTerm.id, autoRenew});
+      expect(rows[0].card?.membershipNumber).toBe('DEC-2026-000050');
+      const email = createTestEmailService();
+      const database = createTestDatabaseService(methods);
+      const result = await Effect.runPromise(
+        sendScheduledRenewalReminders.pipe(
+          Effect.provide(Layer.merge(TestDatabaseLayer(database), TestEmailLayer(email))),
+        ),
+      );
+      expect(result).toEqual({sent: 1, skipped: 0, errors: []});
+      expect(email.sendRenewalEmail).toHaveBeenCalledTimes(autoRenew ? 0 : 1);
+      expect(email.sendUpcomingRenewalEmail).toHaveBeenCalledTimes(autoRenew ? 1 : 0);
+      expect(database.logEmailEvent).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('keeps a current manual term when a later subscription is canceled', async () => {
+    const {oldTerm, renewedTerm} = await seedRenewal();
+    await db
+      .update(schema.memberships)
+      .set({endDate: due})
+      .where(eq(schema.memberships.id, oldTerm.id));
+    await db
+      .update(schema.memberships)
+      .set({status: 'canceled'})
+      .where(eq(schema.memberships.id, renewedTerm.id));
+    const result = await Effect.runPromise(methods.getExpiringMemberships(30));
+    expect(result).toHaveLength(1);
+    expect(result[0].membership).toMatchObject({id: oldTerm.id, autoRenew: false});
+  });
+
+  it('does not report expired terms or terms outside the selected window', async () => {
+    const {renewedTerm} = await seedRenewal();
+    await db
+      .update(schema.memberships)
+      .set({endDate: new Date('2026-11-15T12:00:00Z')})
+      .where(eq(schema.memberships.id, renewedTerm.id));
+    expect(await Effect.runPromise(methods.getExpiringMemberships(30))).toEqual([]);
+    expect(await Effect.runPromise(methods.getExpiringMemberships(60))).toHaveLength(1);
+    await db
+      .update(schema.memberships)
+      .set({endDate: new Date('2026-10-14T12:00:00Z')})
+      .where(eq(schema.memberships.id, renewedTerm.id));
+    expect(await Effect.runPromise(methods.getExpiringMemberships(90))).toEqual([]);
   });
 });
 

@@ -484,9 +484,10 @@ export function createMembershipMethods(
             })
             .from(memberships)
             .innerJoin(users, eq(memberships.userId, users.id))
-            .leftJoin(membershipCards, eq(membershipCards.membershipId, memberships.id))
+            .leftJoin(membershipCards, currentCardJoin())
             .where(
               and(
+                inArray(memberships.id, currentMembershipIds(now)),
                 inArray(memberships.status, currentDatabaseStatuses),
                 gte(memberships.endDate, now),
                 lte(memberships.endDate, expiryDate),

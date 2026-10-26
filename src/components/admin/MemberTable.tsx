@@ -155,17 +155,19 @@ export function MemberTable({
                           </IconButton>
                         </Tooltip>
                       )}
-                      {onSendRenewalEmail && !member.renewalEmail && (
-                        <Tooltip title="Send Renewal Email">
-                          <IconButton
-                            size="small"
-                            color="info"
-                            onClick={() => onSendRenewalEmail(member)}
-                          >
-                            <MarkEmailUnread fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {onSendRenewalEmail &&
+                        !member.membership?.autoRenew &&
+                        !member.renewalEmail && (
+                          <Tooltip title="Send Renewal Email">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => onSendRenewalEmail(member)}
+                            >
+                              <MarkEmailUnread fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       {member.renewalEmail && (
                         <Tooltip
                           title={`Renewal email ${member.renewalEmail.deliveryType === 'resend' ? 'resent' : 'sent'} by ${
@@ -180,17 +182,19 @@ export function MemberTable({
                           />
                         </Tooltip>
                       )}
-                      {onResendRenewalEmail && member.renewalEmail && (
-                        <Tooltip title="Resend Renewal Email">
-                          <IconButton
-                            size="small"
-                            color="info"
-                            onClick={() => onResendRenewalEmail(member)}
-                          >
-                            <Replay fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {onResendRenewalEmail &&
+                        !member.membership?.autoRenew &&
+                        member.renewalEmail && (
+                          <Tooltip title="Resend Renewal Email">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => onResendRenewalEmail(member)}
+                            >
+                              <Replay fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       {onViewPayments && member.user?.stripeCustomerId && (
                         <Tooltip title="Payment History">
                           <IconButton size="small" onClick={() => onViewPayments(member)}>

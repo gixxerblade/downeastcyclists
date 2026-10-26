@@ -35,6 +35,7 @@ interface ExpiringMembersReportProps {
 }
 
 export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProps) {
+  const [renewalFilter, setRenewalFilter] = useState<'manual' | 'automatic'>('manual');
   const [daysFilter, setDaysFilter] = useState<30 | 60 | 90>(30);
 
   const expiringQuery = useQuery({
@@ -43,8 +44,13 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
     enabled: open,
   });
 
+  const visibleMembers = expiringQuery.data?.filter(
+    (member) => member.autoRenew === (renewalFilter === 'automatic'),
+  );
+  const automatic = renewalFilter === 'automatic';
+
   const handleExportCSV = () => {
-    if (!expiringQuery.data || expiringQuery.data.length === 0) return;
+    if (!visibleMembers || visibleMembers.length === 0) return;
 
     const headers = [
       'Email',
@@ -53,16 +59,18 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
       'Plan Type',
       'Status',
       'Membership #',
-      'Expiration Date',
-      'Days Until Expiration',
+      'Renewal Type',
+      automatic ? 'Renewal Date' : 'Expiration Date',
+      automatic ? 'Days Until Renewal' : 'Days Until Expiration',
     ];
-    const rows = expiringQuery.data.map((m: ExpiringMember) => [
+    const rows = visibleMembers.map((m: ExpiringMember) => [
       m.email,
       m.name || '',
       m.phone || '',
       m.planType,
       m.status,
       m.membershipNumber || '',
+      m.autoRenew ? 'Renews automatically' : 'Needs renewal',
       new Date(m.expirationDate).toLocaleDateString(),
       m.daysUntilExpiration.toString(),
     ]);
@@ -76,7 +84,7 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expiring-memberships-${daysFilter}days-${Date.now()}.csv`;
+    a.download = `memberships-${renewalFilter}-${daysFilter}days-${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -85,9 +93,22 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>Expiring Memberships Report</DialogTitle>
+      <DialogTitle>Membership Renewals Report</DialogTitle>
       <DialogContent>
         <Box sx={{pt: 1}}>
+          <Tabs
+            value={renewalFilter}
+            onChange={(_, value) => setRenewalFilter(value)}
+            aria-label="Renewal type"
+          >
+            <Tab label="Needs renewal" value="manual" />
+            <Tab label="Renews automatically" value="automatic" />
+          </Tabs>
+          <Alert severity="info" sx={{my: 2}}>
+            {automatic
+              ? 'These memberships renew automatically. Members receive a 30-day notice that their card will be charged; no manual renewal is needed.'
+              : 'These memberships need manual renewal. Members who already renewed are excluded. Automatic renewals are listed separately.'}
+          </Alert>
           <Box sx={{borderBottom: 1, borderColor: 'divider', mb: 2}}>
             <Tabs value={daysFilter} onChange={(_, v) => setDaysFilter(v)}>
               <Tab label="Next 30 Days" value={30} />
@@ -108,19 +129,21 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
             </Alert>
           )}
 
-          {expiringQuery.data && expiringQuery.data.length === 0 && (
+          {visibleMembers && visibleMembers.length === 0 && (
             <Typography color="text.secondary" align="center" sx={{py: 4}}>
-              No memberships expiring in the next {daysFilter} days
+              No memberships {automatic ? 'renewing automatically' : 'needing renewal'} in the next{' '}
+              {daysFilter} days
             </Typography>
           )}
 
-          {expiringQuery.data && expiringQuery.data.length > 0 && (
+          {visibleMembers && visibleMembers.length > 0 && (
             <>
               <Box
                 sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}
               >
                 <Typography variant="subtitle2">
-                  {expiringQuery.data.length} memberships expiring
+                  {visibleMembers.length} memberships{' '}
+                  {automatic ? 'renewing automatically' : 'needing renewal'}
                 </Typography>
                 <Button
                   variant="outlined"
@@ -142,12 +165,12 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
                       <TableCell>Plan</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Membership #</TableCell>
-                      <TableCell>Expires</TableCell>
+                      <TableCell>{automatic ? 'Renews on' : 'Expires'}</TableCell>
                       <TableCell>Days Left</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {expiringQuery.data.map((member: ExpiringMember) => (
+                    {visibleMembers.map((member: ExpiringMember) => (
                       <TableRow key={member.userId}>
                         <TableCell>{member.email}</TableCell>
                         <TableCell>{member.name || '-'}</TableCell>
@@ -173,9 +196,9 @@ export function ExpiringMembersReport({open, onClose}: ExpiringMembersReportProp
                             size="small"
                             label={`${member.daysUntilExpiration} days`}
                             color={
-                              member.daysUntilExpiration <= 7
+                              !automatic && member.daysUntilExpiration <= 7
                                 ? 'error'
-                                : member.daysUntilExpiration <= 14
+                                : !automatic && member.daysUntilExpiration <= 14
                                   ? 'warning'
                                   : 'default'
                             }
