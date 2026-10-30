@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import JerseyPreorderBanner from '@/src/components/JerseyPreorderBanner';
 import TrailStatus from '@/src/components/TrailStatus';
 import {getHeroVideo} from '@/src/contentful/video';
 import {getUpcomingMeetupRides} from '@/src/lib/meetup/events';
@@ -50,6 +51,8 @@ export default async function Home() {
           <div className="absolute inset-0 bg-[url('/redesign-assets/hero-poster.png')] bg-cover bg-center md:hidden" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 to-black/90 md:bg-gradient-to-r md:from-[#0E0E10]/95 md:via-[#0E0E10]/65 md:to-[#0E0E10]/15" />
         </div>
+
+        <JerseyPreorderBanner />
 
         <div className="dec-container relative z-10 flex min-h-[calc(100vh-80px)] max-w-[1220px] flex-col justify-center py-14 text-[#F5F3EF] md:min-h-[720px] md:py-20">
           <div className="mb-6">
