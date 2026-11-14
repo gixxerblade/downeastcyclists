@@ -2,6 +2,7 @@ import {asc, gt} from 'drizzle-orm';
 import {unstable_cache} from 'next/cache';
 
 import {meetupEvents} from '@/src/db/schema/tables';
+import {formatRideMeta} from '@/src/lib/meetup/format';
 
 export interface UpcomingMeetupRide {
   readonly title: string;
@@ -14,18 +15,6 @@ export interface UpcomingMeetupRide {
 function getDb() {
   return (require('@/src/db/client') as typeof import('@/src/db/client')).db;
 }
-
-const formatRideMeta = (date: Date, location: string | null) => {
-  const formattedDate = date.toLocaleString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  return location ? `${formattedDate} · ${location}` : formattedDate;
-};
 
 const FOUR_HOURS_IN_SECONDS = 60 * 60 * 4;
 
@@ -57,7 +46,7 @@ const getUpcomingMeetupRidesCached = unstable_cache(
       return [];
     }
   },
-  ['upcoming-meetup-rides'],
+  ['upcoming-meetup-rides-eastern-v1'],
   {
     revalidate: FOUR_HOURS_IN_SECONDS,
   },

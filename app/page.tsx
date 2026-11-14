@@ -4,6 +4,7 @@ import JerseyPreorderBanner from '@/src/components/JerseyPreorderBanner';
 import TrailStatus from '@/src/components/TrailStatus';
 import {getHeroVideo} from '@/src/contentful/video';
 import {getUpcomingMeetupRides} from '@/src/lib/meetup/events';
+import {formatRideDateBadge} from '@/src/lib/meetup/format';
 
 const meetupUrl = 'https://www.meetup.com/down-east-cyclists/events/calendar/';
 
@@ -202,7 +203,7 @@ export default async function Home() {
         {rides.length ? (
           <div className="flex flex-col gap-3">
             {rides.map((ride) => {
-              const date = ride.date ? new Date(ride.date) : null;
+              const date = ride.date ? formatRideDateBadge(new Date(ride.date)) : null;
               return (
                 <a
                   key={`${ride.title}-${ride.link}`}
@@ -213,13 +214,13 @@ export default async function Home() {
                 >
                   <div className="min-w-16 text-center">
                     <div className="font-[Anton] text-sm tracking-[.04em] text-[#F20E02]">
-                      {date ? date.toLocaleDateString('en-US', {weekday: 'short'}) : 'DEC'}
+                      {date ? date.weekday : 'DEC'}
                     </div>
                     <div className="font-[Anton] text-3xl leading-none">
-                      {date ? date.getDate() : '→'}
+                      {date ? date.day : '→'}
                     </div>
                     <div className="text-[11px] tracking-[.05em] text-[var(--dec-muted-2)]">
-                      {date ? date.toLocaleDateString('en-US', {month: 'short'}) : 'RIDE'}
+                      {date ? date.month : 'RIDE'}
                     </div>
                   </div>
                   <div className="h-12 w-px bg-[var(--dec-border)]" />
